@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toring · Pengiriman E-Sertifikat</title>
+<style>
+  :root{
+    --navy:#B71C1C; --navy-dark:#6B1309;
+    --gold:#c8932a; --gold-light:#f3e2bd;
+    --bg:#f1f4f9; --card:#ffffff;
+    --text:#1f2937; --muted:#6b7280; --line:#e3e8f0;
+    --ok:#1e8e3e; --ok-bg:#e6f4ea;
+    --err:#c5221f; --err-bg:#fce8e6;
+    --wait-bg:#eef0f4;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+  header.app{background:linear-gradient(120deg,var(--navy) 0%,var(--navy-dark) 100%);color:#fff;padding:28px 32px;position:relative;overflow:hidden;}
+  header.app::before,header.app::after{content:"";position:absolute;border-radius:50%;opacity:.18;}
+  header.app::before{width:260px;height:260px;right:-80px;top:-120px;background:radial-gradient(circle at 30% 30%,var(--gold),transparent 70%);}
+  header.app::after{width:180px;height:180px;right:120px;bottom:-110px;background:radial-gradient(circle at 30% 30%,#8ec8ff,transparent 70%);}
+  header.app .brand{display:flex;align-items:baseline;gap:10px;position:relative;z-index:1;}
+  header.app .brand b{font-size:22px;letter-spacing:.08em;}
+  header.app .brand span{font-size:13px;opacity:.8;}
+  header.app h1{margin:6px 0 4px;font-size:24px;font-weight:600;position:relative;z-index:1;}
+  header.app p{margin:0;opacity:.85;font-size:14px;max-width:680px;position:relative;z-index:1;}
+
+  main{max-width:1100px;margin:18px auto 60px;padding:0 20px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px;}
+  .panel h2{margin-top:0;font-size:18px;display:flex;align-items:center;gap:10px;}
+  .panel h2 .tag{font-size:11px;font-weight:600;color:var(--navy);background:var(--gold-light);padding:2px 8px;border-radius:6px;}
+  .hint{color:var(--muted);font-size:13px;}
+
+  .row{display:flex;gap:16px;flex-wrap:wrap;}
+  .col{flex:1;min-width:240px;}
+  label{font-size:13px;font-weight:600;display:block;margin-bottom:5px;}
+  input[type=text],input[type=number],input[type=url],input[type=file],select,textarea{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;
+    font-size:14px;font-family:inherit;background:#fbfcfe;
+  }
+  textarea{resize:vertical;}
+  .field{margin-bottom:14px;}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:9px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;}
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-primary:hover{background:var(--navy-dark);}
+  .btn-gold{background:var(--gold);color:#fff;}
+  .btn-gold:hover{background:#b07e21;}
+  .btn-outline{background:#fff;border:1px solid var(--line);color:var(--text);}
+  .btn-outline:hover{border-color:var(--navy);color:var(--navy);}
+  .btn-danger{background:var(--err);color:#fff;}
+  .btn-icon{padding:8px 12px;}
+  .btn[disabled]{opacity:.5;cursor:not-allowed;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top;}
+  th{background:#f6f8fc;font-weight:700;color:var(--navy);position:sticky;top:0;}
+  .table-scroll{max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:10px;}
+
+  .pill{padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;display:inline-block;}
+  .pill-wait{background:var(--wait-bg);color:var(--muted);}
+  .pill-ok{background:var(--ok-bg);color:var(--ok);}
+  .pill-err{background:var(--err-bg);color:var(--err);}
+  .pill-sending{background:var(--gold-light);color:#9a6a13;}
+
+  .progress{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin:12px 0;}
+  .progress > div{height:100%;background:var(--gold);width:0%;transition:.2s;}
+
+  .note{border-radius:10px;padding:10px 14px;font-size:13px;border:1px solid;}
+  .note.warn{background:#fff7e6;border-color:#f3dcab;color:#7a4d05;}
+  .note.info{background:#eaf2ff;border-color:#c4d6f5;color:#0c2c66;}
+  .note.ok  {background:var(--ok-bg);border-color:#bfe1c8;color:#155724;}
+  .note.err {background:var(--err-bg);border-color:#f3b5b3;color:#7a1612;}
+
+  details{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:18px;background:#fbfcfe;}
+  details summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--navy);}
+  details[open] summary{margin-bottom:10px;}
+  pre{background:#0f1c33;color:#dbe6ff;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.6;}
+  ol li, ul li{margin-bottom:6px;}
+  code.kbd{background:#eef0f4;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;font-family:Menlo,Consolas,monospace;}
+
+  .stats{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 0;}
+  .stat{flex:1;min-width:120px;background:#f6f8fc;border-radius:10px;padding:10px 14px;}
+  .stat b{display:block;font-size:22px;color:var(--navy);}
+  .stat span{font-size:12px;color:var(--muted);}
+
+  .template-card{
+    display:flex; gap:14px; align-items:center; padding:12px 16px;
+    border:1px dashed var(--line); border-radius:10px; background:#fbfcfe;
+    margin-bottom:14px;
+  }
+  .template-card .ico{
+    width:42px; height:42px; border-radius:8px; background:var(--gold-light);
+    display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--gold);
+  }
+  .template-card .info{flex:1;}
+  .template-card .info b{display:block;}
+  .template-card .info span{font-size:12px;color:var(--muted);}
+
+  .preview-toolbar{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    background:#f6f8fc; border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; margin-top:14px; margin-bottom:10px;
+  }
+  .preview-toolbar select{flex:1;min-width:200px;}
+  .preview-list{
+    margin-top:8px; border:1px solid var(--line); border-radius:10px;
+    max-height:340px; overflow-y:auto; background:#fbfcfe;
+  }
+  .preview-list .pl-item{
+    padding:9px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; gap:8px;
+  }
+  .preview-list .pl-item:last-child{border-bottom:none;}
+  .preview-list .pl-item:hover{background:#eef2f9;}
+  .preview-list .pl-item.active{background:var(--gold-light);}
+  .preview-list .pl-item .pl-no{color:var(--muted); font-size:12px; white-space:nowrap;}
+  .preview-list .pl-empty{padding:14px;text-align:center;color:var(--muted);font-size:13px;}
+  .preview-stage{
+    border:1px solid var(--line); border-radius:10px; background:#1f2937;
+    min-height:360px; position:relative; overflow:hidden;
+  }
+  .preview-stage embed, .preview-stage iframe{width:100%; height:560px; border:none; display:block; background:#fff;}
+  .preview-loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#cbd5e1; font-size:14px; background:#1f2937;
+  }
+  .preview-empty{
+    color:var(--muted); padding:40px; text-align:center;
+  }
+
+  .btn:active{transform:translateY(1px) scale(.98); filter:brightness(.92);}
+  .btn.is-loading{opacity:.7; cursor:wait;}
+
+  .pagination{display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;}
+  .pagination .page-num{
+    min-width:32px; height:32px; padding:0 6px; border-radius:8px; border:1px solid var(--line);
+    background:#fff; color:var(--text); font-size:13px; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pagination .page-num:hover{border-color:var(--navy); color:var(--navy);}
+  .pagination .page-num.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .pagination .page-num[disabled]{opacity:.4; cursor:not-allowed;}
+  .pagination .page-info{font-size:13px; color:var(--muted); width:100%; text-align:center; margin-bottom:4px;}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(15,28,51,.45); display:flex;
+    align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-box{
+    background:#fff; border-radius:14px; padding:20px; max-width:480px; width:100%;
+    max-height:80vh; display:flex; flex-direction:column; gap:10px;
+  }
+  .modal-box h3{margin:0; font-size:16px;}
+  .modal-box .pl-empty{padding:14px;text-align:center;color:var(--muted);font-size:13px;}
+
+  .footer-note{font-size:12px;color:var(--muted);text-align:center;margin-top:24px;}
+</style>
+</head>
+<body>
+
+<main>
+
+  <!-- ============ 1. KONEKSI ============ -->
+  <section class="panel">
+    <h2>1. Koneksi <span class="tag">Apps Script URL</span></h2>
+    <div class="row">
+      <div class="col field" style="flex:3;">
+        <label>URL Web App Apps Script</label>
+        <input type="url" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/XXXXXXXX/exec">
+      </div>
+      <div class="col field" style="flex:1;display:flex;align-items:flex-end;">
+        <button class="btn btn-primary" id="btnConnect" style="width:100%;">Hubungkan</button>
+      </div>
+    </div>
+    <p class="hint" id="connStatus">URL akan disimpan di browser ini.</p>
+  </section>
+
+  <!-- ============ 2. DAFTAR PESERTA ============ -->
+  <section class="panel" id="pesertaPanel" style="display:none;">
+    <h2>2. Daftar Peserta <span class="tag">dari Google Sheet</span></h2>
+    <div class="stats">
+      <div class="stat"><b id="statTotal">0</b><span>Total Peserta</span></div>
+      <div class="stat"><b id="statOk" style="color:var(--ok);">0</b><span>Terkirim</span></div>
+      <div class="stat"><b id="statErr" style="color:var(--err);">0</b><span>Gagal</span></div>
+      <div class="stat"><b id="statWait">0</b><span>Belum Dikirim</span></div>
+    </div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-outline" id="btnRefresh">Muat Ulang</button>
+      <button class="btn btn-outline" id="btnFilterAll">Semua</button>
+      <button class="btn btn-outline" id="btnFilterWait">Belum Dikirim</button>
+      <button class="btn btn-outline" id="btnFilterErr">Gagal</button>
+    </div>
+    <div class="field" style="margin-top:10px;margin-bottom:0;">
+      <label>Cari peserta (nama / email / nomor)</label>
+      <input type="text" id="pesertaSearch" placeholder="Ketik nama, email, atau nomor untuk cek status pengiriman...">
+    </div>
+    <div id="detectInfo" class="note info" style="margin-top:10px;display:none;"></div>
+    <div class="table-scroll" style="max-height:none;">
+      <table id="statusTable">
+        <thead><tr><th>#</th><th>Nomor</th><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Waktu</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="pesertaPagination" class="pagination"></div>
+  </section>
+
+  <!-- ============ 3. TEMPLATE & PREVIEW ============ -->
+  <section class="panel" id="templatePanel" style="display:none;">
+    <h2>3. Template Sertifikat & Preview <span class="tag">Unggah PPTX</span></h2>
+    <p class="hint">Unggah file <b>.pptx</b> berisi template sertifikat. Pastikan ada placeholder berikut di dalam slide:
+      <code class="kbd">&lt;&lt;Nama&gt;&gt;</code>,
+      <code class="kbd">&lt;&lt;Peran&gt;&gt;</code>,
+      <code class="kbd">&lt;&lt;No&gt;&gt;</code>,
+      <code class="kbd">&lt;&lt;Kegiatan&gt;&gt;</code> (opsional).
+    </p>
+
+    <div class="row" style="margin-top:10px;">
+      <div class="col field">
+        <label>Nama Kegiatan (fix, dipakai untuk semua peserta)</label>
+        <input type="text" id="namaKegiatan" placeholder="Sosialisasi Pelaporan Capaian Output TA 2026">
+      </div>
+      <div class="col field">
+        <label>Format Nomor Sertifikat</label>
+        <input type="text" id="nomorFormat" value="{no}/01/PA/KKPA/2026">
+      </div>
+    </div>
+
+    <div id="templateCurrent" style="display:none;">
+      <div class="template-card">
+        <div class="ico">📄</div>
+        <div class="info"><b id="templateName">—</b><span>Template aktif tersimpan di Google Drive Anda</span></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col field" style="flex:2;">
+        <label>Pilih file PPTX</label>
+        <input type="file" id="filePptx" accept=".pptx">
+      </div>
+      <div class="col field" style="flex:1;display:flex;align-items:flex-end;">
+        <button class="btn btn-primary" id="btnUploadTemplate" style="width:100%;">Unggah & Konversi</button>
+      </div>
+    </div>
+    <p class="hint" id="uploadStatus"></p>
+
+    <h3 style="margin-top:24px;font-size:15px;">Preview untuk peserta</h3>
+    <div class="row" style="margin-top:6px;">
+      <div class="col field" style="flex:2;">
+        <label>Cari peserta (nama / nomor / email)</label>
+        <input type="text" id="previewSearch" placeholder="Ketik untuk mencari peserta...">
+        <div class="preview-list" id="previewList"></div>
+      </div>
+      <div class="col" style="flex:3;">
+        <label>&nbsp;</label>
+        <div class="preview-stage" id="previewStage">
+          <div class="preview-empty">Upload template & pilih peserta dari daftar untuk menampilkan preview.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. KIRIM ============ -->
+  <section class="panel" id="kirimPanel" style="display:none;">
+    <h2>4. Isi Email & Kirim <span class="tag">Gmail</span></h2>
+    <div class="row" style="margin-top:14px;">
+      <div class="col field">
+        <label>Nama Pengirim</label>
+        <input type="text" id="senderName" value="Direktorat Pelaksanaan Anggaran">
+      </div>
+      <div class="col field">
+        <label>Subjek Email</label>
+        <input type="text" id="emailSubject" value="E-Sertifikat Kegiatan {kegiatan}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Isi Email</label>
+      <textarea id="emailBody" rows="6">Yth. Bapak/Ibu {nama},
+
+Terima kasih atas partisipasi Anda dalam kegiatan {kegiatan} sebagai {peran}.
+Bersama email ini kami sampaikan E-Sertifikat dengan nomor {nomor}, sebagaimana terlampir.
+
+Hormat kami,
+Direktorat Pelaksanaan Anggaran</textarea>
+    </div>
+    <div class="note info">
+      Pengiriman berjalan tanpa jeda (secepat yang diizinkan Gmail). Perlu diketahui, Gmail punya batas kirim
+      harian: <b>~500 email/hari</b> untuk akun Gmail biasa, dan <b>~1.500–2.000 email/hari</b> untuk akun
+      Google Workspace (tergantung paket). Jika batas tercapai di tengah proses, sisa peserta akan otomatis
+      tercatat sebagai "Gagal" dan bisa dikirim ulang besok — sistem otomatis melewati peserta yang sudah "Terkirim".
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btnTestSend">Kirim Tes (Pilih Penerima)</button>
+      <button class="btn btn-gold" id="btnSendAll">Kirim ke Semua yang Belum Terkirim</button>
+      <button class="btn btn-danger" id="btnStopSend" disabled>Hentikan</button>
+    </div>
+    <div class="progress"><div id="sendProgressBar"></div></div>
+    <p class="hint" id="sendStatusText">Belum mulai mengirim.</p>
+  </section>
+
+  <p class="footer-note">Toring · Pengiriman E-Sertifikat — proses generate PDF & kirim email dijalankan Google Apps Script di akunmu sendiri.</p>
+</main>
+
+<div class="modal-overlay" id="testModal" style="display:none;">
+  <div class="modal-box">
+    <h3>Pilih penerima Kirim Tes</h3>
+    <p class="hint" style="margin:0;">Pilih peserta (atau baris email panitia) yang akan menerima email tes ini.</p>
+    <input type="text" id="testModalSearch" placeholder="Cari nama / email / nomor...">
+    <div class="preview-list" id="testModalList" style="max-height:300px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="testModalCancel">Batal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const APPS_SCRIPT_CODE = `/**
+ * TORING - Pengiriman E-Sertifikat (v4, zero-config)
+ *
+ * SETUP:
+ * 1. Tempel kode ini di Apps Script editor pada Google Sheet data peserta.
+ * 2. Sidebar kiri > Services (+) > pilih "Drive API" > Add.
+ * 3. Deploy > New deployment > Web app
+ *      Execute as: Me, Access: Anyone > Deploy > salin Web App URL.
+ *
+ * Jika kode diperbarui:
+ *    Deploy > Manage deployments > pensil ✏️ > Version: New version > Deploy.
+ *
+ * Tidak ada konstanta yang perlu diedit. Kolom sheet dideteksi otomatis.
+ */
+
+function doGet(e) {
+  try {
+    const action = (e && e.parameter && e.parameter.action) || 'list';
+    if (action === 'list') return listPeserta();
+    if (action === 'ping') return json({ status:'ok', hasTemplate: !!getTemplateId(), templateName: getTemplateName(), version: 'v4' });
+    return json({ status:'error', message:'unknown action: ' + action });
+  } catch(err) {
+    return json({ status:'error', message: err.message });
+  }
+}
+
+function doPost(e) {
+  let payload = null;
+  try {
+    payload = JSON.parse(e.postData.contents);
+    if (payload.action === 'uploadTemplate') return uploadTemplate(payload);
+    if (payload.action === 'preview')        return getPreview(payload);
+    if (payload.action === 'send')           { sendOne(payload); return json({ status:'ok' }); }
+    return json({ status:'error', message:'unknown action: ' + payload.action });
+  } catch(err) {
+    if (payload && payload.action === 'send' && payload.row) {
+      try { writeStatus(payload.row, 'Gagal', err.message); } catch(e2){}
+    }
+    return json({ status:'error', message: err.message });
+  }
+}
+
+/* ---------- Auto-detect kolom (case-insensitive) ---------- */
+function findCol(headers, candidates) {
+  const norm = headers.map(h => String(h == null ? '' : h).trim().toLowerCase());
+  for (const c of candidates) {
+    const idx = norm.indexOf(String(c).toLowerCase());
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function getCols(headers) {
+  return {
+    nomor:  findCol(headers, ['Nomor','No','Number']),
+    nama:   findCol(headers, ['Nama','Name','Nama Peserta']),
+    peran:  findCol(headers, ['Peran','PERAN','Jabatan','Role']),
+    email:  findCol(headers, ['Email','E-mail','Mail','Alamat Email']),
+    status: findCol(headers, ['Status Kirim','Status']),
+    waktu:  findCol(headers, ['Waktu Kirim','Waktu','Time','Timestamp'])
+  };
+}
+
+function getSheet() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+}
+
+/* ---------- LIST PESERTA ---------- */
+function listPeserta() {
+  const sheet = getSheet();
+  const values = sheet.getDataRange().getValues();
+  if (values.length === 0) return json({ status:'ok', data:[], headers:[], detected:{}, version:'v4' });
+
+  const headers = values[0];
+  const c = getCols(headers);
+  const data = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const r = values[i];
+    if (c.email < 0 || !String(r[c.email] || '').trim()) continue;
+    data.push({
+      row: i + 1,
+      nomor: c.nomor >= 0 ? String(r[c.nomor] || '') : '',
+      nama:  c.nama  >= 0 ? String(r[c.nama]  || '') : '',
+      peran: c.peran >= 0 ? String(r[c.peran] || '') : '',
+      email: String(r[c.email] || ''),
+      status: c.status >= 0 ? String(r[c.status] || '') : '',
+      waktu:  c.waktu  >= 0 ? formatTime(r[c.waktu]) : ''
+    });
+  }
+
+  return json({
+    status: 'ok',
+    version: 'v4',
+    data: data,
+    headers: headers,
+    sheetName: sheet.getName(),
+    detected: {
+      nomor: c.nomor >= 0 ? headers[c.nomor] : null,
+      nama:  c.nama  >= 0 ? headers[c.nama]  : null,
+      peran: c.peran >= 0 ? headers[c.peran] : null,
+      email: c.email >= 0 ? headers[c.email] : null
+    },
+    hasTemplate: !!getTemplateId(),
+    templateName: getTemplateName()
+  });
+}
+
+function formatTime(v) {
+  if (!v) return '';
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'dd-MM-yyyy HH:mm');
+  return String(v);
+}
+
+/* ---------- TEMPLATE PPTX ---------- */
+function getTemplateId() { return PropertiesService.getScriptProperties().getProperty('TEMPLATE_SLIDE_ID'); }
+function getTemplateName() {
+  const id = getTemplateId();
+  if (!id) return '';
+  try { return DriveApp.getFileById(id).getName(); } catch(e) { return ''; }
+}
+
+function uploadTemplate(payload) {
+  const bytes = Utilities.base64Decode(payload.base64);
+  const pptxMime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  const blob = Utilities.newBlob(bytes, pptxMime, payload.filename || 'template.pptx');
+
+  const fileMetadata = {
+    name: 'Toring Template - ' + (payload.filename || 'template.pptx'),
+    mimeType: MimeType.GOOGLE_SLIDES
+  };
+  const newFile = Drive.Files.create(fileMetadata, blob);
+
+  const oldId = getTemplateId();
+  if (oldId && oldId !== newFile.id) {
+    try { DriveApp.getFileById(oldId).setTrashed(true); } catch(e){}
+  }
+  PropertiesService.getScriptProperties().setProperty('TEMPLATE_SLIDE_ID', newFile.id);
+  return json({ status:'ok', id: newFile.id, name: newFile.name });
+}
+
+/* ---------- AMBIL DATA SATU PESERTA ---------- */
+function readRow(row) {
+  const sheet = getSheet();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const c = getCols(headers);
+  const rowVals = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+  return {
+    nomor: c.nomor >= 0 ? String(rowVals[c.nomor] || '') : '',
+    nama:  c.nama  >= 0 ? String(rowVals[c.nama]  || '') : '',
+    peran: c.peran >= 0 ? String(rowVals[c.peran] || '') : '',
+    email: c.email >= 0 ? String(rowVals[c.email] || '') : ''
+  };
+}
+
+/* ---------- BUAT COPY SLIDE TER-PERSONALISASI ---------- */
+function buildCertificateCopy(person, kegiatan, nomorFormat) {
+  const templateId = getTemplateId();
+  if (!templateId) throw new Error('Template belum diunggah.');
+  const nomorFull = String(nomorFormat || '{no}').replace('{no}', person.nomor);
+
+  const copy = DriveApp.getFileById(templateId).makeCopy('temp-' + Date.now());
+  const copyId = copy.getId();
+  const slides = SlidesApp.openById(copyId);
+  slides.replaceAllText('<<Nama>>', person.nama);
+  slides.replaceAllText('<<Peran>>', person.peran);
+  slides.replaceAllText('<<No>>', person.nomor);
+  slides.replaceAllText('<<Nomor>>', person.nomor);
+  slides.replaceAllText('<<Kegiatan>>', kegiatan || '');
+  slides.saveAndClose();
+  return { copyId: copyId, nomorFull: nomorFull };
+}
+
+/* ---------- PREVIEW PDF ---------- */
+function getPreview(payload) {
+  const person = readRow(payload.row);
+  const built = buildCertificateCopy(person, payload.kegiatan || '', payload.nomorFormat || '{no}');
+  const pdfBlob = DriveApp.getFileById(built.copyId).getAs('application/pdf');
+  const base64 = Utilities.base64Encode(pdfBlob.getBytes());
+  DriveApp.getFileById(built.copyId).setTrashed(true);
+  return json({ status:'ok', base64: base64, nama: person.nama });
+}
+
+/* ---------- KIRIM SATU ---------- */
+function sendOne(data) {
+  const person = readRow(data.row);
+  if (!person.email) throw new Error('Email kosong');
+  const kegiatan = data.kegiatan || 'Sertifikat';
+  const built = buildCertificateCopy(person, kegiatan, data.nomorFormat || '{no}');
+
+  const filename = 'E-Sertifikat Kegiatan ' + sanitize(kegiatan) + '_' + sanitize(person.nama) + '.pdf';
+  const pdfBlob = DriveApp.getFileById(built.copyId).getAs('application/pdf').setName(filename);
+
+  const vars = { nama: person.nama, peran: person.peran, nomor: built.nomorFull, kegiatan: kegiatan };
+  const subj = renderVars(data.subject, vars);
+  const body = renderVars(data.htmlBody, vars).replace(/\\n/g, '<br>');
+
+  GmailApp.sendEmail(person.email, subj, '', {
+    htmlBody: body,
+    attachments: [pdfBlob],
+    name: data.senderName || 'Toring'
+  });
+
+  DriveApp.getFileById(built.copyId).setTrashed(true);
+  writeStatus(data.row, 'Terkirim', '');
+}
+
+function renderVars(str, vars) {
+  return String(str || '')
+    .replace(/\\{nama\\}/g, vars.nama)
+    .replace(/\\{peran\\}/g, vars.peran)
+    .replace(/\\{nomor\\}/g, vars.nomor)
+    .replace(/\\{kegiatan\\}/g, vars.kegiatan);
+}
+
+function writeStatus(row, status, errMsg) {
+  const sheet = getSheet();
+  const headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+  let statusCol = findCol(headers, ['Status Kirim','Status']);
+  let timeCol = findCol(headers, ['Waktu Kirim','Waktu','Time']);
+  if (statusCol === -1) { statusCol = headers.length; sheet.getRange(1, statusCol + 1).setValue('Status Kirim'); }
+  if (timeCol === -1) { timeCol = Math.max(statusCol + 1, headers.length); sheet.getRange(1, timeCol + 1).setValue('Waktu Kirim'); }
+  const text = errMsg ? (status + ': ' + errMsg) : status;
+  sheet.getRange(row, statusCol + 1).setValue(text);
+  sheet.getRange(row, timeCol + 1).setValue(new Date());
+}
+
+function sanitize(s) { return String(s || '').replace(/[\\\\/:*?"<>|]/g, '-').trim(); }
+function json(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
+`;
+
+/* ==================== STATE ==================== */
+let participants = [];
+let currentFilter = 'all';
+let sendingActive = false;
+let previewIndex = -1;
+let pesertaPage = 0;
+const PESERTA_PAGE_SIZE = 10;
+
+const $ = (id)=>document.getElementById(id);
+const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const urlInput = $('appsScriptUrl');
+urlInput.value = localStorage.getItem('toring_apps_url') || '';
+urlInput.addEventListener('change', ()=> localStorage.setItem('toring_apps_url', urlInput.value));
+
+$('namaKegiatan').value = localStorage.getItem('toring_kegiatan') || '';
+$('namaKegiatan').addEventListener('change', e => localStorage.setItem('toring_kegiatan', e.target.value));
+$('nomorFormat').value = localStorage.getItem('toring_nomor_format') || '{no}/01/PA/KKPA/2026';
+$('nomorFormat').addEventListener('change', e => localStorage.setItem('toring_nomor_format', e.target.value));
+
+function statusType(s){
+  if (s === 'Terkirim') return 'ok';
+  if (s === 'Mengirim') return 'sending';
+  if ((s||'').toString().startsWith('Gagal')) return 'err';
+  return 'wait';
+}
+function statusPill(s){
+  const t = statusType(s);
+  if (t === 'ok') return '<span class="pill pill-ok">Terkirim</span>';
+  if (t === 'sending') return '<span class="pill pill-sending">Mengirim...</span>';
+  if (t === 'err') return '<span class="pill pill-err" title="'+esc(s)+'">Gagal</span>';
+  return '<span class="pill pill-wait">Belum dikirim</span>';
+}
+
+/* ==================== FETCH HELPERS ==================== */
+async function postJson(action, body){
+  const url = urlInput.value.trim();
+  if (!url) throw new Error('Isi URL Apps Script dulu.');
+  const res = await fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(Object.assign({ action }, body || {})),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
+  const j = await res.json();
+  if (j.status !== 'ok') throw new Error(j.message || 'Respons tidak valid');
+  return j;
+}
+async function getJson(params){
+  const url = urlInput.value.trim();
+  if (!url) throw new Error('Isi URL Apps Script dulu.');
+  const qs = params ? ('?' + Object.entries(params).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&')) : '';
+  const res = await fetch(url + qs);
+  const j = await res.json();
+  if (j.status !== 'ok') throw new Error(j.message || 'Respons tidak valid');
+  return j;
+}
+
+/* ==================== KONEKSI ==================== */
+$('btnConnect').addEventListener('click', async ()=>{
+  localStorage.setItem('toring_apps_url', urlInput.value);
+  try{
+    $('connStatus').textContent = 'Menghubungkan...';
+    const ping = await getJson({ action:'ping' });
+    if (ping.version !== 'v4'){
+      $('connStatus').innerHTML = '⚠️ Apps Script merespons tetapi versi tidak sesuai (' + (ping.version||'lama') + '). Update kode di Apps Script lalu Deploy → Manage deployments → New version.';
+    } else {
+      $('connStatus').textContent = 'Terhubung. ' + (ping.hasTemplate ? ('Template aktif: ' + ping.templateName) : 'Belum ada template aktif.');
+    }
+    $('pesertaPanel').style.display = 'block';
+    $('templatePanel').style.display = 'block';
+    $('kirimPanel').style.display = 'block';
+    if (ping.hasTemplate){
+      $('templateCurrent').style.display = 'block';
+      $('templateName').textContent = ping.templateName;
+    }
+    await loadPeserta();
+  }catch(err){
+    $('connStatus').textContent = 'Gagal: ' + err.message;
+    alert('Gagal terhubung: ' + err.message);
+  }
+});
+
+/* ==================== DATA PESERTA ==================== */
+async function loadPeserta(){
+  try{
+    const j = await getJson({ action:'list' });
+    participants = j.data || [];
+
+    // Info deteksi kolom (bantu debug kalau kolom tidak terdetect)
+    const info = $('detectInfo');
+    const d = j.detected || {};
+    const missing = ['nomor','nama','peran','email'].filter(k => !d[k]);
+    if (j.version !== 'v4'){
+      info.className = 'note err';
+      info.style.display = 'block';
+      info.innerHTML = '⚠️ Versi Apps Script tidak sesuai (' + (j.version||'lama') + '). Update kode Apps Script lalu Deploy → Manage deployments → New version.';
+    } else if (missing.length){
+      info.className = 'note err';
+      info.style.display = 'block';
+      info.innerHTML = '<b>⚠️ Beberapa kolom tidak terdeteksi:</b> ' + missing.join(', ') +
+        '<br>Header yang dibaca di sheet (' + esc(j.sheetName||'sheet ke-1') + '): ' +
+        (j.headers||[]).map(h=>'<code class="kbd">'+esc(h)+'</code>').join(' ') +
+        '<br>Pastikan ada kolom yang namanya mengandung salah satu dari: <b>Nomor</b>, <b>Nama</b>, <b>Peran/Jabatan</b>, <b>Email</b>.';
+    } else {
+      info.className = 'note ok';
+      info.style.display = 'block';
+      info.innerHTML = '✓ Kolom terdeteksi → Nomor: <b>'+esc(d.nomor)+'</b>, Nama: <b>'+esc(d.nama)+'</b>, Peran: <b>'+esc(d.peran)+'</b>, Email: <b>'+esc(d.email)+'</b>.';
+    }
+
+    renderTable();
+    populatePreviewSelect();
+  }catch(err){
+    alert('Gagal memuat data: ' + err.message);
+  }
+}
+
+$('btnRefresh').addEventListener('click', loadPeserta);
+$('btnFilterAll').addEventListener('click', ()=>{ currentFilter='all'; pesertaPage=0; renderTable(); });
+$('btnFilterWait').addEventListener('click', ()=>{ currentFilter='wait'; pesertaPage=0; renderTable(); });
+$('btnFilterErr').addEventListener('click', ()=>{ currentFilter='err'; pesertaPage=0; renderTable(); });
+$('pesertaSearch').addEventListener('input', ()=>{ pesertaPage=0; renderTable(); });
+
+function getFilteredIndices(){
+  const q = $('pesertaSearch').value.trim().toLowerCase();
+  return participants.map((p,i)=>i).filter(i=>{
+    const p = participants[i];
+    const t = statusType(p.status);
+    if (currentFilter==='wait' && t!=='wait') return false;
+    if (currentFilter==='err'  && t!=='err')  return false;
+    if (q){
+      const hay = (p.nama+' '+p.email+' '+p.nomor).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTable(){
+  const tbody = document.querySelector('#statusTable tbody');
+  tbody.innerHTML = '';
+  const filtered = getFilteredIndices();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PESERTA_PAGE_SIZE));
+  if (pesertaPage >= totalPages) pesertaPage = totalPages - 1;
+  if (pesertaPage < 0) pesertaPage = 0;
+  const start = pesertaPage * PESERTA_PAGE_SIZE;
+  const pageIndices = filtered.slice(start, start + PESERTA_PAGE_SIZE);
+
+  if (pageIndices.length === 0){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px;">Tidak ada data sesuai filter/pencarian.</td></tr>';
+  } else {
+    pageIndices.forEach(i=>{
+      const p = participants[i];
+      const tr = document.createElement('tr');
+      tr.id = 'row-'+i;
+      tr.innerHTML =
+        '<td>'+(i+1)+'</td>'+
+        '<td>'+esc(p.nomor)+'</td>'+
+        '<td>'+esc(p.nama)+'</td>'+
+        '<td>'+esc(p.email)+'</td>'+
+        '<td>'+esc(p.peran)+'</td>'+
+        '<td>'+statusPill(p.status)+'</td>'+
+        '<td>'+esc(p.waktu||'')+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  renderPagination(totalPages, filtered.length);
+  updateStats();
+}
+
+function renderPagination(totalPages, filteredCount){
+  const wrap = $('pesertaPagination');
+  wrap.innerHTML = '';
+
+  const info = document.createElement('div');
+  info.className = 'page-info';
+  info.textContent = 'Halaman ' + (pesertaPage+1) + ' / ' + totalPages + ' · ' + filteredCount + ' peserta';
+  wrap.appendChild(info);
+
+  const cur = pesertaPage + 1; // 1-indexed
+
+  const addBtn = (label, page, opts={})=>{
+    const b = document.createElement('button');
+    b.className = 'page-num';
+    b.textContent = label;
+    if (opts.active) b.classList.add('active');
+    if (opts.disabled) b.disabled = true;
+    b.addEventListener('click', ()=>{ pesertaPage = page-1; renderTable(); });
+    wrap.appendChild(b);
+  };
+
+  addBtn('«', 1, { disabled: cur===1 });
+  addBtn('‹', Math.max(1,cur-1), { disabled: cur===1 });
+
+  const windowSize = 5;
+  let start = Math.max(1, cur - Math.floor(windowSize/2));
+  let end = Math.min(totalPages, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  for (let p=start; p<=end; p++){
+    addBtn(String(p), p, { active: p===cur });
+  }
+
+  addBtn('›', Math.min(totalPages,cur+1), { disabled: cur===totalPages });
+  addBtn('»', totalPages, { disabled: cur===totalPages });
+}
+
+function updateStats(){
+  let ok=0, err=0, wait=0;
+  participants.forEach(p=>{
+    const t = statusType(p.status);
+    if (t==='ok') ok++; else if (t==='err') err++; else wait++;
+  });
+  $('statTotal').textContent = participants.length;
+  $('statOk').textContent = ok;
+  $('statErr').textContent = err;
+  $('statWait').textContent = wait;
+}
+
+function updateRow(i){
+  const tr = document.getElementById('row-'+i);
+  if (!tr) return;
+  const p = participants[i];
+  tr.children[5].innerHTML = statusPill(p.status);
+  tr.children[6].textContent = p.waktu || '';
+}
+
+/* ==================== TEMPLATE UPLOAD ==================== */
+$('btnUploadTemplate').addEventListener('click', async ()=>{
+  const file = $('filePptx').files[0];
+  if (!file){ alert('Pilih file PPTX dulu.'); return; }
+  if (!file.name.toLowerCase().endsWith('.pptx')){ alert('File harus berformat .pptx'); return; }
+
+  $('uploadStatus').textContent = 'Mengunggah & mengonversi template ke Google Slides...';
+  try{
+    const base64 = await fileToBase64(file);
+    const j = await postJson('uploadTemplate', { filename: file.name, base64: base64 });
+    $('uploadStatus').textContent = '✓ Template aktif: ' + j.name;
+    $('templateCurrent').style.display = 'block';
+    $('templateName').textContent = j.name;
+    // langsung tampilkan preview peserta pertama
+    if (participants.length > 0){
+      previewIndex = 0;
+      renderPreviewList($('previewSearch').value.trim().toLowerCase());
+      loadPreviewFor(0);
+    }
+  }catch(err){
+    $('uploadStatus').textContent = '✗ Gagal: ' + err.message;
+    alert('Gagal upload template: ' + err.message + '\n\nPastikan langkah Services → Drive API → Add di Apps Script sudah dilakukan, dan deployment sudah diperbarui ke versi baru.');
+  }
+});
+
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+/* ==================== PREVIEW ==================== */
+function populatePreviewSelect(){
+  renderPreviewList('');
+}
+
+$('previewSearch').addEventListener('input', e=>{
+  renderPreviewList(e.target.value.trim().toLowerCase());
+});
+
+function renderPreviewList(query){
+  const list = $('previewList');
+  list.innerHTML = '';
+  if (participants.length === 0){
+    list.innerHTML = '<div class="pl-empty">Belum ada data peserta.</div>';
+    return;
+  }
+  const matches = participants
+    .map((p,i)=>({p,i}))
+    .filter(({p})=>{
+      if (!query) return true;
+      return (p.nama||'').toLowerCase().includes(query) ||
+             (p.nomor||'').toLowerCase().includes(query) ||
+             (p.email||'').toLowerCase().includes(query);
+    });
+
+  if (matches.length === 0){
+    list.innerHTML = '<div class="pl-empty">Tidak ditemukan.</div>';
+    return;
+  }
+
+  const shown = matches; // tampilkan semua hasil, di-scroll
+  shown.forEach(({p,i})=>{
+    const div = document.createElement('div');
+    div.className = 'pl-item' + (i===previewIndex ? ' active' : '');
+    div.dataset.idx = i;
+    div.innerHTML = '<span>'+(i+1)+'. '+esc(p.nama || '(tanpa nama)')+'</span>'+
+                    '<span class="pl-no">'+esc(p.nomor||'')+'</span>';
+    div.addEventListener('click', ()=>{
+      previewIndex = i;
+      document.querySelectorAll('.preview-list .pl-item').forEach(el=>el.classList.remove('active'));
+      div.classList.add('active');
+      loadPreviewFor(i);
+    });
+    list.appendChild(div);
+  });
+}
+
+async function loadPreviewFor(i){
+  if (i < 0 || i >= participants.length) return;
+  const p = participants[i];
+  const stage = $('previewStage');
+  stage.innerHTML = '<div class="preview-loading">Memuat preview untuk ' + esc(p.nama) + '...</div>';
+  try{
+    const j = await postJson('preview', {
+      row: p.row,
+      kegiatan: $('namaKegiatan').value,
+      nomorFormat: $('nomorFormat').value
+    });
+    const src = 'data:application/pdf;base64,' + j.base64 + '#toolbar=0&navpanes=0';
+    stage.innerHTML = '<embed src="'+src+'" type="application/pdf">';
+  }catch(err){
+    stage.innerHTML = '<div class="preview-empty" style="color:var(--err);">Gagal memuat preview: '+esc(err.message)+'</div>';
+  }
+}
+
+/* ==================== KIRIM TES: MODAL PICKER ==================== */
+function openTestModal(){
+  $('testModal').style.display = 'flex';
+  $('testModalSearch').value = '';
+  renderTestModalList('');
+  $('testModalSearch').focus();
+}
+function closeTestModal(){
+  $('testModal').style.display = 'none';
+}
+$('testModalCancel').addEventListener('click', closeTestModal);
+$('testModal').addEventListener('click', (e)=>{ if (e.target.id==='testModal') closeTestModal(); });
+$('testModalSearch').addEventListener('input', e=> renderTestModalList(e.target.value.trim().toLowerCase()));
+
+function renderTestModalList(query){
+  const list = $('testModalList');
+  list.innerHTML = '';
+  const matches = participants
+    .map((p,i)=>({p,i}))
+    .filter(({p})=>{
+      if (!query) return true;
+      return (p.nama||'').toLowerCase().includes(query) ||
+             (p.nomor||'').toLowerCase().includes(query) ||
+             (p.email||'').toLowerCase().includes(query);
+    });
+  if (matches.length === 0){
+    list.innerHTML = '<div class="pl-empty">Tidak ditemukan.</div>';
+    return;
+  }
+  matches.forEach(({p,i})=>{
+    const div = document.createElement('div');
+    div.className = 'pl-item';
+    div.innerHTML = '<span>'+(i+1)+'. '+esc(p.nama || '(tanpa nama)')+' — '+esc(p.email)+'</span>'+
+                    '<span class="pl-no">'+esc(p.nomor||'')+'</span>';
+    div.addEventListener('click', async ()=>{
+      closeTestModal();
+      await runWithLoading('btnTestSend', 'Mengirim...', async ()=>{
+        await sendOne(i);
+      });
+    });
+    list.appendChild(div);
+  });
+}
+
+async function runWithLoading(btnId, loadingText, fn){
+  const btn = $(btnId);
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  btn.textContent = loadingText;
+  try{
+    await fn();
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+    btn.textContent = original;
+  }
+}
+
+/* ==================== KIRIM ==================== */
+async function sendOne(i){
+  const p = participants[i];
+  if (!p.email){ p.status='Gagal: email kosong'; updateRow(i); updateStats(); return; }
+  p.status = 'Mengirim'; updateRow(i);
+
+  const payload = {
+    row: p.row,
+    subject: $('emailSubject').value,
+    htmlBody: $('emailBody').value,
+    senderName: $('senderName').value,
+    nomorFormat: $('nomorFormat').value,
+    kegiatan: $('namaKegiatan').value
+  };
+  try{
+    await postJson('send', payload);
+    p.status = 'Terkirim';
+  }catch(err){
+    p.status = 'Gagal: ' + err.message;
+  }
+  p.waktu = new Date().toLocaleString('id-ID');
+  updateRow(i);
+  updateStats();
+}
+
+$('btnTestSend').addEventListener('click', ()=>{
+  if (participants.length === 0){ alert('Muat data peserta dulu.'); return; }
+  if (!$('namaKegiatan').value){ if (!confirm('Nama Kegiatan belum diisi. Lanjutkan tetap kirim?')) return; }
+  openTestModal();
+});
+
+$('btnSendAll').addEventListener('click', async ()=>{
+  if (participants.length === 0){ alert('Muat data peserta dulu.'); return; }
+  if (!$('namaKegiatan').value){ if (!confirm('Nama Kegiatan belum diisi. Lanjutkan tetap kirim?')) return; }
+  const pending = participants.filter(p=>statusType(p.status)!=='ok');
+  if (pending.length === 0){ alert('Semua peserta sudah terkirim.'); return; }
+  if (!confirm('Akan mengirim ke ' + pending.length + ' peserta. Lanjutkan?')) return;
+
+  sendingActive = true;
+  $('btnSendAll').disabled = true;
+  $('btnSendAll').classList.add('is-loading');
+  $('btnStopSend').disabled = false;
+
+  let sent = 0;
+
+  for (let i = 0; i < participants.length; i++){
+    if (!sendingActive) break;
+    if (statusType(participants[i].status) === 'ok') continue;
+    await sendOne(i);
+    sent++;
+    $('sendProgressBar').style.width = Math.round((sent/pending.length)*100) + '%';
+    $('sendStatusText').textContent = 'Mengirim: ' + sent + ' / ' + pending.length + '...';
+  }
+  if (sendingActive) $('sendStatusText').textContent = 'Selesai. ' + sent + ' email terkirim.';
+  sendingActive = false;
+  $('btnSendAll').disabled = false;
+  $('btnSendAll').classList.remove('is-loading');
+  $('btnStopSend').disabled = true;
+  renderTable();
+});
+
+$('btnStopSend').addEventListener('click', ()=>{
+  sendingActive = false;
+  $('sendStatusText').textContent = 'Dihentikan oleh pengguna.';
+});
+</script>
+</body>
+</html>
