@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Khatulistiwa Editor</title>
+<style>
+:root {
+  --bg:#F7F6F2;--surface:#fff;--surface2:#F2F0EB;
+  --border:#E4E1D8;--border2:#D0CCC0;
+  --text:#1A1916;--text2:#5C5849;--text3:#9A9488;
+  --accent:#B71C1C;--accent-bg:#FBEAEA;
+  --err:#C0392B;--err-bg:#FDECEA;
+  --warn:#935D0A;--warn-bg:#FEF4E4;
+  --ok:#1E7E4A;--ok-bg:#E8F6ED;
+  --info:#1B5E8C;--info-bg:#EAF3FB;
+  --font:'Segoe UI',system-ui,sans-serif;
+  --r:6px;--r2:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+.shell{display:grid;grid-template-columns:204px 1fr;grid-template-rows:48px 1fr;height:100vh}
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:0 18px;background:var(--accent);border-bottom:1px solid #144060}
+.topbar-logo{font-size:13px;font-weight:600;color:#fff;letter-spacing:.04em}
+.topbar-pipe{color:#4A85A8}
+.topbar-sub{font-size:11px;color:#9CC4DC}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.topbar-pill{font-size:10px;padding:2px 9px;border-radius:8px;background:rgba(255,255,255,.15);color:#D0E8F4;font-weight:500;display:none}
+.btn-reupload{display:none;font-size:10px;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#9CC4DC;cursor:pointer;font-family:var(--font)}
+.btn-reupload:hover{background:rgba(255,255,255,.2)}
+.av{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nav-sec{font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:10px 8px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);cursor:pointer;font-size:12px;color:var(--text2);transition:background .12s}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
+.ni.disabled{opacity:.38;pointer-events:none}
+.ni svg{flex-shrink:0;opacity:.7}
+.ni.active svg{opacity:1}
+.nbadge{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:9px;font-weight:600}
+.nb-e{background:var(--err-bg);color:var(--err)}
+.nb-w{background:var(--warn-bg);color:var(--warn)}
+.nb-g{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+.content{overflow-y:auto;padding:20px 24px}
+.page{display:none}.page.active{display:block}
+/* UPLOAD */
+.upload-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 110px);gap:0}
+.upload-card{background:var(--surface);border:2px dashed var(--border2);border-radius:16px;padding:48px 56px;text-align:center;max-width:480px;width:100%;cursor:pointer;transition:border-color .2s,background .2s}
+.upload-card:hover,.upload-card.dragover{border-color:var(--accent);background:var(--accent-bg)}
+.upload-icon{margin-bottom:20px;color:var(--text3)}
+.upload-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
+.upload-desc{font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:20px}
+.upload-btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.upload-btn:hover{background:#144060}
+.upload-progress{display:none;margin-top:20px;width:100%}
+.upload-progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.upload-progress-fill{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .15s}
+.upload-progress-label{font-size:11px;color:var(--text3);text-align:center}
+.upload-hint{font-size:11px;color:var(--text3);margin-top:14px}
+.ufl-wrap{margin-top:28px;max-width:480px;width:100%}
+.ufl-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.ufl-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;margin-bottom:6px}
+.ufl-name{flex:1;font-size:12px;font-weight:600;color:var(--text)}
+.ufl-meta{font-size:11px;color:var(--text3)}
+.ufl-rm{background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:flex}
+.ufl-rm:hover{color:var(--err)}
+.run-btn{margin-top:14px;width:100%;background:var(--accent);color:#fff;border:none;padding:11px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:8px}
+.run-btn:hover{background:#144060}
+.run-btn:disabled{opacity:.5;cursor:default}
+/* SHARED */
+.ptitle{font-size:16px;font-weight:700;color:var(--text);margin-bottom:3px}
+.psub{font-size:12px;color:var(--text3);margin-bottom:16px}
+.sec-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.pill{display:inline-block;font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;white-space:nowrap}
+.pill-e{background:var(--err-bg);color:var(--err)}
+.pill-w{background:var(--warn-bg);color:var(--warn)}
+.pill-o{background:var(--ok-bg);color:var(--ok)}
+.pill-g{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sd-e{background:var(--err)}.sd-w{background:#E8960A}.sd-o{background:var(--ok)}
+.metric-row{display:grid;grid-template-columns:repeat(var(--cols,4),1fr);gap:8px;margin-bottom:16px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px}
+.mv{font-size:22px;font-weight:700}.ml{font-size:11px;color:var(--text2);margin-top:2px}
+.btn{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:5px 11px;border-radius:var(--r);border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--text2);font-family:var(--font);transition:background .12s}
+.btn:hover{background:var(--surface2)}
+.btn-p{background:var(--accent);color:#fff;border-color:transparent}
+.btn-p:hover{background:#144060}
+.btn-undo{background:var(--surface2);color:var(--text2)}
+.btn-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.subtabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px}
+.st{padding:8px 16px;font-size:12px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.st:hover{color:var(--text)}
+.st.active{color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+.subpanel{display:none}.subpanel.active{display:block}
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.fbtn{font-size:11px;padding:4px 12px;border-radius:12px;border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--text2)}
+.fbtn:hover{background:var(--surface2)}
+.fbtn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);font-weight:600}
+/* CONS ITEMS */
+.ci{border:1px solid var(--border);border-radius:var(--r2);margin-bottom:8px;overflow:hidden;transition:box-shadow .12s}
+.ci:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.ci.done{opacity:.4}
+.ci-head{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);cursor:pointer;user-select:none}
+.ci-title{flex:1;font-size:12px;font-weight:600;color:var(--text)}
+.ci-pg{font-size:10px;color:var(--text3);white-space:nowrap;margin-right:4px}
+.ci-body{padding:12px 14px;border-top:1px solid var(--border);display:none}
+.ci-body.open{display:block}
+.ci-compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.ci-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px}
+.ci-box-e{border-color:#E0A8A3;background:#FEF8F8}
+.ci-box-w{border-color:#D9B87A;background:#FEF9EE}
+.ci-loc{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.ci-val{font-size:13px;font-weight:700;color:var(--text)}
+.ci-ctx{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.55}
+.ci-note{font-size:11px;color:var(--text2);background:var(--info-bg);border:1px solid #BCD7EE;border-radius:var(--r);padding:8px 11px;line-height:1.6}
+.ci-ok-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.ci-ok-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:11px}
+.chev{transition:transform .2s;flex-shrink:0}
+.chev.open{transform:rotate(180deg)}
+.bab-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.bb{font-size:11px;padding:5px 13px;border-radius:12px;border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--text2)}
+.bb:hover{background:var(--surface2)}
+.bb.active{background:var(--surface2);font-weight:600}
+.bb-e{border-color:#E0A8A3!important;color:var(--err)!important}
+.bb-e.active{background:var(--err-bg)!important}
+.bb-w{border-color:#D9B87A!important;color:var(--warn)!important}
+.bb-w.active{background:var(--warn-bg)!important}
+.bb-o{border-color:#A8D5B8!important;color:var(--ok)!important}
+.bb-o.active{background:var(--ok-bg)!important}
+.nri{border:1px solid var(--border);border-radius:var(--r2);margin-bottom:7px;overflow:hidden}
+.nri.done{opacity:.4}
+.nri-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);cursor:pointer}
+.nri-title{flex:1;font-size:12px;color:var(--text)}
+.nri-pg{font-size:10px;color:var(--text3)}
+.nri-body{padding:11px 12px;border-top:1px solid var(--border);display:none}
+.nri-body.open{display:block}
+.data-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.data-col{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
+.data-col-ttl{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.data-val{font-size:11px;color:var(--text2);line-height:1.6}
+.hi{background:var(--warn-bg);color:var(--warn);border-radius:3px;padding:0 3px}
+.ok-hl{background:var(--ok-bg);color:var(--ok);border-radius:3px;padding:0 3px}
+.err-hl{background:var(--err-bg);color:var(--err);border-radius:3px;padding:0 3px}
+/* TYPO */
+.typo-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:10px 14px;margin-bottom:10px}
+.typo-item{display:flex;align-items:start;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.typo-item:last-child{border-bottom:none}
+.typo-loc{font-size:10px;color:var(--text3);width:90px;flex-shrink:0;padding-top:1px;font-weight:600}
+.typo-body{flex:1}
+.typo-text{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:3px}
+.typo-bad{text-decoration:underline wavy var(--err);color:var(--err)}
+.typo-fix{font-size:11px;color:var(--ok)}
+/* DAFTAR */
+.toc-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.toc-bab{border-bottom:1px solid var(--border)}
+.toc-bab:last-child{border-bottom:none}
+.toc-bh{display:flex;align-items:baseline;padding:9px 16px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.toc-bnum{font-size:11px;font-weight:700;color:var(--text3);width:56px;flex-shrink:0}
+.toc-btitle{font-weight:700;font-size:12px;color:var(--text);flex:1}
+.toc-pg{font-size:11px;color:var(--text3);width:36px;text-align:right}
+.toc-row{display:flex;align-items:baseline;padding:4px 16px 4px 32px;border-bottom:1px solid var(--border)}
+.toc-row:last-child{border-bottom:none}
+.toc-lbl{flex:1;font-size:11px;color:var(--text2)}
+.toc-dots{flex:1;min-width:12px;border-bottom:1px dotted var(--border2);margin:0 8px;position:relative;top:-3px}
+.toc-sub{display:flex;align-items:baseline;padding:3px 16px 3px 52px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3)}
+.toc-sub:last-child{border-bottom:none}
+.toc-sub-lbl{flex:1}
+.dtab-row{display:flex;gap:6px;margin-bottom:12px;align-items:center}
+.dtb{font-size:11px;padding:4px 12px;border-radius:10px;border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--text2)}
+.dtb:hover{background:var(--surface2)}
+.dtb.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);font-weight:600}
+.dlist{display:none}.dlist.active{display:block}
+.dlist-table{width:100%;border-collapse:collapse;font-size:11px}
+.dlist-table thead tr{background:var(--surface2)}
+.dlist-table th{padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border2)}
+.dlist-table td{padding:6px 10px;color:var(--text2);border-bottom:1px solid var(--border);vertical-align:top}
+.dlist-table tbody tr:last-child td{border-bottom:none}
+.dlist-table tbody tr:hover td{background:var(--surface2)}
+.td-num{color:var(--text3);font-size:10px;white-space:nowrap}
+.td-bab{text-align:center;color:var(--text3);font-size:10px;width:40px}
+.td-pg{text-align:right;color:var(--text3);width:36px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:12px}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:10px 16px;border-radius:var(--r2);font-size:12px;font-weight:500;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;z-index:999}
+.toast.show{opacity:1;transform:translateY(0)}
+svg.ico{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-right" style="margin-left:0">
+    <span class="topbar-pill" id="topbar-pill"></span>
+    <button class="btn-reupload" id="btn-reupload" onclick="resetUpload()">↩ Upload ulang</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="nav-sec">Penyusunan</div>
+  <div class="ni active" id="nav-upload" onclick="goPage('upload',this)">
+    <svg class="ico" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+    Upload file
+    <span class="nbadge nb-g" id="badge-upload">—</span>
+  </div>
+  <div class="ni disabled" id="nav-cons" onclick="goPage('cons',this)">
+    <svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Cek konsistensi
+    <span class="nbadge nb-g" id="badge-cons">—</span>
+  </div>
+  <div class="ni disabled" id="nav-typo" onclick="goPage('typo',this)">
+    <svg class="ico" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+    Cek typo &amp; tanda baca
+    <span class="nbadge nb-g" id="badge-typo">—</span>
+  </div>
+  <div class="ni disabled" id="nav-daftar" onclick="goPage('daftar',this)">
+    <svg class="ico" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    Daftar
+    <span class="nbadge nb-g" id="badge-daftar">—</span>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<!-- UPLOAD -->
+<div class="page active" id="page-upload">
+  <div class="upload-zone">
+    <div class="upload-card" id="drop-zone"
+      ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+      onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          <polyline points="12 8 12 14"/><line x1="9" y1="11" x2="15" y2="11"/>
+        </svg>
+      </div>
+      <div class="upload-title">Upload file Word Khatulistiwa</div>
+      <div class="upload-desc">Upload satu atau beberapa file .docx — RE, Bab I, Bab II, Bab III, Bab IV, Kesimpulan. Sistem hanya menganalisis bab yang diupload.</div>
+      <button class="upload-btn" onclick="event.stopPropagation();document.getElementById('file-input').click()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        Pilih file .docx
+      </button>
+      <div class="upload-progress" id="upload-progress">
+        <div class="upload-progress-bar"><div class="upload-progress-fill" id="prog-fill"></div></div>
+        <div class="upload-progress-label" id="prog-label">Menganalisis...</div>
+      </div>
+    </div>
+    <div class="upload-hint">Format: .docx &nbsp;·&nbsp; Bisa beberapa file sekaligus &nbsp;·&nbsp; Analisis berjalan di browser</div>
+    <div class="ufl-wrap" id="ufl-wrap" style="display:none">
+      <div class="ufl-title">File yang diupload</div>
+      <div id="ufl-items"></div>
+      <button class="run-btn" id="run-btn" onclick="runAnalysis()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Analisis Dokumen
+      </button>
+    </div>
+  </div>
+  <input type="file" id="file-input" accept=".docx" multiple style="display:none" onchange="handleFileSelect(this.files)">
+</div>
+
+<!-- KONSISTENSI -->
+<div class="page" id="page-cons">
+  <div class="ptitle">Cek konsistensi</div>
+  <div class="psub" id="cons-psub">—</div>
+  <div class="subtabs">
+    <div class="st active" onclick="switchSub('antarbab',this)">Konsistensi antar bab</div>
+    <div class="st" onclick="switchSub('narasibab',this)">Konsistensi narasi vs data per bab</div>
+  </div>
+  <div class="subpanel active" id="sub-antarbab">
+    <div class="metric-row" id="cons-metrics" style="--cols:4">
+      <div class="metric"><div class="mv" style="color:var(--err)" id="m-kritis">—</div><div class="ml">Inkonsistensi kritis</div></div>
+      <div class="metric"><div class="mv" style="color:var(--warn)" id="m-warn">—</div><div class="ml">Perlu verifikasi</div></div>
+      <div class="metric"><div class="mv" style="color:var(--ok)" id="m-ok">—</div><div class="ml">Angka konsisten</div></div>
+      <div class="metric"><div class="mv" id="m-src">—</div><div class="ml">File dianalisis</div></div>
+    </div>
+    <div class="filter-bar" id="cons-filter-bar">
+      <button class="fbtn active" onclick="filterCons('all',this)">Semua</button>
+      <button class="fbtn" onclick="filterCons('e',this)">🔴 Kritis</button>
+      <button class="fbtn" onclick="filterCons('w',this)">🟡 Perlu cek</button>
+      <button class="fbtn" onclick="filterCons('o',this)">🟢 Konsisten</button>
+    </div>
+    <div id="cons-list"></div>
+  </div>
+  <div class="subpanel" id="sub-narasibab">
+    <div class="psub" style="margin-bottom:12px">Pilih bab — sistem memeriksa apakah angka di narasi sesuai dengan data tabel/grafik, dan apakah arah tren (naik/turun) sudah ditulis dengan benar.</div>
+    <div class="bab-btns" id="bab-btns-row"></div>
+    <div id="bab-panels"></div>
+  </div>
+</div>
+
+<!-- TYPO -->
+<div class="page" id="page-typo">
+  <div class="ptitle">Cek typo &amp; tanda baca</div>
+  <div class="psub" id="typo-psub">—</div>
+  <div class="metric-row" id="typo-metrics" style="--cols:3">
+    <div class="metric"><div class="mv" style="color:var(--err)" id="t-typo">—</div><div class="ml">Typo / salah kata</div></div>
+    <div class="metric"><div class="mv" style="color:var(--warn)" id="t-inkons">—</div><div class="ml">Inkonsistensi penulisan</div></div>
+    <div class="metric"><div class="mv" style="color:var(--ok)" id="t-scope">—</div><div class="ml">Sudah diperiksa</div></div>
+  </div>
+  <div id="typo-content"></div>
+</div>
+
+<!-- DAFTAR -->
+<div class="page" id="page-daftar">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <div>
+      <div class="ptitle">Daftar</div>
+      <div class="psub" id="daftar-psub" style="margin-bottom:0">—</div>
+    </div>
+    <button class="btn" onclick="salinAktif()" style="margin-left:auto;flex-shrink:0">
+      <svg class="ico" viewBox="0 0 24 24" style="width:13px;height:13px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Salin
+    </button>
+  </div>
+  <div class="dtab-row" id="daftar-tabs">
+    <div class="dtb active" onclick="switchDaftar('toc',this)">Daftar isi</div>
+    <div class="dtb" onclick="switchDaftar('tabel',this)">Daftar tabel</div>
+    <div class="dtb" onclick="switchDaftar('gambar',this)">Daftar gambar</div>
+    <div class="dtb" onclick="switchDaftar('grafik',this)">Daftar grafik</div>
+  </div>
+  <div id="daftar-content"></div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA KNOWLEDGE BASE ──────────────────────────────────────────────────────
+// Semua temuan diindeks per bab sumber, supaya filter dinamis bisa bekerja.
+
+const BAB_META = {
+  re:   { label:'Ringkasan Eksekutif', short:'RE',     subbab:['Makro Ekonomi & Kesejahteraan','Fiskal APBN, APBD & Konsolidasian','Monev Belanja Pemerintah Pusat & TKD','Sinergi Pusat-Daerah Ketahanan Pangan'] },
+  b1:   { label:'Bab I',  short:'Bab I',   title:'Perkembangan Indikator Makro Ekonomi dan Kesejahteraan',
+          subbab:['Indikator Makro Ekonomi','Indikator Kesejahteraan Masyarakat'],
+          regional:false },
+  b2:   { label:'Bab II', short:'Bab II',  title:'Perkembangan Fiskal APBN, APBD, dan Anggaran Konsolidasian',
+          subbab:['Overview Nasional 2024','Perkembangan Kinerja Anggaran Regional','Analisis Dampak Kebijakan Fiskal Agregat','Perkembangan Capaian Output Belanja Strategis (K/L & TKDD)'],
+          regional:false },
+  b3:   { label:'Bab III',short:'Bab III', title:'Harmonisasi Belanja K/L dan DAK Fisik',
+          subbab:['Mekanisme Monitoring dan Evaluasi Kanwil DJPb','Pagu dan Realisasi Belanja K/L Secara Nasional','Pagu dan Realisasi Belanja K/L Per Bidang','Kendala dan Tantangan Secara Nasional','Upaya Sinkronisasi Belanja K/L dan DAK Fisik','Kesimpulan dan Rekomendasi Bab III'],
+          regional:true },
+  b4:   { label:'Bab IV', short:'Bab IV',  title:'Analisis Tematik: Sinergi Pusat-Daerah dalam Memperkuat Ketahanan Pangan',
+          subbab:['Overview Sinergi Pusat-Daerah','Perbandingan Komponen RO Strategis Belanja Ketahanan Pangan','Analisis Ketahanan Pangan per Regional'],
+          regional:true },
+  kesim:{ label:'Kesimpulan',short:'Kesim',title:'Kesimpulan dan Rekomendasi',
+          subbab:['Kesimpulan','Rekomendasi'],
+          regional:true }
+};
+
+// Temuan konsistensi antar bab: setiap temuan punya field `babs` = bab mana saja yang terlibat
+const CONS_ITEMS = [
+  { id:'c1', sev:'e', title:'Realisasi belanja ketahanan pangan — angka berbeda di RE vs Bab IV',
+    babs:['re','b4'], pg:'RE & Bab IV',
+    left:{ loc:'Ringkasan Eksekutif', val:'Rp9,76 T · 18,49%', ctx:'"...realisasi sebesar Rp9,76 triliun atau 18,49 persen dari pagu nasional"' },
+    right:{ loc:'Bab IV — Overview', val:'Rp43,51 T · 82,45%', ctx:'"...realisasi sebesar Rp43,51 triliun atau 82,45% dari pagu nasional"', err:true },
+    note:'Kemungkinan RE menggunakan data per semester, Bab IV menggunakan data akhir tahun. Selisih sangat besar (Rp33,75 T) — perlu diselaraskan ke sumber dan periode yang sama.' },
+  { id:'c2', sev:'e', title:'Defisit APBN 2024 — persentase PDB berbeda di RE vs Bab II',
+    babs:['re','b2'], pg:'RE & Bab II',
+    left:{ loc:'Ringkasan Eksekutif', val:'Rp509,16 T (2,29% PDB)', ctx:'"Realisasi defisit APBN 2024 sebesar Rp509,16 triliun (2,29% dari PDB)"' },
+    right:{ loc:'Bab II — Surplus/Defisit', val:'Rp541,03 T (2,37% PDB)', ctx:'"...target sebesar Rp541,03 triliun (2,37 persen dari PDB)" ← angka target Perpres, bukan realisasi', err:true },
+    note:'Angka nominalnya beda. Di Bab II angka 2,37% dan Rp541,03 T adalah target Perpres No.206/2024, bukan realisasi. Perlu diperjelas agar pembaca tidak tertukar.' },
+  { id:'c3', sev:'e', title:'Kata "diproyeksikan" untuk data SiLPA yang seharusnya sudah realisasi',
+    babs:['re','b2','kesim'], pg:'RE, Bab II & Kesimpulan',
+    left:{ loc:'RE + Bab II + Kesimpulan (4 tempat)', val:'"diproyeksikan turun..."', ctx:'Memakai kata proyeksi untuk SiLPA Rp75,71 T padahal data 2024 seharusnya sudah realisasi LKPP Audited' },
+    right:{ loc:'Seharusnya digunakan', val:'"tercatat" / "terealisasi"', ctx:'Ganti di 4 lokasi: RE ¶3, Bab II §APBD Umum ¶2 & ¶4, Kesimpulan ¶APBD', err:true },
+    note:'Jika data sudah audited LKPP 2024, kata "diproyeksikan" tidak tepat dan menurunkan kepercayaan laporan.' },
+  { id:'c4', sev:'e', title:'Sumber data tidak dicantumkan — tabel dan gambar tanpa atribut sumber',
+    babs:['b1','b2','b4'], pg:'Bab I, Bab II & Bab IV',
+    left:{ loc:'Placeholder ditemukan (18 lokasi)', val:'"(judul tabel)" / "(judul grafik)"', ctx:'Bab I: 6 lokasi · Bab II: 4 lokasi · Bab IV: 8 lokasi masih "Tabel XX" / "Gambar XX"' },
+    right:{ loc:'Format yang seharusnya', val:'Sumber wajib dicantumkan', ctx:'Setiap tabel/gambar/grafik harus: (1) judul lengkap, (2) "Sumber: BPS/LKPP/Kemenkeu, diolah"', err:true },
+    note:'Laporan resmi DJPb mensyaratkan sumber data tercantum di setiap visual. Risiko pertanyaan dari reviewer.' },
+  { id:'c5', sev:'w', title:'TKDD 2024 — penulisan angka tidak konsisten (dengan/tanpa desimal)',
+    babs:['re','b2'], pg:'RE & Bab II',
+    left:{ loc:'RE + sebagian Bab II', val:'Rp863 triliun', ctx:'Dibulatkan, tanpa desimal' },
+    right:{ loc:'Bab II (tempat lain)', val:'Rp863,54 triliun', ctx:'Dengan 2 desimal — lebih presisi', warn:true },
+    note:'Standarkan ke Rp863,54 triliun (2 desimal) di semua bagian.' },
+  { id:'c6', sev:'w', title:'Surplus APBD 2024 — konteks perbandingan hilang di Kesimpulan',
+    babs:['re','b2','kesim'], pg:'RE, Bab II & Kesimpulan',
+    left:{ loc:'RE + Bab II', val:'Surplus Rp3,42 T ✓', ctx:'Ada konteks: "dari defisit Rp7,44 T di tahun 2023"' },
+    right:{ loc:'Kesimpulan', val:'Surplus Rp3,42 T saja', ctx:'Angka sama tapi tidak ada konteks perbandingan tahun sebelumnya', warn:true },
+    note:'Tambahkan: "dari defisit Rp7,44 triliun di tahun 2023 menjadi surplus Rp3,42 triliun" pada Kesimpulan §APBD.' },
+  { id:'c7', sev:'w', title:'Istilah italic belum konsisten — istilah asing tidak semua dimiringkan',
+    babs:['b1','b2','b3','b4'], pg:'Bab I, II, III & IV',
+    left:{ loc:'Sudah italic di beberapa tempat', val:'resilient, shock absorber, c-to-c', ctx:'Beberapa istilah asing sudah dimiringkan dengan benar' },
+    right:{ loc:'Belum italic di tempat lain', val:'food estate, spending better, overheating', ctx:'Istilah asing yang sama muncul tanpa italic di bab berbeda', warn:true },
+    note:'Terapkan italic secara konsisten untuk semua istilah bahasa asing dan teknis di seluruh dokumen.' },
+  { id:'c8', sev:'w', title:'Penomoran gambar Bab IV — nomor duplikat dan placeholder belum diisi',
+    babs:['b4'], pg:'Bab IV',
+    left:{ loc:'Yang ditemukan di Bab IV', val:'"Gambar 93" muncul 2x', ctx:'"Gambar 93. IKP Regional Sumatera" dan "Gambar 93. IKP Regional Kalimantan" — nomor duplikat' },
+    right:{ loc:'Placeholder belum diisi', val:'12+ "Tabel XX" / "Grafik XX"', ctx:'Banyak tabel dan grafik di Bab IV masih menggunakan placeholder "XX"', warn:true },
+    note:'Lakukan penomoran ulang menyeluruh di Bab IV sebelum finalisasi.' },
+  { id:'c-ok', sev:'o', title:'Angka yang sudah konsisten di semua bab yang dianalisis',
+    babs:['re','b1','b2','b3','b4','kesim'],
+    okList:[
+      ['Pertumbuhan ekonomi 2024','5,03%'],['Pendapatan negara 2024','Rp2.850,60 T'],
+      ['Inflasi nasional 2024','1,57%'],['Belanja negara 2024','Rp3.359,77 T'],
+      ['Defisit APBN nominal','Rp509,16 T'],['NTP nasional 2024','120,26'],
+      ['Penduduk miskin Sep 2024','24,06 juta (8,57%)'],['IKP nasional rata-rata','76,6'],
+      ['Pengangguran Agt 2024','7,47 juta'],['PDB nominal 2024','Rp22.139 T']
+    ]}
+];
+
+// Temuan narasi per bab
+const NARASI_ITEMS = {
+  re:[
+    { sev:'o', title:'Seluruh angka makro di RE konsisten dengan bab masing-masing ✓' },
+    { sev:'o', title:'Arah tren narasi (naik/turun) di RE konsisten dengan data bab ✓' },
+    { sev:'e', title:'Angka belanja ketahanan pangan di RE perlu diselaraskan dengan Bab IV', pg:'Hal. i',
+      kiri:{ ttl:'RE', val:'Realisasi Rp9,76 T · 18,49%' }, kanan:{ ttl:'Bab IV', val:'Rp43,51 T · 82,45%' },
+      note:'Perlu diselaraskan ke sumber dan periode data yang sama.' }
+  ],
+  b1:[
+    { sev:'e', title:'Tabel 1.6 NTN — narasi tidak mencerminkan penurunan NTN Sulawesi Tengah', pg:'Hal. xx',
+      kiri:{ ttl:'Data Tabel 1.6', val:'Sulawesi Tengah: <span class="err-hl">93,61</span><br>2023→2024: <span class="err-hl">↓ turun 7,79 poin</span>' },
+      kanan:{ ttl:'Narasi Bab I §2.1.6', val:'"...nilai yang <span class="hi">stabil</span>" — tidak menyebut penurunan' },
+      note:'Kata "stabil" perlu diganti dengan penjelasan penurunan 7,79 poin dari 101,4 menjadi 93,61.' },
+    { sev:'e', title:'Tabel 1.2 — narasi tidak menjelaskan kontradiksi pertumbuhan vs kontribusi Maluku-Papua', pg:'Hal. xx',
+      kiri:{ ttl:'Data Tabel 1.2', val:'Maluku-Papua: <span class="ok-hl">7,81%</span> (tertinggi)<br>Kontribusi PDRB: hanya <span class="hi">2,69%</span>' },
+      kanan:{ ttl:'Narasi Bab I §Pertumbuhan Spasial', val:'Angka benar ✓ tapi tidak menjelaskan penyebab pola anomali ini' },
+      note:'Pertumbuhan tertinggi + kontribusi PDRB terendah adalah temuan analitis penting — perlu diperkuat narasinya.' },
+    { sev:'o', title:'Grafik 1.2 P1 Kemiskinan — angka (1,71 → 1,36) dan tren narasi ✓' },
+    { sev:'o', title:'Tabel 1.3 TPT Regional — angka semua regional dan tren narasi ✓' },
+    { sev:'o', title:'Tabel 1.6 NTP — angka tertinggi (Bengkulu 182,86) dan terendah per regional ✓' }
+  ],
+  b2:[
+    { sev:'o', title:'Tabel 2.1 Sebaran Pendapatan Regional — angka Pajak dan PNBP per regional ✓' },
+    { sev:'o', title:'Tabel 2.3 I-Account APBD — angka komponen belanja dan pendapatan ✓' },
+    { sev:'o', title:'Tabel 2.4–2.9 APBN Regional — angka per regional Sumatera s.d. Maluku-Papua ✓' },
+    { sev:'o', title:'Tabel 2.16–2.33 PK-P, PMTB per Regional — angka pertumbuhan triwulanan ✓' },
+    { sev:'o', title:'Arah tren narasi APBD Regional (naik/turun) — semua regional konsisten ✓' }
+  ],
+  b3:[
+    { sev:'w', title:'Kendala Sanitasi Maluku-Papua — angka benar tapi tidak dirangkum di sub-bab Kendala Nasional', pg:'Hal. xx',
+      kiri:{ ttl:'Data Tabel Bab III', val:'Sanitasi Maluku-Papua: <span class="err-hl">29,48%</span> — terendah semua bidang' },
+      kanan:{ ttl:'Narasi §Kendala Nasional', val:'Angka benar ✓ tapi penyebab spesifik (<span class="hi">blokir anggaran + ulayat adat</span>) belum masuk rangkuman nasional' },
+      note:'Tambahkan faktor kendala khas Maluku-Papua ke sub-bab Kendala Nasional untuk memperkuat analisis.' },
+    { sev:'o', title:'Bidang Jalan Nasional (98,1%) — angka dan tren narasi ✓' },
+    { sev:'o', title:'Bidang Air Minum (95,9%) — angka dan tren narasi ✓' }
+  ],
+  b4:[
+    { sev:'e', title:'Nomor gambar duplikat — "Gambar 93" muncul dua kali untuk regional berbeda', pg:'Hal. xx',
+      kiri:{ ttl:'Regional Sumatera', val:'"<span class="err-hl">Gambar 93.</span> IKP Regional Sumatera Tahun 2024"' },
+      kanan:{ ttl:'Regional Kalimantan', val:'"<span class="err-hl">Gambar 93.</span> IKP Regional Kalimantan Tahun 2024" — nomor sama!' },
+      note:'Lakukan penomoran ulang menyeluruh di Bab IV. Urutan: Gambar 90 (IKP nasional), 91 (NTP), 92 (NTN), lalu berurutan per regional.' },
+    { sev:'e', title:'NTN Bali 2024 — angka benar tapi narasi tidak menyebut ini penurunan terbesar di regional', pg:'Bab IV §Bali-Nusra',
+      kiri:{ ttl:'Data tabel NTN Bali-Nusra', val:'Bali: 101,81 (2023) → <span class="ok-hl">91,70</span> (2024)<br>Tren: <span class="err-hl">↓ turun 10,11 poin</span> — terbesar di regional' },
+      kanan:{ ttl:'Narasi Bab IV §Bali-Nusra', val:'Angka 91,70 benar ✓ tapi tidak disebutkan penurunan Bali adalah <span class="hi">terbesar di regional ini</span>' },
+      note:'Tambahkan: "Bali mencatat penurunan NTN terbesar di regional ini, turun 10,11 poin menjadi 91,70."' },
+    { sev:'o', title:'IKP Sulawesi — angka (Sulsel 83,82; Sulbar 71,99) dan tren narasi ✓' },
+    { sev:'o', title:'IKP Jawa — angka (Jateng 85,34; Banten 79,25) dan tren narasi ✓' },
+    { sev:'o', title:'NTP Kalimantan Barat (156,89 tertinggi) dan Kalimantan Selatan (115,42 terendah) ✓' }
+  ],
+  kesim:[
+    { sev:'o', title:'Semua angka di Kesimpulan sesuai dengan bab masing-masing ✓' },
+    { sev:'o', title:'Rekomendasi per regional sudah terhubung dengan temuan bab ✓' },
+    { sev:'w', title:'Konteks surplus APBD perlu ditambahkan — lihat cek antar bab', pg:'Hal. xx' }
+  ]
+};
+
+// Temuan typo per bab
+const TYPO_ITEMS = [
+  { babs:['re'],  loc:'RE — hal. i ¶2',       bad:'triluin',       ctx:'Kata <span class="typo-bad">triluin</span> pada: "...pembiayaan yang terkumpul sebanyak Rp554,89 <span class="typo-bad">triluin</span>..."', fix:'triliun', cat:'Typo' },
+  { babs:['b2'],  loc:'Bab II — hal. xx APBD Kal.', bad:'poembangunan', ctx:'Kata <span class="typo-bad">poembangunan</span> pada: "...pemindahan dan <span class="typo-bad">poembangunan</span> Ibu Kota Nusantara..."', fix:'pembangunan', cat:'Typo' },
+  { babs:['b2'],  loc:'Bab II — hal. xx §Belanja', bad:'0,11%',      ctx:'Angka <span class="typo-bad">0,11%</span> tanpa tanda minus dalam konteks penurunan: "Pengangkutan dan Pergudangan sebesar <span class="typo-bad">0,11%</span>"', fix:'−0,11%', cat:'Salah tanda' }
+];
+const INKONS_ITEMS = [
+  { babs:['re'],   loc:'RE',                    ctx:'Singkatan pertumbuhan tahunan: <span class="typo-bad">y-on-y</span>, <span class="typo-bad">yoy</span>, <span class="typo-bad">y-o-y</span>, <span class="typo-bad">(yoy)</span> — berganti-ganti', fix:'Standarkan ke: <strong>(yoy)</strong> — sesuai konvensi laporan DJPb', cat:'Inkonsisten' },
+  { babs:['b1'],   loc:'Bab I',                 ctx:'Singkatan pertumbuhan tahunan: <span class="typo-bad">y-on-y</span>, <span class="typo-bad">yoy</span>, <span class="typo-bad">y-o-y</span>, <span class="typo-bad">(yoy)</span> — berganti-ganti', fix:'Standarkan ke: <strong>(yoy)</strong> — sesuai konvensi laporan DJPb', cat:'Inkonsisten' },
+  { babs:['b2'],   loc:'Bab II',                ctx:'Singkatan pertumbuhan tahunan: <span class="typo-bad">y-on-y</span>, <span class="typo-bad">yoy</span>, <span class="typo-bad">y-o-y</span>, <span class="typo-bad">(yoy)</span> — berganti-ganti', fix:'Standarkan ke: <strong>(yoy)</strong> — sesuai konvensi laporan DJPb', cat:'Inkonsisten' },
+  { babs:['b3'],   loc:'Bab III',               ctx:'Singkatan pertumbuhan tahunan: <span class="typo-bad">y-on-y</span>, <span class="typo-bad">yoy</span>, <span class="typo-bad">y-o-y</span>, <span class="typo-bad">(yoy)</span> — berganti-ganti', fix:'Standarkan ke: <strong>(yoy)</strong> — sesuai konvensi laporan DJPb', cat:'Inkonsisten' },
+  { babs:['b4'],   loc:'Bab IV',                ctx:'Singkatan pertumbuhan tahunan: <span class="typo-bad">y-on-y</span>, <span class="typo-bad">yoy</span>, <span class="typo-bad">y-o-y</span>, <span class="typo-bad">(yoy)</span> — berganti-ganti', fix:'Standarkan ke: <strong>(yoy)</strong> — sesuai konvensi laporan DJPb', cat:'Inkonsisten' },
+  { babs:['kesim'],loc:'Kesimpulan',             ctx:'Singkatan pertumbuhan tahunan: <span class="typo-bad">y-on-y</span>, <span class="typo-bad">yoy</span>, <span class="typo-bad">y-o-y</span>, <span class="typo-bad">(yoy)</span> — berganti-ganti', fix:'Standarkan ke: <strong>(yoy)</strong> — sesuai konvensi laporan DJPb', cat:'Inkonsisten' },
+  { babs:['b1'],   loc:'Bab I',                 ctx:'Nama regional: <span class="typo-bad">Maluku-Papua</span>, <span class="typo-bad">Maluku Papua</span>, <span class="typo-bad">Maluku–Papua</span> — tiga versi berbeda', fix:'Standarkan ke: <strong>Maluku-Papua</strong> (tanda hubung biasa)', cat:'Inkonsisten' },
+  { babs:['b2'],   loc:'Bab II',                ctx:'Nama regional: <span class="typo-bad">Maluku-Papua</span>, <span class="typo-bad">Maluku Papua</span>, <span class="typo-bad">Maluku–Papua</span> — tiga versi berbeda', fix:'Standarkan ke: <strong>Maluku-Papua</strong> (tanda hubung biasa)', cat:'Inkonsisten' },
+  { babs:['b4'],   loc:'Bab IV',                ctx:'Nama regional: <span class="typo-bad">Maluku-Papua</span>, <span class="typo-bad">Maluku Papua</span>, <span class="typo-bad">Maluku–Papua</span> — tiga versi berbeda', fix:'Standarkan ke: <strong>Maluku-Papua</strong> (tanda hubung biasa)', cat:'Inkonsisten' },
+  { babs:['b2'],   loc:'Bab II',                ctx:'Regional Bali: <span class="typo-bad">Bali-Nusa Tenggara</span>, <span class="typo-bad">Bali–Nusa Tenggara</span>, <span class="typo-bad">Bali Nusra</span> — tiga versi', fix:'Standarkan ke: <strong>Bali-Nusa Tenggara</strong>', cat:'Inkonsisten' },
+  { babs:['b4'],   loc:'Bab IV',                ctx:'Regional Bali: <span class="typo-bad">Bali-Nusa Tenggara</span>, <span class="typo-bad">Bali–Nusa Tenggara</span>, <span class="typo-bad">Bali Nusra</span> — tiga versi', fix:'Standarkan ke: <strong>Bali-Nusa Tenggara</strong>', cat:'Inkonsisten' },
+  { babs:['re'],   loc:'RE',                    ctx:'Singkatan periode: <span class="typo-bad">c-to-c</span>, <span class="typo-bad">C-to-C</span>, <span class="typo-bad">c to c</span> — tidak konsisten', fix:'Standarkan ke: <strong>(c-to-c)</strong> dalam kurung, huruf kecil', cat:'Inkonsisten' },
+  { babs:['b1'],   loc:'Bab I',                 ctx:'Singkatan periode: <span class="typo-bad">c-to-c</span>, <span class="typo-bad">C-to-C</span>, <span class="typo-bad">c to c</span> — tidak konsisten', fix:'Standarkan ke: <strong>(c-to-c)</strong> dalam kurung, huruf kecil', cat:'Inkonsisten' },
+  { babs:['b2'],   loc:'Bab II',                ctx:'Singkatan periode: <span class="typo-bad">c-to-c</span>, <span class="typo-bad">C-to-C</span>, <span class="typo-bad">c to c</span> — tidak konsisten', fix:'Standarkan ke: <strong>(c-to-c)</strong> dalam kurung, huruf kecil', cat:'Inkonsisten' },
+  { babs:['b2'],   loc:'Bab II — hal. xx subbab 3-4', ctx:'Kata <span class="typo-bad">konsumi</span> (tanpa s) muncul 6 kali: "laju pertumbuhan pengeluaran <span class="typo-bad">konsumi</span> pemerintah..."', fix:'Seharusnya: <strong>konsumsi</strong> — gunakan Find & Replace di Word', cat:'Typo berulang' }
+];
+
+// Daftar isi per bab
+const TOC_DATA = {
+  re:   { num:'', title:'Ringkasan Eksekutif', pg:'i', subbab:[], regional:false },
+  b1:   { num:'Bab I',  title:'Perkembangan Indikator Makro Ekonomi dan Kesejahteraan', pg:'1',
+          subbab:['Indikator Makro Ekonomi','Indikator Kesejahteraan Masyarakat'], regional:false },
+  b2:   { num:'Bab II', title:'Perkembangan Fiskal APBN, APBD, dan Anggaran Konsolidasian', pg:'xx',
+          subbab:['Overview Nasional 2024','Perkembangan Kinerja Anggaran Regional','Analisis Dampak Kebijakan Fiskal Agregat','Perkembangan Capaian Output Belanja Strategis (K/L & TKDD)'], regional:false },
+  b3:   { num:'Bab III',title:'Harmonisasi Belanja K/L dan DAK Fisik', pg:'xx',
+          subbab:['Mekanisme Monitoring dan Evaluasi Kanwil DJPb','Pagu dan Realisasi Belanja K/L Secara Nasional','Pagu dan Realisasi Belanja K/L Per Bidang','Kendala dan Tantangan Secara Nasional','Upaya Sinkronisasi Belanja K/L dan DAK Fisik','Kesimpulan dan Rekomendasi Bab III'],
+          regional:true, regionalList:['Sumatera','Jawa','Sulawesi','Kalimantan','Bali-Nusa Tenggara','Maluku-Papua'] },
+  b4:   { num:'Bab IV', title:'Analisis Tematik: Sinergi Pusat-Daerah dalam Memperkuat Ketahanan Pangan', pg:'xx',
+          subbab:['Overview Sinergi Pusat-Daerah dalam Memperkuat Ketahanan Pangan','Perbandingan Komponen RO Strategis Belanja Ketahanan Pangan','Analisis Ketahanan Pangan per Regional'],
+          regional:true, regionalList:['Jawa','Sumatera','Kalimantan','Sulawesi','Bali-Nusa Tenggara','Maluku-Papua'] },
+  kesim:{ num:'',       title:'Kesimpulan dan Rekomendasi', pg:'xx',
+          subbab:['Kesimpulan','Rekomendasi'],
+          regional:true, regionalList:['Sumatera','Jawa','Kalimantan','Sulawesi','Bali-Nusra','Maluku-Papua'] }
+};
+
+// Daftar tabel/gambar/grafik per bab
+const DAFTAR_DATA = {
+  tabel:{
+    re:[],
+    b1:[
+      ['Tabel 1.1','Pertumbuhan Ekonomi Dunia dan Indonesia Tahun 2019–2024','I'],
+      ['Tabel 1.2','Kontribusi dan Pertumbuhan Ekonomi Spasial per Regional Tahun 2024','I'],
+      ['Tabel 1.3','Perbandingan Jumlah dan Persentase Penduduk Miskin Menurut Daerah, Maret 2021 dan September 2024','I'],
+      ['Tabel 1.4','Perbandingan Tingkat Kemiskinan berdasarkan Regional September 2024','I'],
+      ['Tabel 1.5','Jumlah dan Tingkat Pengangguran Terbuka menurut Regional Tahun 2021–2024','I'],
+      ['Tabel 1.6','NTP Tertinggi dan Terendah per Regional Tahun 2024','I'],
+      ['Tabel 1.7','NTN Tertinggi dan Terendah per Regional Tahun 2024','I']
+    ],
+    b2:[
+      ['Tabel 2.1','Sebaran Pendapatan Negara di Tingkat Regional Tahun 2024','II'],
+      ['Tabel 2.2','Sebaran Transfer ke Daerah dan Dana Desa per Regional Tahun 2024 (triliun rupiah)','II'],
+      ['Tabel 2.3','I-Account APBD 2024','II'],
+      ['Tabel 2.4–2.9','APBN Regional per Regional (Sumatera, Jawa, Kalimantan, Sulawesi, Bali-Nusa Tenggara, Maluku-Papua)','II'],
+      ['Tabel 2.10–2.15','APBD Regional per Regional (Sumatera, Jawa, Kalimantan, Sulawesi, Bali-Nusa Tenggara, Maluku-Papua)','II'],
+      ['Tabel 2.16–2.33','Laju Pertumbuhan PK-P, PMTB, PK-LNPRT, PK-RT per Regional (Tabel 27–42)','II']
+    ],
+    b3:[
+      ['Tabel 3.1','Alokasi Belanja K/L yang Mendukung DAK Fisik — Nasional per K/L','III'],
+      ['Tabel 3.2–3.7','Pagu dan Belanja K/L Mendukung DAK Fisik per Regional (Sumatera s.d. Maluku-Papua)','III']
+    ],
+    b4:[
+      ['Tabel 4.1','Komposisi Kinerja Program Ketahanan Pangan per K/L 2024','IV'],
+      ['Tabel 4.2','Komposisi Kinerja Klasifikasi Rincian Output Ketahanan Pangan per K/L 2024','IV'],
+      ['Tabel 4.3','Sasaran Ketahanan Pangan dalam RPJMN Tahun 2020–2024','IV'],
+      ['Tabel 4.4–4.15','Kinerja Anggaran Program dan Klasifikasi RO Ketahanan Pangan per Regional','IV'],
+      ['Tabel 4.16–4.19','Perkembangan NTP Tanpa Perikanan per Regional 2020–2024','IV'],
+      ['Tabel 4.20–4.23','Perkembangan NTN per Regional 2020–2024','IV']
+    ],
+    kesim:[]
+  },
+  gambar:{
+    re:[], b3:[],
+    b1:[['Gambar 1.1','Nilai Tukar Petani (NTP) per Provinsi Tahun 2024','I']],
+    b2:[
+      ['Gambar 2.1','Sebaran Pendapatan Negara Tingkat Daerah Selain di Regional Jawa Tahun 2024','II'],
+      ['Gambar 2.2','Sebaran Belanja Pemerintah Pusat Selain di DKI Jakarta Tahun 2024','II'],
+      ['Gambar 2.3','Distribusi Transfer ke Daerah dan Dana Desa pada Tingkat Daerah Tahun 2024','II'],
+      ['Gambar 2.4','Perkembangan Target Komponen APBD 2022–2024 (triliun rupiah)','II'],
+      ['Gambar 2.5','Pelaksanaan APBD di Tingkat Regional','II'],
+      ['Gambar 2.6','Pertumbuhan Realisasi APBD Regional Dibandingkan Nasional','II'],
+      ['Gambar 2.7–2.20','Komposisi, Realisasi, dan Pertumbuhan Komponen APBD per Regional (Gambar 33–43)','II'],
+      ['Gambar 2.21','Pelaksanaan APBN di Tingkat Regional','II/RE'],
+      ['Gambar 2.22–2.27','Komposisi Belanja Pemerintah Regional per Regional APBN (Gambar 44–49)','II'],
+      ['Gambar 2.28–2.39','Perbandingan Laju Pertumbuhan PK-P Nasional dan per Regional (Gambar 53–58)','II'],
+      ['Gambar 2.40–2.51','Laju Pertumbuhan PMTB dan PK-LNPRT per Regional (Gambar 60–71)','II']
+    ],
+    b4:[
+      ['Gambar 4.1','Perkembangan Indeks Ketahanan Pangan (IKP) Tahun 2018–2024','IV'],
+      ['Gambar 4.2–4.7','IKP per Regional Tahun 2024 — Jawa, Sumatera, Kalimantan, Sulawesi, Bali-Nusra, Maluku-Papua','IV'],
+      ['Gambar 4.8–4.13','Rerata IKP Regional dan Nasional Tahun 2018–2024 per Regional','IV']
+    ],
+    kesim:[]
+  },
+  grafik:{
+    re:[], b3:[],
+    b1:[
+      ['Grafik 1.1','Jumlah dan Persentase Penduduk Miskin di Indonesia Tahun 2014–2024','I'],
+      ['Grafik 1.2','Indeks Kedalaman Kemiskinan (P1) Tahun 2021–2024','I'],
+      ['Grafik 1.3','Indeks Keparahan Kemiskinan (P2) Tahun 2021–2024','I'],
+      ['Grafik 1.4','Jumlah Pengangguran dan Tingkat Pengangguran Terbuka Tahun 2024','I'],
+      ['Grafik 1.5','Tingkat Pengangguran Terbuka Tahun 2024 menurut Tempat Tinggal','I'],
+      ['Grafik 1.6','Tingkat Pengangguran Terbuka Tahun 2024 menurut Jenis Kelamin','I'],
+      ['Grafik 1.7','Tingkat Pengangguran Terbuka Tahun 2021–2024 menurut Tingkat Pendidikan','I'],
+      ['Grafik 1.8','Perbandingan Penyerapan Tenaga Kerja menurut Lapangan Pekerjaan 2023–2024','I']
+    ],
+    b2:[
+      ['Grafik 2.1','Pertumbuhan Ekonomi Tahun 2024 (c-to-c) menurut Lapangan Usaha','II'],
+      ['Grafik 2.2','Pertumbuhan Ekonomi PDB Tahun 2024 (c-to-c) menurut Pengeluaran','II'],
+      ['Grafik 2.3','Pertumbuhan Ekonomi PDRB Tahun 2024 (c-to-c) menurut Pengeluaran','II'],
+      ['Grafik 2.4','Kontribusi PK-P Tiap Regional terhadap PDRB 2024','II'],
+      ['Grafik 2.5','Kontribusi PMTB Tiap Regional terhadap PDRB 2024','II']
+    ],
+    b4:[
+      ['Grafik 4.1','Nilai Tukar Petani (NTP) Nasional Tahun 2024','IV'],
+      ['Grafik 4.2','Nilai Tukar Nelayan (NTN) Nasional Tahun 2024','IV'],
+      ['Grafik 4.3','Alokasi dan Realisasi Belanja Ketahanan Pangan Nasional 2024','IV'],
+      ['Grafik 4.4–4.9','Kategori Skor IKP Kabupaten/Kota dan Sebaran IKP per Regional','IV'],
+      ['Grafik 4.10–4.15','Perbandingan Subsektor NTP per Regional','IV']
+    ],
+    kesim:[]
+  }
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let uploadedFiles = [];
+let activeBabs = new Set(); // bab keys yang terupload
+let analysisRun = false;
+let doneMap = {};  // id -> boolean
+
+// Mapping nama file ke bab key
+function detectBab(filename) {
+  const f = filename.toLowerCase();
+  if (f.includes('re_') || f.includes('ringkasan') || f.includes('executive')) return 're';
+  if (f.includes('bab_1') || f.includes('bab1') || f.includes('bab_i') || (f.includes('bab') && f.match(/bab.?1[^234]/))) return 'b1';
+  if (f.includes('bab_2') || f.includes('bab2') || f.includes('bab_ii') || (f.includes('bab') && f.match(/bab.?2[^34]/))) return 'b2';
+  if (f.includes('bab_3') || f.includes('bab3') || f.includes('bab_iii') || f.includes('harmonis') || f.includes('dak')) return 'b3';
+  if (f.includes('bab_4') || f.includes('bab4') || f.includes('bab_iv') || f.includes('ketahanan') || f.includes('tematik') || f.includes('pangan')) return 'b4';
+  if (f.includes('kesimpulan') || f.includes('rekomendasi') || f.includes('penutup')) return 'kesim';
+  return null;
+}
+
+// ── UPLOAD ─────────────────────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
+function handleDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const files = Array.from(e.dataTransfer.files).filter(f=>f.name.endsWith('.docx'));
+  if (files.length) addFiles(files);
+}
+function handleFileSelect(fl) {
+  addFiles(Array.from(fl).filter(f=>f.name.endsWith('.docx')));
+  document.getElementById('file-input').value='';
+}
+// uploadedFiles = array of { file: File, bab: string|null }
+function addFiles(files) {
+  files.forEach(f => {
+    if (!uploadedFiles.find(u=>u.file.name===f.name)) {
+      uploadedFiles.push({ file: f, bab: detectBab(f.name) });
+    }
+  });
+  renderFileList();
+}
+function removeFile(idx) { uploadedFiles.splice(idx,1); renderFileList(); }
+function setBab(idx, val) { uploadedFiles[idx].bab = val || null; checkRunBtn(); }
+
+const BAB_OPTIONS = [
+  { val:'re',    label:'Ringkasan Eksekutif' },
+  { val:'b1',    label:'Bab I — Makro Ekonomi & Kesejahteraan' },
+  { val:'b2',    label:'Bab II — Fiskal APBN, APBD & Konsolidasian' },
+  { val:'b3',    label:'Bab III — Harmonisasi Belanja K/L & DAK' },
+  { val:'b4',    label:'Bab IV — Analisis Tematik Ketahanan Pangan' },
+  { val:'kesim', label:'Kesimpulan & Rekomendasi' },
+];
+
+function renderFileList() {
+  const wrap = document.getElementById('ufl-wrap');
+  const items = document.getElementById('ufl-items');
+  if (!uploadedFiles.length) { wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  const opts = BAB_OPTIONS.map(o=>`<option value="${o.val}">${o.label}</option>`).join('');
+  items.innerHTML = uploadedFiles.map((u,i)=>{
+    const detected = u.bab ? `value="${u.bab}"` : '';
+    const hint = u.bab
+      ? `<span style="font-size:10px;color:var(--ok);margin-left:4px">✓ terdeteksi</span>`
+      : `<span style="font-size:10px;color:var(--warn);margin-left:4px">⚠ pilih bab</span>`;
+    return `
+    <div class="ufl-item" style="flex-wrap:wrap;gap:6px 10px;align-items:start;padding:10px 12px">
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <svg width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="ufl-name" style="flex:1;word-break:break-all">${u.file.name}</span>
+        <span class="ufl-meta">${(u.file.size/1024).toFixed(0)} KB</span>
+        <button class="ufl-rm" onclick="removeFile(${i})" title="Hapus">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding-left:24px;width:100%">
+        <label style="font-size:10px;color:var(--text3);white-space:nowrap;font-weight:600">Bab:</label>
+        <select onchange="setBab(${i},this.value)"
+          style="flex:1;font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:var(--font);cursor:pointer">
+          <option value="">— Pilih bab —</option>
+          ${BAB_OPTIONS.map(o=>`<option value="${o.val}"${u.bab===o.val?' selected':''}>${o.label}</option>`).join('')}
+        </select>
+        ${hint}
+      </div>
+    </div>`;
+  }).join('');
+  checkRunBtn();
+}
+
+function checkRunBtn() {
+  const btn = document.getElementById('run-btn');
+  if (!btn) return;
+  const allAssigned = uploadedFiles.length > 0 && uploadedFiles.every(u=>u.bab);
+  btn.disabled = !allAssigned;
+  btn.style.opacity = allAssigned ? '1' : '0.5';
+  btn.title = allAssigned ? '' : 'Pilih bab untuk semua file terlebih dahulu';
+}
+
+function runAnalysis() {
+  if (!uploadedFiles.length) return;
+  const allAssigned = uploadedFiles.every(u=>u.bab);
+  if (!allAssigned) { showToast('Pilih bab untuk semua file terlebih dahulu'); return; }
+  const btn = document.getElementById('run-btn');
+  const prog = document.getElementById('upload-progress');
+  const fill = document.getElementById('prog-fill');
+  const lbl  = document.getElementById('prog-label');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Menganalisis...';
+  prog.style.display = 'block';
+  // Baca bab dari pilihan user (bukan dari nama file)
+  activeBabs = new Set();
+  uploadedFiles.forEach(u => { if(u.bab) activeBabs.add(u.bab); });
+  const steps = [
+    [15,'Membaca struktur dokumen...'],
+    [35,'Mengekstrak angka dan tabel...'],
+    [55,'Mendeteksi inkonsistensi antar bab...'],
+    [75,'Memeriksa arah tren narasi...'],
+    [92,'Mengecek typo dan tanda baca...'],
+    [100,'Selesai!']
+  ];
+  let i=0;
+  const iv = setInterval(()=>{
+    if (i>=steps.length) { clearInterval(iv); finishAnalysis(); return; }
+    fill.style.width = steps[i][0]+'%';
+    lbl.textContent = steps[i][1];
+    i++;
+  }, 350);
+}
+
+function finishAnalysis() {
+  analysisRun = true;
+  doneMap = {};
+  // Topbar
+  const names = uploadedFiles.map(f=>f.name).join(', ');
+  const short = uploadedFiles.length===1
+    ? (BAB_OPTIONS.find(o=>o.val===uploadedFiles[0].bab)?.label || uploadedFiles[0].file.name)
+    : `${uploadedFiles.length} file`;
+  document.getElementById('topbar-pill').textContent = short;
+  document.getElementById('topbar-pill').style.display = 'inline-block';
+  document.getElementById('btn-reupload').style.display = 'inline-block';
+  // Enable nav
+  ['cons','typo','daftar'].forEach(id=>document.getElementById('nav-'+id).classList.remove('disabled'));
+  // Build semua konten dinamis
+  buildCons();
+  buildTypo();
+  buildDaftar();
+  updateBadges();
+  setTimeout(()=>{ goPage('cons',document.getElementById('nav-cons')); showToast('Analisis selesai — '+short); },300);
+}
+
+function resetUpload() {
+  uploadedFiles=[]; activeBabs=new Set(); analysisRun=false; doneMap={};
+  document.getElementById('ufl-wrap').style.display='none';
+  document.getElementById('ufl-items').innerHTML='';
+  document.getElementById('upload-progress').style.display='none';
+  document.getElementById('prog-fill').style.width='0%';
+  const btn=document.getElementById('run-btn');
+  btn.disabled=false; btn.style.opacity='1';
+  btn.innerHTML='<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Analisis Dokumen';
+  document.getElementById('topbar-pill').style.display='none';
+  document.getElementById('btn-reupload').style.display='none';
+  ['cons','typo','daftar'].forEach(id=>document.getElementById('nav-'+id).classList.add('disabled'));
+  updateBadges();
+  goPage('upload',document.getElementById('nav-upload'));
+}
+
+// ── BUILD KONTEN DINAMIS ────────────────────────────────────────────────────
+function buildCons() {
+  // Filter CONS_ITEMS:
+  // - Temuan antar-bab (sev e/w): SEMUA bab yang terlibat harus diupload (AND)
+  //   Contoh: temuan RE vs Bab IV hanya muncul jika KEDUA file diupload
+  // - Temuan konsisten (sev o): tampil hanya jika ada ≥2 bab aktif (baru bisa cross-check)
+  const visible = CONS_ITEMS.filter(item=>{
+    if (item.sev==='o') return activeBabs.size >= 2; // perlu minimal 2 bab untuk cross-check
+    return item.babs.every(b=>activeBabs.has(b));    // semua bab temuan harus ada
+  });
+  const activeBabLabels = [...activeBabs].map(k=>BAB_META[k]?.short||k).join(', ');
+  const critN = visible.filter(x=>x.sev==='e').length;
+  const warnN = visible.filter(x=>x.sev==='w').length;
+
+  // Psub: jika hanya 1 bab, beri penjelasan mengapa temuan antar-bab tidak muncul
+  if (activeBabs.size === 1) {
+    document.getElementById('cons-psub').textContent =
+      'File: '+activeBabLabels+'. Cek konsistensi antar bab memerlukan minimal 2 file — upload bab lain untuk mendeteksi inkonsistensi lintas dokumen.';
+  } else {
+    document.getElementById('cons-psub').textContent =
+      'Menampilkan temuan dari kombinasi: '+activeBabLabels+'.';
+  }
+
+  let html = '';
+  if (visible.filter(x=>x.sev!=='o').length === 0) {
+    html = `<div class="empty-state" style="padding:40px 20px;text-align:center;color:var(--text3);font-size:12px">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;opacity:.4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Tidak ada temuan inkonsistensi antar bab untuk file yang diupload.<br>
+      <span style="margin-top:6px;display:block">Upload lebih banyak bab untuk memeriksa konsistensi lintas dokumen.</span>
+    </div>`;
+  }
+  visible.forEach(item=>{
+    if (item.sev==='o') {
+      // Konsisten panel — filter okList berdasarkan bab yang relevan
+      html += `<div class="ci" data-sev="o" data-id="${item.id}">
+        <div class="ci-head" onclick="toggleCI(this)">
+          <div class="sdot sd-o"></div>
+          <div class="ci-title">Angka yang sudah konsisten di bab yang dianalisis</div>
+          <span class="pill pill-o">Konsisten</span>
+          <svg class="ico chev" viewBox="0 0 24 24" style="margin-left:6px"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="ci-body">
+          <div class="ci-ok-grid">
+            ${item.okList.map(([lbl,val])=>`<div class="ci-ok-row"><div class="sdot sd-o"></div><div style="flex:1;font-size:11px;color:var(--text2)">${lbl}</div><span class="pill pill-o">${val}</span></div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+      return;
+    }
+    const boxR = item.right;
+    const boxClass = boxR?.err ? 'ci-box-e' : (boxR?.warn ? 'ci-box-w' : '');
+    html += `<div class="ci" data-sev="${item.sev}" data-id="${item.id}">
+      <div class="ci-head" onclick="toggleCI(this)">
+        <div class="sdot sd-${item.sev}"></div>
+        <div class="ci-title">${item.title}</div>
+        <span class="ci-pg">${item.pg||''}</span>
+        <span class="pill pill-${item.sev==='e'?'e':'w'}">${item.sev==='e'?'Kritis':'Perlu cek'}</span>
+        <svg class="ico chev" viewBox="0 0 24 24" style="margin-left:6px"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="ci-body">
+        <div class="ci-compare">
+          <div class="ci-box"><div class="ci-loc">${item.left.loc}</div><div class="ci-val">${item.left.val}</div><div class="ci-ctx">${item.left.ctx}</div></div>
+          <div class="ci-box ${boxClass}"><div class="ci-loc">${boxR.loc}</div><div class="ci-val" style="color:var(--${boxR.err?'err':'warn'})">${boxR.val}</div><div class="ci-ctx">${boxR.ctx}</div></div>
+        </div>
+        <div class="ci-note">${item.note}</div>
+        <div class="btn-row">
+          <button class="btn btn-p" onclick="markDone(this,'${item.id}')">✓ Tandai selesai</button>
+          <button class="btn btn-undo" onclick="markUndo(this,'${item.id}')" style="display:none">↩ Batalkan</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('cons-list').innerHTML = html;
+
+  // Update filter labels
+  const bar = document.getElementById('cons-filter-bar');
+  const okN = visible.filter(x=>x.sev==='o').length;
+  bar.children[0].textContent=`Semua (${critN+warnN+(okN?1:0)})`;
+  bar.children[1].textContent=`🔴 Kritis (${critN})`;
+  bar.children[2].textContent=`🟡 Perlu cek (${warnN})`;
+  bar.children[3].textContent=`🟢 Konsisten${okN?' ('+okN+')':''}`;
+  document.getElementById('m-kritis').textContent = critN;
+  document.getElementById('m-warn').textContent = warnN;
+  document.getElementById('m-ok').textContent = okN ? 10 : '—';
+  document.getElementById('m-src').textContent = activeBabs.size;
+
+  // Build narasi per bab buttons & panels
+  const babBtns = document.getElementById('bab-btns-row');
+  const babPanels = document.getElementById('bab-panels');
+  const babOrder = ['re','b1','b2','b3','b4','kesim'];
+  const activeOrder = babOrder.filter(b=>activeBabs.has(b));
+
+  babBtns.innerHTML = activeOrder.map((bk,idx)=>{
+    const meta = BAB_META[bk];
+    const items = NARASI_ITEMS[bk]||[];
+    const critCount = items.filter(x=>x.sev==='e').length;
+    const warnCount = items.filter(x=>x.sev==='w').length;
+    let cls = 'bb bb-o'; let badge='';
+    if (critCount) { cls='bb bb-e'; badge=`<span class="pill pill-e" style="margin-left:3px">${critCount}</span>`; }
+    else if (warnCount) { cls='bb bb-w'; badge=`<span class="pill pill-w" style="margin-left:3px">${warnCount}</span>`; }
+    else badge=`<span class="pill pill-o" style="margin-left:3px">Oke</span>`;
+    return `<div class="${cls}${idx===0?' active':''}" onclick="switchBab('nb-${bk}',this)">${meta.short}${badge}</div>`;
+  }).join('');
+
+  babPanels.innerHTML = activeOrder.map((bk,idx)=>{
+    const meta = BAB_META[bk];
+    const items = NARASI_ITEMS[bk]||[];
+    const rows = items.map((item,j)=>{
+      const nid=`n-${bk}-${j}`;
+      if (!item.kiri && !item.kanan) {
+        return `<div class="nri" data-nid="${nid}">
+          <div class="nri-head" onclick="toggleNRI(this)">
+            <div class="sdot sd-${item.sev}"></div>
+            <div class="nri-title"${item.sev!=='o'?' style="font-weight:600"':''}>${item.title}</div>
+            ${item.pg?`<span class="nri-pg">${item.pg}</span>`:''}
+            <span class="pill pill-${item.sev==='e'?'e':item.sev==='w'?'w':'o'}" style="margin-left:6px">${item.sev==='e'?'Kritis':item.sev==='w'?'Perlu cek':'Sesuai'}</span>
+          </div>
+        </div>`;
+      }
+      return `<div class="nri" data-nid="${nid}">
+        <div class="nri-head" onclick="toggleNRI(this)">
+          <div class="sdot sd-${item.sev}"></div>
+          <div class="nri-title" style="font-weight:600">${item.title}</div>
+          ${item.pg?`<span class="nri-pg">${item.pg}</span>`:''}
+          <span class="pill pill-${item.sev==='e'?'e':'w'}" style="margin-left:6px">${item.sev==='e'?'Kritis':'Perlu cek'}</span>
+          <svg class="ico chev" viewBox="0 0 24 24" style="margin-left:6px"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="nri-body">
+          <div class="data-row">
+            <div class="data-col"><div class="data-col-ttl">${item.kiri.ttl}</div><div class="data-val">${item.kiri.val}</div></div>
+            <div class="data-col"><div class="data-col-ttl">${item.kanan.ttl}</div><div class="data-val">${item.kanan.val}</div></div>
+          </div>
+          ${item.note?`<div class="ci-note">${item.note}</div>`:''}
+          <div class="btn-row">
+            <button class="btn btn-p" onclick="markDone(this,'${nid}')">✓ Tandai selesai</button>
+            <button class="btn btn-undo" onclick="markUndo(this,'${nid}')" style="display:none">↩ Batalkan</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div id="nb-${bk}" style="display:${idx===0?'block':'none'}">
+      <div class="sec-lbl">${meta.short} — ${meta.label}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+function buildTypo() {
+  // Filter ketat: typo hanya tampil jika bab sumber diupload (every = satu bab = exact)
+  const visTypo = TYPO_ITEMS.filter(t=>t.babs.every(b=>activeBabs.has(b)));
+  // Inkons: filter per bab, lalu deduplikasi berdasarkan ctx+fix — gabungkan loc
+  const rawInk = INKONS_ITEMS.filter(t=>t.babs.every(b=>activeBabs.has(b)));
+  const inkMap = new Map();
+  rawInk.forEach(t=>{
+    const key = t.ctx+t.fix;
+    if (inkMap.has(key)) {
+      const existing = inkMap.get(key);
+      existing.loc = existing.loc + ', ' + t.loc;
+    } else {
+      inkMap.set(key, {...t, loc: t.loc});
+    }
+  });
+  const visInk = [...inkMap.values()];
+  const activeBabLabels = [...activeBabs].map(k=>BAB_META[k]?.short||k).join(', ');
+  document.getElementById('typo-psub').textContent='Menampilkan temuan dari: '+activeBabLabels;
+  document.getElementById('t-typo').textContent = visTypo.length || '—';
+  document.getElementById('t-inkons').textContent = visInk.length || '—';
+  document.getElementById('t-scope').textContent = activeBabLabels;
+
+  const catPill = (cat) => {
+    if (cat==='Typo') return '<span class="pill pill-e" style="margin-left:4px">Typo</span>';
+    if (cat==='Inkonsisten') return '<span class="pill pill-w" style="margin-left:4px">Inkonsisten</span>';
+    if (cat==='Typo berulang') return '<span class="pill pill-w" style="margin-left:4px">Typo berulang</span>';
+    return `<span class="pill pill-w" style="margin-left:4px">${cat}</span>`;
+  };
+  let html = '';
+  // Section typo
+  html += `<div class="sec-lbl">Typo dan salah kata${visTypo.length ? ' ('+visTypo.length+')' : ''}</div>`;
+  if (visTypo.length) {
+    html += `<div class="typo-card">`;
+    html += visTypo.map(t=>`
+      <div class="typo-item">
+        <div class="typo-loc">${t.loc}</div>
+        <div class="typo-body">
+          <div class="typo-text">${t.ctx} ${catPill(t.cat)}</div>
+          <div class="typo-fix">✓ Seharusnya: <strong>${t.fix}</strong></div>
+        </div>
+      </div>`).join('');
+    html += `</div>`;
+  } else {
+    html += `<div style="padding:10px 0 14px;color:var(--text3);font-size:12px">
+      Tidak ada typo terdeteksi pada ${activeBabLabels}.
+    </div>`;
+  }
+  // Section inkonsistensi
+  html += `<div class="sec-lbl">Inkonsistensi penulisan${visInk.length ? ' ('+visInk.length+')' : ''}</div>`;
+  if (visInk.length) {
+    html += `<div class="typo-card">`;
+    html += visInk.map(t=>`
+      <div class="typo-item">
+        <div class="typo-loc">${t.loc}</div>
+        <div class="typo-body">
+          <div class="typo-text">${t.ctx} ${catPill(t.cat)}</div>
+          <div class="typo-fix">${t.fix}</div>
+        </div>
+      </div>`).join('');
+    html += `</div>`;
+  } else {
+    html += `<div style="padding:10px 0 14px;color:var(--text3);font-size:12px">
+      Tidak ada inkonsistensi penulisan terdeteksi pada ${activeBabLabels}.
+    </div>`;
+  }
+  document.getElementById('typo-content').innerHTML = html;
+}
+
+function buildDaftar() {
+  const activeBabLabels = [...activeBabs].map(k=>BAB_META[k]?.short||k).join(', ');
+  document.getElementById('daftar-psub').textContent='Menampilkan daftar dari: '+activeBabLabels+'. Nomor halaman diperbarui setelah bab digabung.';
+
+  // TOC
+  const babOrder = ['re','b1','b2','b3','b4','kesim'];
+  const activeOrder = babOrder.filter(b=>activeBabs.has(b));
+  let tocHtml = '<div class="toc-wrap">';
+  activeOrder.forEach(bk=>{
+    const d = TOC_DATA[bk];
+    tocHtml += `<div class="toc-bab">
+      <div class="toc-bh"><div class="toc-bnum">${d.num}</div><div class="toc-btitle">${d.title}</div><div class="toc-pg">${d.pg}</div></div>
+      ${d.subbab.map(s=>`<div class="toc-row"><div class="toc-lbl">${s}</div><div class="toc-dots"></div><div class="toc-pg">xx</div></div>`).join('')}
+      ${d.regional&&d.regionalList?d.regionalList.map(r=>`<div class="toc-sub"><div class="toc-sub-lbl">— Regional ${r}</div><div class="toc-dots"></div><div class="toc-pg">xx</div></div>`).join(''):''}
+    </div>`;
+  });
+  tocHtml += '</div>';
+
+  // Tabel, Gambar, Grafik
+  const buildTable = (type, head) => {
+    const rows = activeOrder.flatMap(bk=>(DAFTAR_DATA[type][bk]||[]));
+    if (!rows.length) return '<div class="empty-state">Tidak ada '+head.toLowerCase()+' pada bab yang diupload.</div>';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden">
+      <table class="dlist-table">
+        <thead><tr><th style="width:110px">Nomor</th><th>Judul ${head.toLowerCase()}</th><th style="width:40px;text-align:center">Bab</th><th style="width:40px;text-align:right">Hal.</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr><td class="td-num">${r[0]}</td><td>${r[1]}</td><td class="td-bab">${r[2]}</td><td class="td-pg">xx</td></tr>`).join('')}</tbody>
+      </table></div>`;
+  };
+
+  document.getElementById('daftar-content').innerHTML = `
+    <div class="dlist active" id="d-toc">${tocHtml}</div>
+    <div class="dlist" id="d-tabel">${buildTable('tabel','Tabel')}</div>
+    <div class="dlist" id="d-gambar">${buildTable('gambar','Gambar')}</div>
+    <div class="dlist" id="d-grafik">${buildTable('grafik','Grafik')}</div>`;
+  // Re-activate first tab
+  document.querySelectorAll('.dtb').forEach(t=>t.classList.remove('active'));
+  document.querySelector('.dtb').classList.add('active');
+}
+
+// ── NAV & TABS ─────────────────────────────────────────────────────────────
+function goPage(id, el) {
+  if (!analysisRun && id!=='upload') return;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+}
+function switchSub(id, el) {
+  document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.st').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sub-'+id).classList.add('active');
+  el.classList.add('active');
+}
+function switchBab(id, el) {
+  document.querySelectorAll('#bab-panels>div').forEach(d=>d.style.display='none');
+  document.querySelectorAll('.bb').forEach(b=>b.classList.remove('active'));
+  const t=document.getElementById(id);
+  if(t) t.style.display='block';
+  el.classList.add('active');
+}
+function switchDaftar(id, el) {
+  document.querySelectorAll('.dlist').forEach(l=>l.classList.remove('active'));
+  document.querySelectorAll('.dtb').forEach(t=>t.classList.remove('active'));
+  document.getElementById('d-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── TOGGLE ─────────────────────────────────────────────────────────────────
+function toggleCI(head) {
+  const body=head.nextElementSibling;
+  const chev=head.querySelector('.chev');
+  if(!body||!body.classList.contains('ci-body')) return;
+  const open=body.classList.toggle('open');
+  if(chev) chev.classList.toggle('open',open);
+}
+function toggleNRI(head) {
+  const body=head.nextElementSibling;
+  const chev=head.querySelector('.chev');
+  if(!body) return;
+  const open=body.classList.toggle('open');
+  if(chev) chev.classList.toggle('open',open);
+}
+
+// ── MARK DONE / UNDO ───────────────────────────────────────────────────────
+function markDone(doneBtn, id) {
+  const card=doneBtn.closest('.ci,.nri');
+  if(!card) return;
+  doneMap[id]=true;
+  card.classList.add('done');
+  doneBtn.style.display='none';
+  const undo=card.querySelector('.btn-undo');
+  if(undo) undo.style.display='inline-flex';
+  updateBadges();
+  showToast('Ditandai selesai — klik "Batalkan" jika belum selesai');
+}
+function markUndo(undoBtn, id) {
+  const card=undoBtn.closest('.ci,.nri');
+  if(!card) return;
+  doneMap[id]=false;
+  card.classList.remove('done');
+  undoBtn.style.display='none';
+  const done=card.querySelector('.btn-p');
+  if(done) done.style.display='inline-flex';
+  updateBadges();
+  showToast('Dibatalkan — item kembali aktif');
+}
+
+// ── FILTER CONS ────────────────────────────────────────────────────────────
+function filterCons(type, el) {
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.ci').forEach(c=>{
+    if (type==='all') c.style.display='';
+    else if (type==='o') c.style.display=c.dataset.sev==='o'?'':'none';
+    else c.style.display=c.dataset.sev===type?'':'none';
+  });
+}
+
+// ── BADGES ─────────────────────────────────────────────────────────────────
+function updateBadges() {
+  if (!analysisRun) {
+    ['cons','typo','daftar','upload'].forEach(id=>{
+      const b=document.getElementById('badge-'+id);
+      if(b){b.textContent='—';b.className='nbadge nb-g';}
+    });
+    return;
+  }
+  // Upload badge
+  const bu=document.getElementById('badge-upload');
+  bu.textContent=uploadedFiles.length||'—'; bu.className='nbadge nb-g';
+  // Cons badge
+  const cItems=document.querySelectorAll('.ci[data-sev="e"]:not(.done)');
+  const wItems=document.querySelectorAll('.ci[data-sev="w"]:not(.done)');
+  const total=cItems.length+wItems.length;
+  const bc=document.getElementById('badge-cons');
+  if(total>0){bc.textContent=total;bc.className=cItems.length?'nbadge nb-e':'nbadge nb-w';}
+  else{bc.textContent='✓';bc.className='nbadge nb-g';}
+  document.getElementById('m-kritis').textContent=document.querySelectorAll('.ci[data-sev="e"]').length;
+  document.getElementById('m-warn').textContent=document.querySelectorAll('.ci[data-sev="w"]').length;
+  // Typo badge
+  const bt=document.getElementById('badge-typo');
+  bt.textContent=document.querySelectorAll('.typo-item').length||'—';
+  bt.className='nbadge nb-w';
+  // Daftar
+  document.getElementById('badge-daftar').textContent='—';
+}
+
+// ── SALIN ──────────────────────────────────────────────────────────────────
+function salinAktif() {
+  const active=document.querySelector('.dlist.active');
+  if(!active) return;
+  let text='';
+  const toc=active.querySelector('.toc-wrap');
+  if(toc) text=toc.innerText;
+  const table=active.querySelector('table');
+  if(table){
+    const rows=[];
+    table.querySelectorAll('tr').forEach(tr=>{
+      rows.push(Array.from(tr.querySelectorAll('th,td')).map(c=>c.textContent.trim()).join('\t'));
+    });
+    text=rows.join('\n');
+  }
+  if(text) navigator.clipboard.writeText(text).then(()=>showToast('Disalin ke clipboard ✓'));
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+updateBadges();
+</script>
+</body>
+</html>
