@@ -1,0 +1,1879 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TORING — Tools of Reporting and Monitoring</title>
+<meta name="description" content="TORING - Aplikasi induk monitoring & pelaporan Direktorat Pelaksanaan Anggaran">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   TORING — Tools of Reporting and Monitoring
+   Tema: Soto Sedap (Merah Kuning)
+   ============================================ */
+
+:root {
+  /* Palet Soto Sedap */
+  --soto-red:         #C0392B;   /* Merah kuah */
+  --soto-red-dark:    #8E2A1F;   /* Merah gelap */
+  --soto-red-deep:    #6B1E15;   /* Merah paling tua (sidebar bottom) */
+  --soto-yellow:      #F4C430;   /* Kuning kunyit */
+  --soto-yellow-soft: #FFE57A;   /* Kuning lembut */
+  --soto-yellow-bg:   #FFF8E1;   /* Kuning latar */
+  --soto-cream:       #FFFBF0;   /* Krem */
+
+  /* Status */
+  --status-good:    #16A34A;
+  --status-warn:    #F59E0B;
+  --status-bad:     #DC2626;
+  --status-info:    #2563EB;
+
+  /* Netral */
+  --text-primary:   #1F2937;
+  --text-secondary: #6B7280;
+  --text-muted:     #9CA3AF;
+  --border-light:   #E5E7EB;
+  --bg-page:        #F9F7F2;
+  --bg-card:        #FFFFFF;
+
+  /* Layout */
+  --sidebar-w:        260px;
+  --sidebar-w-mini:   72px;
+  --header-h:         72px;
+  --radius:           14px;
+  --radius-sm:        10px;
+  --shadow-sm:        0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:        0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg:        0 10px 30px rgba(192,57,43,.15);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* ============ MOTIF BATIK SOTO SEDAP ============ */
+.batik-pattern { position: relative; }
+
+/* Ornamen bawah sidebar: area kuning dengan motif oval */
+.sidebar-ornament-bottom {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 400px;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.sidebar-ornament-bottom svg { display: block; width: 100%; }
+
+/* Agar konten sidebar tetap di atas ornamen */
+.sidebar-brand,
+.nav,
+.sidebar-footer { position: relative; z-index: 1; }
+
+.header { position: relative; }
+
+
+/* ============ LAYOUT UTAMA ============ */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: var(--header-h) 1fr auto;
+  grid-template-areas:
+    "sidebar header"
+    "sidebar main"
+    "globalfooter globalfooter";
+  min-height: 100vh;
+  transition: grid-template-columns .25s ease;
+}
+
+.app.collapsed {
+  grid-template-columns: var(--sidebar-w-mini) 1fr;
+}
+
+/* ============ SIDEBAR ============ */
+.sidebar {
+  grid-area: sidebar;
+  background: linear-gradient(180deg, #A61C0E 0%, #8B1A0D 55%, #6B1309 100%);
+  color: #fff;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.2) transparent;
+}
+
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
+
+.sidebar-brand {
+  padding: 22px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.08);
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: var(--soto-yellow);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.15);
+}
+
+.brand-text { line-height: 1.1; overflow: hidden; }
+.brand-text h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--soto-yellow);
+}
+.brand-text p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  opacity: .85;
+  white-space: nowrap;
+}
+
+.app.collapsed .brand-text,
+.app.collapsed .nav-label,
+.app.collapsed .nav-section-title,
+.app.collapsed .sidebar-footer .user-info,
+.app.collapsed .nav-badge { display: none; }
+
+.app.collapsed .brand-logo { margin: 0 auto; }
+.app.collapsed .sidebar-brand { justify-content: center; padding: 18px 0; }
+.app.collapsed .nav-item { justify-content: center; padding: 12px; }
+
+/* Navigasi */
+.nav {
+  padding: 12px 0;
+}
+
+.nav-section-title {
+  padding: 14px 22px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--soto-yellow-soft);
+  opacity: .7;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  margin: 2px 10px;
+  border-radius: 10px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: calc(100% - 20px);
+  text-align: left;
+  transition: all .18s ease;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,.10);
+  transform: translateX(2px);
+}
+
+.nav-item.active {
+  background: var(--soto-yellow);
+  color: var(--soto-red-deep);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(244,196,48,.35);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  background: var(--soto-yellow);
+  border-radius: 0 4px 4px 0;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.nav-icon svg {
+  width: 19px;
+  height: 19px;
+  stroke: var(--soto-yellow);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-item.active .nav-icon svg { stroke: var(--soto-red-deep); }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--soto-yellow);
+  color: var(--soto-red-deep);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.nav-item.active .nav-badge {
+  background: var(--soto-red);
+  color: #fff;
+}
+
+/* Sidebar footer (user) */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 2;
+}
+
+.user-avatar {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--soto-yellow);
+  color: var(--soto-red-deep);
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 14px;
+}
+
+.user-info { line-height: 1.2; overflow: hidden; }
+.user-info strong { font-size: 13px; display: block; }
+.user-info span { font-size: 11px; opacity: .8; }
+
+/* ============ HEADER ============ */
+.header {
+  grid-area: header;
+  background: #FBE080;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  padding-right: 60px;
+  gap: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 10px rgba(0,0,0,.10);
+  overflow: hidden;
+}
+
+/* Konten header (logo, judul, search, notif, profil) tetap di area 82% kiri,
+   tidak pernah bersentuhan dengan area motif berkat padding-right di atas */
+.header > *:not(.header-ornament-area):not(.header-curve) {
+  position: relative;
+  z-index: 3;
+}
+
+/* Layer 1 (background): area motif geometris, HANYA 18% paling kanan, paling belakang */
+.header-ornament-area {
+  position: absolute;
+  top: 0; right: -2%;
+  width: 20%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+.header-ornament-area svg { width: 100%; height: 100%; display: block; }
+
+/* Layer 2 (organic wave divider): warna SAMA dengan background header,
+   menutupi 25-35% dari area motif, mulai dari 75-80% lebar header */
+.header-curve {
+  position: absolute;
+  top: 0; right: 0;
+  width: 18%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+/* Divider mulai pada 82% lebar header, sesuai posisi area ornamen 18% kanan */
+.header-curve svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+.btn-toggle-sidebar {
+  background: rgba(183,28,28,.12);
+  color: #B71C1C;
+  border: none;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: all .15s ease;
+  position: relative;
+  z-index: 2;
+}
+.btn-toggle-sidebar:hover { background: rgba(183,28,28,.22); }
+
+.header-title {
+  position: relative;
+  z-index: 2;
+}
+.header-title h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #6D2C1D;
+  letter-spacing: .2px;
+}
+.header-title p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #B71C1C;
+}
+
+.header-spacer { flex: 1; position: relative; z-index: 2; }
+
+.header-search {
+  position: relative;
+  width: 280px;
+  z-index: 2;
+}
+.header-search input {
+  width: 100%;
+  padding: 9px 14px 9px 36px;
+  border: 1px solid rgba(183,28,28,.20);
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(255,255,255,.55);
+  transition: all .15s ease;
+}
+.header-search input:focus {
+  outline: none;
+  border-color: #B71C1C;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(183,28,28,.12);
+}
+.header-search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  stroke: #B71C1C;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .65;
+}
+
+.header-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6D2C1D;
+  position: relative;
+  z-index: 2;
+  white-space: nowrap;
+}
+.header-pill svg {
+  width: 17px;
+  height: 17px;
+  stroke: #B71C1C;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.header-icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: grid; place-items: center;
+  position: relative;
+  z-index: 2;
+  transition: all .15s ease;
+}
+.header-icon-btn:hover { background: rgba(183,28,28,.10); }
+.header-icon-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: #B71C1C;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.header-icon-btn .notif-dot {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 16px; height: 16px;
+  background: #D62828;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid #F5DE7A;
+}
+
+/* Area profil pengguna di header */
+.header-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 20px;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  transition: all .15s ease;
+}
+.header-profile:hover { background: rgba(183,28,28,.08); }
+.header-profile-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: #B71C1C;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.header-profile-avatar svg {
+  width: 17px; height: 17px;
+  stroke: #fff;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.header-profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6D2C1D;
+  white-space: nowrap;
+}
+.header-profile-arrow {
+  width: 14px; height: 14px;
+  stroke: #6D2C1D;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+/* ============ MAIN AREA ============ */
+.main {
+  grid-area: main;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.page { display: none; }
+.page.active { display: block; animation: fadeIn .25s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ============ TOOL EMBED (iframe untuk tools internal) ============ */
+#page-tool-embed.page.active {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.tool-embed-wrap {
+  flex: 1;
+  min-height: calc(100vh - var(--header-h) - 48px);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  background: #fff;
+}
+.tool-embed-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  min-height: calc(100vh - var(--header-h) - 48px);
+}
+
+/* ============ KPI CARDS ============ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 18px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all .2s ease;
+}
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.kpi-icon {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  display: grid; place-items: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.kpi-icon.red    { background: rgba(192,57,43,.12); color: var(--soto-red); }
+.kpi-icon.yellow { background: rgba(244,196,48,.18); color: #B8860B; }
+.kpi-icon.green  { background: rgba(22,163,74,.12);  color: var(--status-good); }
+.kpi-icon.blue   { background: rgba(37,99,235,.12);  color: var(--status-info); }
+.kpi-icon.purple { background: rgba(124,58,237,.12); color: #7C3AED; }
+.kpi-icon.orange { background: rgba(245,158,11,.15); color: #B45309; }
+
+.kpi-body { line-height: 1.2; }
+.kpi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; }
+.kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex; align-items: baseline; gap: 6px;
+}
+.kpi-value .trend {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.kpi-value .trend.up { background: rgba(22,163,74,.12); color: var(--status-good); }
+.kpi-value .trend.down { background: rgba(220,38,38,.12); color: var(--status-bad); }
+.kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* ============ DASHBOARD GRID ============ */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1200px) {
+  .dash-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+
+/* ============ CARDS ============ */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+.card-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: .3px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-header h3::before {
+  content: '';
+  width: 4px; height: 16px;
+  background: var(--soto-yellow);
+  border-radius: 2px;
+}
+.card-header .link {
+  font-size: 12px;
+  color: var(--soto-red);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.card-header .link:hover { text-decoration: underline; }
+
+/* ============ PENDING MATTERS ============ */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 12px;
+}
+.tab {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .15s ease;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+.tab.active {
+  color: var(--soto-red);
+  border-bottom-color: var(--soto-red);
+}
+.tab:hover { color: var(--soto-red-dark); }
+
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.pending-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: #FAFAFA;
+  border-left: 3px solid var(--border-light);
+  transition: all .15s ease;
+}
+.pending-item:hover { background: var(--soto-yellow-bg); }
+
+.priority-tag {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  letter-spacing: .5px;
+  flex-shrink: 0;
+}
+.priority-tag.high   { background: #FEE2E2; color: var(--soto-red); }
+.priority-tag.medium { background: #FEF3C7; color: #B45309; }
+.priority-tag.low    { background: #DBEAFE; color: var(--status-info); }
+
+.pending-content { flex: 1; min-width: 0; }
+.pending-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.pending-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.pending-deadline {
+  font-size: 11px;
+  color: var(--soto-red);
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ============ CALENDAR ============ */
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cal-nav {
+  display: flex; align-items: center; gap: 8px;
+}
+.cal-nav button {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+.cal-nav button:hover { background: var(--soto-yellow-bg); }
+.cal-title { font-size: 13px; font-weight: 700; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+.cal-day-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 6px 0;
+  text-transform: uppercase;
+}
+.cal-day {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  font-weight: 500;
+  transition: all .15s ease;
+}
+.cal-day:hover { background: var(--soto-yellow-bg); }
+.cal-day.muted { color: var(--text-muted); opacity: .4; }
+.cal-day.today {
+  background: var(--soto-red);
+  color: #fff;
+  font-weight: 700;
+}
+.cal-day .cal-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--soto-red);
+}
+.cal-day.today .cal-dot { background: #fff; }
+
+.cal-legend {
+  display: flex; flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.cal-legend span {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.cal-legend span::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--soto-red);
+}
+.cal-legend .dot-yellow::before { background: var(--soto-yellow); }
+.cal-legend .dot-blue::before   { background: var(--status-info); }
+.cal-legend .dot-purple::before { background: #7C3AED; }
+.cal-legend .dot-green::before  { background: var(--status-good); }
+
+/* ============ DEADLINE LIST ============ */
+.deadline-list {
+  display: flex; flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.deadline-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: #FAFAFA;
+  transition: all .15s ease;
+}
+.deadline-item:hover { background: var(--soto-yellow-bg); }
+.deadline-date {
+  text-align: center;
+  background: var(--soto-red);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  min-width: 50px;
+  line-height: 1;
+}
+.deadline-date strong { display: block; font-size: 18px; font-weight: 800; }
+.deadline-date span   { font-size: 10px; font-weight: 600; letter-spacing: .5px; }
+.deadline-body { flex: 1; min-width: 0; }
+.deadline-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.deadline-meta  { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.deadline-pill  {
+  font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 8px;
+  background: var(--soto-yellow-bg);
+  color: #B45309;
+  white-space: nowrap;
+}
+
+/* ============ TOOLS GRID ============ */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.tool-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  cursor: pointer;
+  transition: all .25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.tool-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle at top right, rgba(244,196,48,.15), transparent 70%);
+  pointer-events: none;
+}
+.tool-card:hover {
+  border-color: var(--soto-yellow);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+.tool-icon {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  display: grid; place-items: center;
+  font-size: 26px;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, var(--soto-red), var(--soto-red-dark));
+  color: var(--soto-yellow);
+  box-shadow: 0 4px 12px rgba(192,57,43,.25);
+}
+
+.tool-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
+.tool-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+.tool-action {
+  font-size: 12px;
+  color: var(--soto-red);
+  font-weight: 700;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.tool-card:hover .tool-action { gap: 8px; }
+
+/* ============ STATUS BADGE ============ */
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  letter-spacing: .3px;
+  display: inline-block;
+}
+.badge.good     { background: rgba(22,163,74,.12);  color: var(--status-good); }
+.badge.warn     { background: rgba(245,158,11,.15); color: #B45309; }
+.badge.bad      { background: rgba(220,38,38,.12);  color: var(--soto-red); }
+.badge.info     { background: rgba(37,99,235,.12);  color: var(--status-info); }
+.badge.neutral  { background: #F3F4F6; color: var(--text-secondary); }
+
+/* ============ TABLE ============ */
+.toring-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.toring-table thead {
+  background: linear-gradient(180deg, var(--soto-red), var(--soto-red-dark));
+}
+.toring-table th {
+  color: var(--soto-yellow);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .3px;
+}
+.toring-table th:first-child { border-top-left-radius: 8px; }
+.toring-table th:last-child  { border-top-right-radius: 8px; }
+.toring-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+.toring-table tbody tr:hover { background: var(--soto-yellow-bg); }
+.toring-table tbody tr:last-child td { border-bottom: none; }
+
+/* ============ QUOTE / MOTTO ============ */
+.motto-card {
+  background: linear-gradient(135deg, var(--soto-yellow-bg), var(--soto-yellow-soft));
+  border: 1px solid var(--soto-yellow);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-top: 16px;
+  font-style: italic;
+  color: var(--soto-red-dark);
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+.motto-card::before {
+  content: '"';
+  position: absolute;
+  top: -10px; left: 12px;
+  font-size: 72px;
+  font-family: Georgia, serif;
+  color: var(--soto-red);
+  opacity: .15;
+  line-height: 1;
+}
+.motto-card::after {
+  content: '🍜';
+  position: absolute;
+  bottom: 8px; right: 16px;
+  font-size: 36px;
+  opacity: .4;
+}
+
+/* ============ GLOBAL FOOTER ============ */
+.global-footer {
+  grid-area: globalfooter;
+  background: linear-gradient(90deg, #8B1A0D 0%, #A61C0E 50%, #8B1A0D 100%);
+  padding: 14px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,.75);
+}
+.global-footer strong { color: #fff; font-weight: 700; }
+.global-footer .tagline {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--soto-yellow);
+  font-size: 13px;
+}
+.global-footer .footer-logo {
+  background: var(--soto-yellow);
+  color: var(--soto-red-deep);
+  font-weight: 800;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: .5px;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 0 1fr;
+  }
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: var(--sidebar-w);
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+  }
+  .app.mobile-open .sidebar { transform: translateX(0); }
+  .app.mobile-open::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 90;
+  }
+  .header-search { display: none; }
+  .header-pill { display: none; }
+  .main { padding: 16px; }
+  .header { padding: 0 14px; gap: 10px; }
+  .header-title h2 { font-size: 15px; }
+  .header-title p { display: none; }
+}
+
+@media (max-width: 600px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-value { font-size: 18px; }
+  .kpi-icon { width: 42px; height: 42px; font-size: 20px; }
+}
+</style>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ============== SIDEBAR ============== -->
+  <aside class="sidebar batik-pattern">
+
+    <div class="sidebar-brand">
+      <div class="brand-logo">🍜</div>
+      <div class="brand-text">
+        <h1>TORING</h1>
+        <p>Tools of Reporting<br>and Monitoring</p>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-page="dashboard">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg></span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+
+      <div class="nav-section-title">Tools</div>
+
+      <button class="nav-item" data-page="ikpa" data-external="faq-ikpa.html">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="4" height="9"/><rect x="10" y="6" width="4" height="14"/><rect x="16" y="3" width="4" height="17"/></svg></span>
+        <span class="nav-label">FAQ IKPA</span>
+      </button>
+      <button class="nav-item" data-page="kfr" data-external="kfr.html">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="3,17 9,11 13,15 21,6"/><polyline points="15,6 21,6 21,12"/></svg></span>
+        <span class="nav-label">Penilaian KFR</span>
+      </button>
+      <button class="nav-item" data-page="pnbp" data-external="monev-pnbp.html">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9h3.5a2 2 0 1 1 0 4H9m0-4v8m0-4h3.5"/></svg></span>
+        <span class="nav-label">Monev PNBP</span>
+      </button>
+      <button class="nav-item" data-page="khatulistiwa" data-external="khatulistiwa-editor.html">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M14.5 4.5 18 8 9 17l-4 1 1-4z"/></svg></span>
+        <span class="nav-label">Khatulistiwa Editor</span>
+      </button>
+      <button class="nav-item" data-page="esertifikat" data-external="sertifikat-toring.html">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11.5V17c0 1.5 3 3 6 3s6-1.5 6-3v-5.5"/></svg></span>
+        <span class="nav-label">E-Sertifikat</span>
+      </button>
+
+      <div class="nav-section-title">Manajemen Kinerja</div>
+
+      <button class="nav-item" data-page="pending">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 4h6l1 6 3 3v2H5v-2l3-3z"/><path d="M12 15v6"/></svg></span>
+        <span class="nav-label">Pending Matters</span>
+        <span class="nav-badge">12</span>
+      </button>
+      <button class="nav-item" data-page="timeline">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></span>
+        <span class="nav-label">Timeline Kegiatan</span>
+      </button>
+      <button class="nav-item" data-page="iku">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></span>
+        <span class="nav-label">Indeks Kinerja Utama</span>
+      </button>
+
+      <div class="nav-section-title">Lainnya</div>
+
+      <button class="nav-item" data-page="arsip">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg></span>
+        <span class="nav-label">Arsip</span>
+      </button>
+      <button class="nav-item" data-page="admin">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.7 7.7 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.6a7.7 7.7 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.7 7.7 0 0 0 2.6 1.5l.5 2.6h4l.5-2.6a7.7 7.7 0 0 0 2.6-1.5l2.3 1 2-3.4z"/></svg></span>
+        <span class="nav-label">Admin</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-avatar">AP</div>
+      <div class="user-info">
+        <strong>Admin PA</strong>
+        <span>Direktorat PA</span>
+      </div>
+    </div>
+
+    <!-- Ornamen bawah sidebar: motif 4 elips lingkaran rapat -->
+    <div class="sidebar-ornament-bottom">
+      <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="400" style="display:block">
+        <defs>
+          <pattern id="bungaPattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+          <rect width="100" height="100" fill="#E8CF73"/>
+          <ellipse cx="74.75" cy="74.75" rx="31.5" ry="11.67" fill="#D62828" transform="rotate(135,74.75,74.75)"/>
+          <circle cx="57.82" cy="91.68" r="2.2" fill="#F5E6A8"/>
+          <circle cx="91.68" cy="57.82" r="2.2" fill="#F5E6A8"/>
+          <ellipse cx="25.25" cy="74.75" rx="31.5" ry="11.67" fill="#D62828" transform="rotate(225,25.25,74.75)"/>
+          <circle cx="8.32" cy="57.82" r="2.2" fill="#F5E6A8"/>
+          <circle cx="42.18" cy="91.68" r="2.2" fill="#F5E6A8"/>
+          <ellipse cx="25.25" cy="25.25" rx="31.5" ry="11.67" fill="#D62828" transform="rotate(315,25.25,25.25)"/>
+          <circle cx="42.18" cy="8.32" r="2.2" fill="#F5E6A8"/>
+          <circle cx="8.32" cy="42.18" r="2.2" fill="#F5E6A8"/>
+          <ellipse cx="74.75" cy="25.25" rx="31.5" ry="11.67" fill="#D62828" transform="rotate(45,74.75,25.25)"/>
+          <circle cx="91.68" cy="42.18" r="2.2" fill="#F5E6A8"/>
+          <circle cx="57.82" cy="8.32" r="2.2" fill="#F5E6A8"/>
+        </pattern>
+        </defs>
+        <rect width="100%" height="400" fill="url(#bungaPattern)"/>
+      </svg>
+    </div>
+
+  </aside>
+
+  <!-- ============== HEADER ============== -->
+  <header class="header">
+
+    <!-- Layer 1 (background): area motif batik, hanya 18% kanan -->
+    <div class="header-ornament-area">
+      <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id="headerBungaPattern" x="0" y="0" width="70" height="70" patternUnits="userSpaceOnUse">
+            <rect width="70" height="70" fill="#F1C13A"/>
+            <ellipse cx="52.32" cy="52.32" rx="22.05" ry="8.17" fill="#D62828" transform="rotate(135,52.32,52.32)"/>
+            <circle cx="40.46" cy="64.18" r="1.54" fill="#F8E7A8"/>
+            <circle cx="64.18" cy="40.46" r="1.54" fill="#F8E7A8"/>
+            <ellipse cx="17.68" cy="52.32" rx="22.05" ry="8.17" fill="#D62828" transform="rotate(225,17.68,52.32)"/>
+            <circle cx="5.82" cy="40.46" r="1.54" fill="#F8E7A8"/>
+            <circle cx="29.54" cy="64.18" r="1.54" fill="#F8E7A8"/>
+            <ellipse cx="17.68" cy="17.68" rx="22.05" ry="8.17" fill="#D62828" transform="rotate(315,17.68,17.68)"/>
+            <circle cx="29.54" cy="5.82" r="1.54" fill="#F8E7A8"/>
+            <circle cx="5.82" cy="29.54" r="1.54" fill="#F8E7A8"/>
+            <ellipse cx="52.32" cy="17.68" rx="22.05" ry="8.17" fill="#D62828" transform="rotate(45,52.32,17.68)"/>
+            <circle cx="64.18" cy="29.54" r="1.54" fill="#F8E7A8"/>
+            <circle cx="40.46" cy="5.82" r="1.54" fill="#F8E7A8"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#headerBungaPattern)"/>
+      </svg>
+    </div>
+
+    <!-- Layer 2 (single smooth curve divider): satu lengkungan halus, warna sama dgn header bg -->
+    <div class="header-curve">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 90" preserveAspectRatio="none">
+        <path d="M 0,0
+                 L 55,0
+                 C 67,5  73,16  77,24
+                 C 82,38  87,55  92,90
+                 L 0,90
+                 Z"
+              fill="#FBE080"/>
+      </svg>
+    </div>
+
+    <button class="btn-toggle-sidebar" id="btnToggle" aria-label="Toggle sidebar">☰</button>
+    <div class="header-title">
+      <h2 id="pageTitle">Dashboard Kerjaan</h2>
+      <p id="pageSubtitle">Direktorat Pelaksanaan Anggaran</p>
+    </div>
+    <div class="header-spacer"></div>
+
+    <div class="header-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" placeholder="Cari menu, dokumen, kegiatan…">
+    </div>
+
+    <button class="header-icon-btn" title="Notifikasi">
+      <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 6.5H4.5C4.5 13.5 6 12 6 8z"/><path d="M9.5 17a2.5 2.5 0 0 0 5 0"/></svg>
+      <span class="notif-dot">5</span>
+    </button>
+
+    <div class="header-pill">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>
+      <span id="headerDate">—</span>
+    </div>
+
+    <div class="header-profile">
+      <div class="header-profile-avatar">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+      </div>
+      <span class="header-profile-name">Admin</span>
+      <svg class="header-profile-arrow" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  </header>
+
+  <!-- ============== MAIN CONTENT ============== -->
+  <main class="main" id="main">
+
+    <!-- ===== PAGE: DASHBOARD ===== -->
+    <section class="page active" id="page-dashboard">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon red">📋</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Pending Matters</div>
+            <div class="kpi-value">12 <span class="trend down">5 High</span></div>
+            <div class="kpi-sub">Perlu segera ditindaklanjuti</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon yellow">⏰</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Deadline 7 Hari</div>
+            <div class="kpi-value">5</div>
+            <div class="kpi-sub">Perlu perhatian khusus</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon green">📈</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Indeks IKPA Nasional</div>
+            <div class="kpi-value">98,75 <span class="trend up">↑ 1,25</span></div>
+            <div class="kpi-sub">Sangat Baik</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon orange">🗂️</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Dokumen Tersedia</div>
+            <div class="kpi-value">1.245</div>
+            <div class="kpi-sub">File terindeks</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3>Pending Matters <span class="badge bad" style="margin-left:6px">12</span></h3>
+            <a class="link" data-nav="pending">Lihat semua →</a>
+          </div>
+          <div class="tabs">
+            <button class="tab active" data-filter="all">Semua</button>
+            <button class="tab" data-filter="high">High (5)</button>
+            <button class="tab" data-filter="medium">Medium (4)</button>
+            <button class="tab" data-filter="low">Low (3)</button>
+          </div>
+          <div class="pending-list" id="pendingList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Kalender Kerja</h3>
+            <div class="cal-nav">
+              <button id="calPrev">‹</button>
+              <span class="cal-title" id="calTitle">—</span>
+              <button id="calNext">›</button>
+            </div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend">
+            <span>Deadline</span>
+            <span class="dot-blue">Rapat / Agenda</span>
+            <span class="dot-yellow">Kajian</span>
+            <span class="dot-purple">Monitoring</span>
+            <span class="dot-green">Selesai</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3>Indeks Kinerja Utama (IKU)</h3>
+            <a class="link" data-nav="iku">Detail →</a>
+          </div>
+          <div id="ikuList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Deadline 30 Hari Ke Depan</h3>
+            <a class="link" data-nav="timeline">Semua →</a>
+          </div>
+          <div class="deadline-list" id="deadlineList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Dokumen Terbaru</h3>
+            <a class="link" data-nav="arsip">Lihat semua →</a>
+          </div>
+          <div id="docList"></div>
+        </div>
+      </div>
+
+      <div class="motto-card">
+        "Semangat monitoring hari ini, untuk kinerja yang lebih sedap esok hari!"
+      </div>
+    </section>
+
+    <!-- ===== PAGE: PENDING MATTERS ===== -->
+    <section class="page" id="page-pending">
+      <div class="card">
+        <div class="card-header">
+          <h3>Daftar Pending Matters</h3>
+          <a class="link">+ Tambah Baru</a>
+        </div>
+        <div id="pendingFull"></div>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: TIMELINE ===== -->
+    <section class="page" id="page-timeline">
+      <div class="card">
+        <div class="card-header"><h3>Timeline Kegiatan</h3></div>
+        <div id="timelineFull"></div>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: IKU ===== -->
+    <section class="page" id="page-iku">
+      <div class="card">
+        <div class="card-header"><h3>Indeks Kinerja Utama (IKU)</h3></div>
+        <div id="ikuFull"></div>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: ARSIP ===== -->
+    <section class="page" id="page-arsip">
+      <div class="card">
+        <div class="card-header">
+          <h3>Arsip Dokumen</h3>
+          <a class="link">+ Upload Dokumen</a>
+        </div>
+        <table class="toring-table" id="arsipTable">
+          <thead>
+            <tr><th>Nama File</th><th>Kategori</th><th>Upload</th><th>Size</th><th>Aksi</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: ADMIN ===== -->
+    <section class="page" id="page-admin">
+      <div class="dash-grid" style="grid-template-columns: 1fr 1fr">
+        <div class="card">
+          <div class="card-header"><h3>Pengaturan Aplikasi</h3></div>
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+            <label>Nama Direktorat <input type="text" value="Direktorat Pelaksanaan Anggaran" style="width:100%;padding:8px 12px;border:1px solid var(--border-light);border-radius:8px;margin-top:4px"></label>
+            <label>Tahun Anggaran <input type="text" value="2026" style="width:100%;padding:8px 12px;border:1px solid var(--border-light);border-radius:8px;margin-top:4px"></label>
+            <label>Tema <select style="width:100%;padding:8px 12px;border:1px solid var(--border-light);border-radius:8px;margin-top:4px"><option>Soto Sedap (Default)</option></select></label>
+            <button style="background:var(--soto-red);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:600;cursor:pointer;align-self:flex-start">Simpan Perubahan</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Manajemen Pengguna</h3></div>
+          <table class="toring-table">
+            <thead><tr><th>Nama</th><th>Role</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Admin PA</td><td>Super Admin</td><td><span class="badge good">Aktif</span></td></tr>
+              <tr><td>Prasetia</td><td>Editor</td><td><span class="badge good">Aktif</span></td></tr>
+              <tr><td>Hesti</td><td>Viewer</td><td><span class="badge neutral">Non-aktif</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: TOOLS EMBED (iframe) ===== -->
+    <section class="page" id="page-tool-embed">
+      <div class="tool-embed-wrap">
+        <iframe id="toolEmbedFrame" src="" title="Tool" loading="lazy"></iframe>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="global-footer">
+    <div><strong>TORING</strong> — Tools of Reporting and Monitoring KPA II &nbsp;|&nbsp; © 2026 KPA II. All rights reserved.</div>
+    <div class="tagline">Spesialis-nya Soto Garing</div>
+    <div class="footer-logo">TORING</div>
+  </footer>
+</div>
+
+<script>
+/* ============================================
+   TORING — app.js
+   Sistem navigasi, data dashboard, dan kalender
+   ============================================ */
+
+// ============ DATA DUMMY (ganti dengan API/sumber data real) ============
+
+const DATA = {
+
+  tools: [
+    { id: 'ikpa',         icon: '📊', title: 'FAQ IKPA',           desc: 'Panduan & FAQ Indikator Kinerja Pelaksanaan Anggaran',  url: 'https://yourdomain.github.io/faq-ikpa/' },
+    { id: 'kfr',          icon: '📈', title: 'Penilaian KFR',      desc: 'Sistem penilaian Kajian Fiskal Regional',               url: 'https://yourdomain.github.io/kfr/' },
+    { id: 'pnbp',         icon: '💰', title: 'Monev PNBP',         desc: 'Monitoring & evaluasi Penerimaan Negara Bukan Pajak',   url: 'https://yourdomain.github.io/monev-pnbp/' },
+    { id: 'khatulistiwa', icon: '📝', title: 'Khatulistiwa Editor', desc: 'Editor dokumen kajian dengan format standar',          url: 'https://yourdomain.github.io/khatulistiwa/' },
+    { id: 'esertifikat',  icon: '🎓', title: 'E-Sertifikat',       desc: 'Pengiriman sertifikat digital ke peserta kegiatan',     url: 'sertifikat-toring.html' }
+  ],
+
+  pending: [
+    { priority:'high',   title:'Telaah KFR Kalimantan Selatan',     meta:'Kajian Fiskal Regional', deadline:'14 Jun 2026' },
+    { priority:'high',   title:'Nota Dinas Monitoring IKPA Smt I',  meta:'Administrasi',           deadline:'15 Jun 2026' },
+    { priority:'high',   title:'Rekap Monev PNBP Triwulan II',      meta:'Monev PNBP',             deadline:'17 Jun 2026' },
+    { priority:'high',   title:'Review Tindak Lanjut BPK',          meta:'Pengawasan',             deadline:'18 Jun 2026' },
+    { priority:'high',   title:'Persiapan Rakor Pimpinan',          meta:'Kesekretariatan',        deadline:'19 Jun 2026' },
+    { priority:'medium', title:'Review Dashboard IKPA',             meta:'Monitoring IKPA',        deadline:'18 Jun 2026' },
+    { priority:'medium', title:'Verifikasi Data Satker Baru',       meta:'Database',               deadline:'20 Jun 2026' },
+    { priority:'medium', title:'Penyusunan Materi Sosialisasi',     meta:'Capacity Building',      deadline:'22 Jun 2026' },
+    { priority:'medium', title:'Validasi Dokumen Kajian KFR',       meta:'Kajian Fiskal Regional', deadline:'25 Jun 2026' },
+    { priority:'low',    title:'Update Database Dokumen',           meta:'Dokumentasi',            deadline:'20 Jun 2026' },
+    { priority:'low',    title:'Inventarisasi Arsip 2025',          meta:'Arsip',                  deadline:'28 Jun 2026' },
+    { priority:'low',    title:'Pembaruan Daftar Kontak Kanwil',    meta:'Kesekretariatan',        deadline:'30 Jun 2026' }
+  ],
+
+  todayAgenda: [
+    { time:'08:00 – 09:30', title:'Rapat Internal Direktorat PA',   place:'Ruang Rapat Melati',    color:'red'    },
+    { time:'10:00 – 11:30', title:'Review Data IKPA',               place:'Analisis & Validasi',   color:'blue'   },
+    { time:'13:00 – 14:30', title:'Telaah KFR Papua',               place:'Kajian Fiskal Regional', color:'purple' },
+    { time:'15:00 – 16:30', title:'Monitoring Monev PNBP',          place:'Triwulan II',           color:'yellow' }
+  ],
+
+  iku: [
+    { code:'IKU-1', label:'Ketepatan Penyelesaian Kajian', value:92,  icon:'🧭' },
+    { code:'IKU-2', label:'Ketepatan Monitoring IKPA',     value:96,  icon:'📊' },
+    { code:'IKU-3', label:'Monitoring PNBP',               value:100, icon:'💰' },
+    { code:'IKU-4', label:'Kualitas Dokumen Kebijakan',    value:88,  icon:'📋' },
+    { code:'IKU-5', label:'Kepatuhan Administrasi',        value:95,  icon:'✅' }
+  ],
+
+  deadlines: [
+    { day:15, mon:'JUN', title:'Upload IKPA Kanwil',           sub:'Seluruh Kanwil DJPb',         pill:'3 hari lagi' },
+    { day:17, mon:'JUN', title:'Laporan KFR Regional Kalimantan', sub:'Kajian Fiskal Regional',   pill:'5 hari lagi' },
+    { day:20, mon:'JUN', title:'Monitoring PNBP Triwulan II',   sub:'Seluruh Kanwil DJPb',         pill:'8 hari lagi' },
+    { day:25, mon:'JUN', title:'Policy Brief Semester I',       sub:'Direktorat PA',               pill:'13 hari lagi' },
+    { day:30, mon:'JUN', title:'Rekap Kinerja IKPA Semester I', sub:'Direktorat PA',               pill:'18 hari lagi' },
+    { day:5,  mon:'JUL', title:'Sosialisasi Aplikasi TORING',   sub:'Tim Sekretariat',             pill:'23 hari lagi' }
+  ],
+
+  documents: [
+    { name:'PER-5_PB_2025_Tentang_Ikpa.pdf',          cat:'Regulasi',  date:'12 Jun 2026', size:'2.1 MB' },
+    { name:'Template_Laporan_Monev_PNBP.xlsx',        cat:'Template',  date:'11 Jun 2026', size:'780 KB' },
+    { name:'Nota_Dinas_Monitoring_IKPA.docx',         cat:'Nota Dinas',date:'10 Jun 2026', size:'430 KB' },
+    { name:'Kajian_KFR_Sumatera_Barat_Q2.pdf',        cat:'Kajian',    date:'09 Jun 2026', size:'5.6 MB' },
+    { name:'Rekap_Sertifikat_Webinar_Mei.csv',        cat:'Data',      date:'08 Jun 2026', size:'320 KB' }
+  ],
+
+  // Event kalender (key = YYYY-MM-DD, value = color)
+  calEvents: {
+    '2026-06-14': 'red',     '2026-06-15': 'red',
+    '2026-06-17': 'red',     '2026-06-18': 'yellow',
+    '2026-06-19': 'blue',    '2026-06-20': 'purple',
+    '2026-06-25': 'red',     '2026-06-30': 'red',
+    '2026-06-04': 'red',     '2026-06-05': 'red',
+    '2026-06-12': 'red',     '2026-06-13': 'green'
+  }
+};
+
+// Halaman & judul
+const PAGES = {
+  dashboard:    { title: 'Dashboard Kerjaan',         subtitle: 'Direktorat Pelaksanaan Anggaran' },
+  pending:      { title: 'Pending Matters',           subtitle: 'Daftar pekerjaan yang menunggu tindak lanjut' },
+  timeline:     { title: 'Timeline Kegiatan',         subtitle: 'Jadwal & agenda kerja' },
+  iku:          { title: 'Indeks Kinerja Utama',      subtitle: 'Capaian IKU Direktorat PA' },
+  arsip:        { title: 'Arsip Dokumen',             subtitle: 'Repositori dokumen TORING' },
+  admin:        { title: 'Administrasi',              subtitle: 'Pengaturan & manajemen pengguna' }
+};
+
+// ============ RENDER FUNCTIONS ============
+
+function renderPending(filter = 'all') {
+  const list = DATA.pending.filter(p => filter === 'all' || p.priority === filter);
+  document.getElementById('pendingList').innerHTML = list.slice(0, 6).map(p => `
+    <div class="pending-item">
+      <span class="priority-tag ${p.priority}">${p.priority.toUpperCase()}</span>
+      <div class="pending-content">
+        <div class="pending-title">${p.title}</div>
+        <div class="pending-meta">${p.meta}</div>
+      </div>
+      <div class="pending-deadline">Deadline<br>${p.deadline}</div>
+    </div>
+  `).join('');
+}
+
+function renderPendingFull() {
+  const el = document.getElementById('pendingFull');
+  el.innerHTML = `
+    <table class="toring-table">
+      <thead><tr><th>Prioritas</th><th>Pekerjaan</th><th>Kategori</th><th>Deadline</th><th>Status</th></tr></thead>
+      <tbody>
+        ${DATA.pending.map(p => `
+          <tr>
+            <td><span class="priority-tag ${p.priority}">${p.priority.toUpperCase()}</span></td>
+            <td><strong>${p.title}</strong></td>
+            <td>${p.meta}</td>
+            <td>${p.deadline}</td>
+            <td><span class="badge ${p.priority==='high'?'bad':p.priority==='medium'?'warn':'info'}">Open</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderTodayAgenda() {
+  const colors = { red:'#C0392B', blue:'#2563EB', yellow:'#F4C430', purple:'#7C3AED', green:'#16A34A' };
+  document.getElementById('todayAgenda').innerHTML = DATA.todayAgenda.map(a => `
+    <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-light)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${colors[a.color]};margin-top:6px;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--text-secondary);font-weight:600">${a.time}</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px">${a.title}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${a.place}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderIKU() {
+  document.getElementById('ikuList').innerHTML = DATA.iku.map(k => {
+    const color = k.value >= 95 ? '#16A34A' : k.value >= 85 ? '#F4C430' : '#DC2626';
+    return `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span><strong>${k.icon} ${k.code}</strong> ${k.label}</span>
+          <span style="font-weight:700;color:${color}">${k.value}%</span>
+        </div>
+        <div style="height:6px;background:#F3F4F6;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${k.value}%;background:${color};border-radius:4px;transition:width .5s ease"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Target 100%</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderIKUFull() {
+  document.getElementById('ikuFull').innerHTML = `
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      ${DATA.iku.map(k => {
+        const color = k.value >= 95 ? 'green' : k.value >= 85 ? 'yellow' : 'red';
+        return `
+          <div class="kpi-card">
+            <div class="kpi-icon ${color}">${k.icon}</div>
+            <div class="kpi-body">
+              <div class="kpi-label">${k.code}</div>
+              <div class="kpi-value">${k.value}%</div>
+              <div class="kpi-sub">${k.label}</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div style="margin-top:20px">${document.getElementById('ikuList')?.innerHTML || ''}</div>
+  `;
+  renderIKU();
+  document.getElementById('ikuFull').innerHTML += `<div style="margin-top:20px"><h4 style="font-size:13px;font-weight:700;margin-bottom:10px">Progress per IKU</h4>${document.getElementById('ikuList').innerHTML}</div>`;
+}
+
+function renderDeadlines() {
+  document.getElementById('deadlineList').innerHTML = DATA.deadlines.map(d => `
+    <div class="deadline-item">
+      <div class="deadline-date">
+        <strong>${d.day}</strong>
+        <span>${d.mon}</span>
+      </div>
+      <div class="deadline-body">
+        <div class="deadline-title">${d.title}</div>
+        <div class="deadline-meta">${d.sub}</div>
+      </div>
+      <span class="deadline-pill">${d.pill}</span>
+    </div>
+  `).join('');
+}
+
+function renderDocuments() {
+  document.getElementById('docList').innerHTML = DATA.documents.map(d => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-light)">
+      <div style="width:36px;height:36px;background:var(--soto-yellow-bg);border-radius:8px;display:grid;place-items:center;font-size:16px">📄</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${d.cat} • ${d.size}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text-secondary)">${d.date}</div>
+    </div>
+  `).join('');
+}
+
+function renderArsipTable() {
+  const tbody = document.querySelector('#arsipTable tbody');
+  tbody.innerHTML = DATA.documents.map(d => `
+    <tr>
+      <td><strong>📄 ${d.name}</strong></td>
+      <td><span class="badge info">${d.cat}</span></td>
+      <td>${d.date}</td>
+      <td>${d.size}</td>
+      <td>
+        <button style="background:var(--soto-yellow-bg);border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:var(--soto-red);cursor:pointer">Lihat</button>
+        <button style="background:none;border:1px solid var(--border-light);padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;margin-left:4px">Download</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderToolsCard(target) {
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.innerHTML = DATA.tools.map(t => `
+    <div class="tool-card" data-url="${t.url}" data-title="${t.title}">
+      <div class="tool-icon">${t.icon}</div>
+      <h4 class="tool-title">${t.title}</h4>
+      <p class="tool-desc">${t.desc}</p>
+      <span class="tool-action">Buka aplikasi →</span>
+    </div>
+  `).join('');
+  // Bind klik — buka di dalam iframe TORING, bukan tab baru
+  document.querySelectorAll(`#${target} .tool-card`).forEach(card => {
+    card.addEventListener('click', () => {
+      const url = card.dataset.url;
+      const title = card.dataset.title;
+      if (url && url !== '#') openToolEmbed(url, title);
+    });
+  });
+}
+
+function renderTimeline() {
+  const events = [
+    ...DATA.deadlines.map(d => ({ date: `${d.day} ${d.mon} 2026`, type:'Deadline', title:d.title, sub:d.sub, color:'red' })),
+    ...DATA.todayAgenda.map(a => ({ date: 'Hari Ini', type:'Agenda', title:a.title, sub:`${a.time} • ${a.place}`, color:a.color }))
+  ];
+  const colors = { red:'#C0392B', blue:'#2563EB', yellow:'#F4C430', purple:'#7C3AED', green:'#16A34A' };
+  document.getElementById('timelineFull').innerHTML = `
+    <div style="position:relative;padding-left:24px">
+      <div style="position:absolute;top:0;bottom:0;left:8px;width:2px;background:var(--border-light)"></div>
+      ${events.map(e => `
+        <div style="position:relative;padding:12px 0">
+          <div style="position:absolute;left:-20px;top:18px;width:14px;height:14px;background:${colors[e.color]};border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--border-light)"></div>
+          <div style="background:#FAFAFA;padding:12px 14px;border-radius:10px;border-left:3px solid ${colors[e.color]}">
+            <div style="font-size:11px;font-weight:700;color:${colors[e.color]};text-transform:uppercase;letter-spacing:.5px">${e.type} • ${e.date}</div>
+            <div style="font-size:14px;font-weight:600;margin-top:4px">${e.title}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${e.sub}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ============ KALENDER ============
+
+let calState = { year: 2026, month: 5 }; // Juni 2026
+
+const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const DAY_NAMES = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+
+function renderCalendar() {
+  const { year, month } = calState;
+  const calTitleEl = document.getElementById('calTitle');
+  if (!calTitleEl) return;
+  calTitleEl.textContent = `${MONTH_NAMES[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  // Hari ke-Senin (0 = Senin)
+  let startOffset = firstDay.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  // Tanggal "today simulasi" untuk demo (12 Juni 2026)
+  const demoToday = '2026-06-12';
+
+  let html = DAY_NAMES.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+
+  // Hari bulan sebelumnya
+  const prevMonthLast = new Date(year, month, 0).getDate();
+  for (let i = startOffset - 1; i >= 0; i--) {
+    html += `<div class="cal-day muted">${prevMonthLast - i}</div>`;
+  }
+
+  // Hari bulan ini
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = (key === todayKey || key === demoToday);
+    const event = DATA.calEvents[key];
+    const colors = { red:'#C0392B', blue:'#2563EB', yellow:'#F4C430', purple:'#7C3AED', green:'#16A34A' };
+    html += `<div class="cal-day ${isToday ? 'today':''}">
+      ${d}
+      ${event ? `<span class="cal-dot" style="background:${isToday?'#fff':colors[event]}"></span>` : ''}
+    </div>`;
+  }
+
+  // Hari bulan selanjutnya
+  const totalCells = startOffset + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= trailing; i++) {
+    html += `<div class="cal-day muted">${i}</div>`;
+  }
+
+  const calGridEl = document.getElementById('calGrid');
+  if (calGridEl) calGridEl.innerHTML = html;
+}
+
+// ============ NAVIGASI ============
+
+function openToolEmbed(url, label) {
+  // Set src iframe ke file tool yang dipilih
+  const frame = document.getElementById('toolEmbedFrame');
+  if (frame.getAttribute('src') !== url) {
+    frame.setAttribute('src', url);
+  }
+
+  // Tampilkan page embed
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-tool-embed').classList.add('active');
+
+  // Update sidebar active state
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.querySelector(`.nav-item[data-external="${url}"]`);
+  if (nav) nav.classList.add('active');
+
+  // Update judul header
+  document.getElementById('pageTitle').textContent = label;
+  document.getElementById('pageSubtitle').textContent = 'Tools — dibuka di dalam TORING';
+
+  // Tutup sidebar mobile & scroll ke atas
+  document.getElementById('app').classList.remove('mobile-open');
+  document.getElementById('main').scrollTop = 0;
+}
+
+function navigateTo(pageId) {
+  // Update halaman aktif
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(`page-${pageId}`);
+  if (target) target.classList.add('active');
+
+  // Update sidebar
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+  if (nav) nav.classList.add('active');
+
+  // Update judul
+  const meta = PAGES[pageId];
+  if (meta) {
+    document.getElementById('pageTitle').textContent = meta.title;
+    document.getElementById('pageSubtitle').textContent = meta.subtitle;
+  }
+
+  // Render konten lazy
+  if (pageId === 'pending')  renderPendingFull();
+  if (pageId === 'timeline') renderTimeline();
+  if (pageId === 'iku')      renderIKUFull();
+  if (pageId === 'arsip')    renderArsipTable();
+
+  // Tutup sidebar mobile
+  document.getElementById('app').classList.remove('mobile-open');
+  // Scroll ke atas
+  document.getElementById('main').scrollTop = 0;
+}
+
+// ============ INIT ============
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Set tanggal di header
+  const now = new Date();
+  document.getElementById('headerDate').textContent = now.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+
+  // Render dashboard
+  renderPending('all');
+  renderIKU();
+  renderDeadlines();
+  renderDocuments();
+  renderCalendar();
+
+  // Navigasi sidebar
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = btn.dataset.page;
+      const ext  = btn.dataset.external;
+
+      // Kalau ada link external (tools), buka di dalam iframe (tanpa tab baru)
+      if (ext) {
+        openToolEmbed(ext, btn.querySelector('.nav-label')?.textContent || 'Tool');
+        return;
+      }
+      if (page) navigateTo(page);
+    });
+  });
+
+  // Link dalam konten ber-data-nav
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.preventDefault();
+      navigateTo(el.dataset.nav);
+    });
+  });
+
+  // Tabs pending matters
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderPending(tab.dataset.filter);
+    });
+  });
+
+  // Toggle sidebar
+  document.getElementById('btnToggle').addEventListener('click', () => {
+    const app = document.getElementById('app');
+    if (window.innerWidth <= 900) {
+      app.classList.toggle('mobile-open');
+    } else {
+      app.classList.toggle('collapsed');
+    }
+  });
+
+  // Tutup sidebar mobile bila klik overlay
+  document.getElementById('app').addEventListener('click', e => {
+    const app = document.getElementById('app');
+    if (app.classList.contains('mobile-open') && e.target === app) {
+      app.classList.remove('mobile-open');
+    }
+  });
+
+  // Kalender navigasi
+  const calPrevBtn = document.getElementById('calPrev');
+  const calNextBtn = document.getElementById('calNext');
+  if (calPrevBtn) calPrevBtn.addEventListener('click', () => {
+    calState.month--;
+    if (calState.month < 0) { calState.month = 11; calState.year--; }
+    renderCalendar();
+  });
+  if (calNextBtn) calNextBtn.addEventListener('click', () => {
+    calState.month++;
+    if (calState.month > 11) { calState.month = 0; calState.year++; }
+    renderCalendar();
+  });
+
+  console.log('%c🍜 TORING siap disajikan!', 'font-size:14px;color:#C0392B;font-weight:700');
+});
+</script>
+</body>
+</html>
