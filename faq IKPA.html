@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FAQ IKPA — Indikator Kinerja Pelaksanaan Anggaran</title>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#080c14;--surf:#0d1525;--surf2:#060a11;--bdr:#141e35;--bdr2:#1e2a45;--tx:#dde4f0;--tx2:#8a9fc0;--tx3:#2d4070;--acc:#2563eb;--acc-l:#1a2a50;--acc-t:#6ba3f7;--gbg:#040e06;--gbdr:#145228;--gtx:#4ade80;--gtx2:#86efac;--red-bg:#180808;}
+[data-theme=light]{--bg:#f0f4f8;--surf:#ffffff;--surf2:#f8fafc;--bdr:#e2e8f0;--bdr2:#cbd5e1;--tx:#1e293b;--tx2:#475569;--tx3:#94a3b8;--acc:#2563eb;--acc-l:#dbeafe;--acc-t:#1d4ed8;--gbg:#f0fdf4;--gbdr:#86efac;--gtx:#16a34a;--gtx2:#15803d;--red-bg:#fef2f2;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:4px;}
+select option{background:var(--surf);color:var(--tx);}
+input,select,textarea,button{font-family:inherit;}
+input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;filter:invert(0.5);}
+textarea{resize:vertical;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fu{animation:fadeUp .2s ease;}
+@media print{.no-print{display:none!important;}body{background:#fff;color:#000;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>window.SATKER_DB=[];</script>
+<script src="satker_db.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+const MOS=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+const IND=[
+  {id:"revisi-dipa",no:1,icon:"📋",label:"Revisi DIPA",bobot:"10%"},
+  {id:"deviasi-rpd",no:2,icon:"📊",label:"Deviasi Rencana Penarikan Dana",bobot:"15%"},
+  {id:"penyerapan",no:3,icon:"💰",label:"Penyerapan Anggaran",bobot:"20%"},
+  {id:"belanja-kontraktual",no:4,icon:"📝",label:"Belanja Kontraktual",bobot:"10%"},
+  {id:"penyelesaian-tagihan",no:5,icon:"🧾",label:"Penyelesaian Tagihan",bobot:"10%"},
+  {id:"up-tup",no:6,icon:"🏦",label:"Pengelolaan UP dan TUP",bobot:"10%"},
+  {id:"dispensasi-spm",no:7,icon:"⚠️",label:"Dispensasi SPM",bobot:"Pengurang"},
+  {id:"capaian-output",no:8,icon:"🎯",label:"Capaian Output",bobot:"25%"},
+];
+const GROUPS=[
+  {label:"Kualitas Perencanaan",ids:["revisi-dipa","deviasi-rpd"]},
+  {label:"Kualitas Implementasi",ids:["penyerapan","belanja-kontraktual","penyelesaian-tagihan","up-tup","dispensasi-spm"]},
+  {label:"Kualitas Hasil",ids:["capaian-output"]},
+];
+const INIT_FAQ={
+  "revisi-dipa":[
+    {id:"rd1",q:"Apa yang dimaksud dengan Revisi DIPA?",a:"Revisi DIPA adalah perubahan terhadap Daftar Isian Pelaksanaan Anggaran (DIPA) yang meliputi perubahan rincian anggaran, perubahan pagu anggaran, maupun perubahan halaman III DIPA.\n\nRevisi DIPA menjadi salah satu indikator IKPA karena frekuensi revisi yang tinggi mencerminkan kurangnya kualitas perencanaan anggaran. Bobot indikator ini adalah 10% dari total nilai IKPA."},
+    {id:"rd2",q:"Bagaimana pengaruh Revisi DIPA terhadap nilai IKPA?",a:"Semakin sering satker melakukan revisi DIPA, semakin rendah nilainya pada indikator ini. Revisi yang minimal mencerminkan perencanaan yang matang dan berkualitas."},
+    {id:"rd3",q:"Revisi DIPA apa saja yang tidak mempengaruhi nilai IKPA?",a:"Revisi DIPA yang bersifat administratif atau karena kebijakan pemerintah pusat umumnya memiliki perlakuan khusus dalam penilaian IKPA.\n\nKonsultasikan dengan KPPN setempat untuk mendapatkan informasi yang akurat sesuai ketentuan berlaku."},
+  ],
+  "deviasi-rpd":[
+    {id:"drpd1",q:"Apa itu Deviasi Rencana Penarikan Dana (RPD)?",a:"Deviasi RPD adalah selisih antara rencana penarikan dana (Halaman III DIPA) dengan realisasi penarikan dana yang sesungguhnya. Bobot 15% dalam IKPA."},
+    {id:"drpd2",q:"Bagaimana cara menghitung deviasi RPD?",a:"Deviasi RPD dihitung berdasarkan selisih absolut antara rencana dan realisasi penarikan dana, dibagi total pagu anggaran. Target deviasi yang ideal di bawah 10%."},
+    {id:"drpd3",q:"Apa yang harus dilakukan agar deviasi RPD rendah?",a:"• Susun Halaman III DIPA secara cermat dan realistis\n• Update rencana penarikan dana secara berkala\n• Koordinasikan dengan semua unit teknis\n• Monitor realisasi vs rencana setiap bulan"},
+  ],
+  "penyerapan":[
+    {id:"pa1",q:"Berapa target penyerapan anggaran yang ideal?",a:"Target penyerapan yang ideal adalah 95% atau lebih dari total pagu pada akhir tahun. Yang terpenting adalah kualitas penyerapan — diikuti capaian output sesuai target. Bobot 20%."},
+    {id:"pa2",q:"Apa penyebab rendahnya penyerapan anggaran?",a:"• Proses pengadaan yang terlambat\n• Dokumen persyaratan tidak lengkap\n• Keterlambatan penerbitan SK atau kontrak\n• Kurangnya koordinasi antar unit kerja"},
+    {id:"pa3",q:"Apakah penyerapan tinggi selalu berarti IKPA baik?",a:"Tidak selalu. Penyerapan tinggi harus diimbangi capaian output yang sesuai. IKPA mengukur kualitas pelaksanaan, bukan hanya kuantitas serapan."},
+  ],
+  "belanja-kontraktual":[
+    {id:"bk1",q:"Apa yang dimaksud dengan Belanja Kontraktual dalam IKPA?",a:"Belanja Kontraktual mengukur ketepatan waktu penyelesaian kontrak pengadaan barang/jasa. Kontrak yang selesai tepat waktu mencerminkan pengelolaan pengadaan yang baik. Bobot 10%."},
+    {id:"bk2",q:"Apa yang harus dilakukan jika kontrak tidak bisa selesai tepat waktu?",a:"• Segera koordinasikan dengan pihak rekanan\n• Pertimbangkan addendum kontrak jika memenuhi syarat\n• Dokumentasikan alasan keterlambatan\n• Hindari penumpukan pembayaran di akhir tahun"},
+    {id:"bk3",q:"Apa yang dimaksud dengan kontrak kritis?",a:"Kontrak kritis adalah kontrak yang berpotensi tidak dapat diselesaikan sesuai waktu yang diperjanjikan. Harus segera diidentifikasi dan ditangani dengan langkah percepatan atau addendum."},
+  ],
+  "penyelesaian-tagihan":[
+    {id:"pt1",q:"Berapa batas waktu penyelesaian tagihan dalam IKPA?",a:"Penerbitan SPM harus dilakukan maksimal 17 hari kerja setelah dokumen tagihan lengkap dan benar. Keterlambatan akan mempengaruhi nilai indikator ini (bobot 10%)."},
+    {id:"pt2",q:"Apa saja dokumen tagihan yang harus dilengkapi?",a:"• Kuitansi/faktur dari rekanan\n• Berita acara serah terima (BAST)\n• Faktur pajak (jika ada)\n• Surat pernyataan tanggung jawab belanja\n• Dokumen pendukung sesuai jenis belanja"},
+    {id:"pt3",q:"Bagaimana cara meningkatkan nilai indikator Penyelesaian Tagihan?",a:"• Buat SOP internal untuk penyelesaian tagihan\n• Tetapkan tenggat waktu di setiap tahap\n• Monitor progres secara rutin\n• Koordinasikan dengan rekanan agar dokumen diajukan lengkap"},
+  ],
+  "up-tup":[
+    {id:"ut1",q:"Apa itu UP dan TUP?",a:"Uang Persediaan (UP) adalah uang muka kerja untuk bendahara pengeluaran membiayai kegiatan operasional yang tidak bisa melalui mekanisme LS. TUP adalah tambahan UP ketika UP tidak mencukupi."},
+    {id:"ut2",q:"Bagaimana pengelolaan UP/TUP yang baik?",a:"• Penggunaan UP sesuai peruntukan\n• Pertanggungjawaban tepat waktu (maks. 2 bulan)\n• Tidak menumpuk saldo UP di akhir tahun\n• Segera kembalikan sisa TUP yang tidak terpakai"},
+    {id:"ut3",q:"Apa konsekuensi jika UP tidak dipertanggungjawabkan tepat waktu?",a:"Mempengaruhi nilai IKPA indikator Pengelolaan UP dan TUP (bobot 10%). KPPN dapat meminta UP dikembalikan atau memblokir pengajuan GUP berikutnya."},
+  ],
+  "dispensasi-spm":[
+    {id:"ds1",q:"Apa itu Dispensasi SPM?",a:"Dispensasi SPM adalah izin khusus untuk mengajukan SPM setelah batas waktu yang ditentukan. Bersifat pengecualian dan setiap penggunaannya mengurangi nilai total IKPA satker secara langsung."},
+    {id:"ds2",q:"Bagaimana cara menghindari Dispensasi SPM?",a:"• Proses semua tagihan jauh sebelum akhir tahun\n• Percepat proses verifikasi dokumen\n• Koordinasikan dengan rekanan agar faktur tepat waktu\n• Buat monitoring rutin setiap bulan"},
+    {id:"ds3",q:"Seberapa besar pengaruh Dispensasi SPM terhadap nilai IKPA?",a:"Dispensasi SPM sebagai pengurang nilai IKPA (bukan berbobot persentase). Setiap penggunaan memotong langsung nilai total IKPA dari 7 indikator lainnya."},
+  ],
+  "capaian-output":[
+    {id:"co1",q:"Bagaimana cara mengisi realisasi Capaian Output?",a:"Realisasi Capaian Output diisi melalui aplikasi MyIntress. Pastikan data diinput secara berkala dan akurat sesuai realisasi fisik. Koordinasikan dengan penanggung jawab output di masing-masing unit."},
+    {id:"co2",q:"Apa yang dimaksud dengan Open Period Capaian Output?",a:"Open Period adalah pembukaan kembali periode pengisian capaian output yang sudah ditutup. Diperlukan ketika satker perlu memperbaiki/melengkapi data. Pembukaan dilakukan Tim Teknis atas permohonan satker."},
+    {id:"co3",q:"Bagaimana cara mengajukan permohonan Open Period?",a:"Satker dapat mengajukan open period melalui tab 'Open Period' pada indikator Capaian Output di aplikasi ini. Sertakan: kode satker, periode yang dibuka, dan rentang tanggal. Tim teknis akan memproses dan notifikasi tersedia setelah dibuka."},
+    {id:"co4",q:"Berapa bobot Capaian Output dalam IKPA?",a:"Capaian Output memiliki bobot tertinggi dalam IKPA yaitu 25%. Ini mencerminkan bahwa kualitas hasil pelaksanaan anggaran menjadi komponen terpenting dalam penilaian kinerja."},
+  ],
+};
+
+// ── HELPERS ──────────────────────────────────────────
+let _sMap=null;
+function getSM(){if(!_sMap&&window.SATKER_DB?.length){_sMap=new Map();window.SATKER_DB.forEach(r=>_sMap.set(r[0],r));}return _sMap;}
+function lookupSatker(k){const m=getSM();if(!m)return null;return m.get(String(k).trim().padStart(6,'0'))||null;}
+function fmtDate(s){if(!s)return'';const[y,mo,d]=s.split('-');return`${parseInt(d)} ${MOS[parseInt(mo)-1]} ${y}`;}
+function fmtDateShort(s){if(!s)return'';const[y,mo,d]=s.split('-');return`${d}/${mo}/${y}`;}
+function todayStr(){return new Date().toISOString().split('T')[0];}
+function isActive(op){return op.tgl_akhir>=todayStr();}
+function lsGet(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function validDates(mulai,akhir){return mulai&&akhir&&akhir>mulai;}
+
+function genNotifR(op){
+  return`Dapat kami sampaikan bahwa saat ini sedang dilakukan proses open period kembali atas pengisian realisasi capaian output satker ${op.kode_satker} periode ${op.periode_bulan} yang dibuka s.d ${fmtDate(op.tgl_akhir)} oleh Tim Teknis aplikasi. Harap menunggu dan selalu melakukan pengecekan secara berkala pada aplikasi MyIntress berkaitan dengan status pembukaan periode capaian output.`;
+}
+function genNotifT(op){
+  return`Berdasarkan hasil konfirmasi ke tim teknis, saat ini sedang dilakukan proses pembukaan dispensasi pengisian target Satker ${op.kode_satker} di SAKTI. Open periode target tersebut akan dibuka sampai tanggal ${fmtDate(op.tgl_akhir)}. Mohon kesediaannya untuk menunggu beberapa saat dan mengecek kembali terkait pembukaan untuk RO tersebut di Aplikasi SAKTI Saudara. Pengisian pada Aplikasi SAKTI dapat dilakukan dengan klik baris RO >> klik tombol Ubah >> Isi/sesuaikan TPCRO dan TRVRO pada kolom Form Input yang terbuka >> Simpan >> Kirim.`;
+}
+function genNotif(op){return op.type==='target'?genNotifT(op):genNotifR(op);}
+
+function printFAQ(faq,topicId){
+  const topics=topicId?[IND.find(i=>i.id===topicId)]:IND;
+  let h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>FAQ IKPA</title><style>
+  body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.6;margin:30px;color:#1e293b}
+  h1{color:#1d4ed8;font-size:16pt;margin-bottom:4px} .sub{color:#64748b;font-size:9pt;border-bottom:2px solid #1d4ed8;padding-bottom:8px;margin-bottom:20px}
+  h2{color:#1e3a8a;font-size:12pt;margin:18px 0 8px;padding:6px 10px;background:#eff6ff;border-left:4px solid #1d4ed8}
+  .bw{font-size:9pt;color:#64748b;font-weight:normal;margin-left:6px} .qt{font-weight:bold;margin:10px 0 4px}
+  .qa{color:#374151;white-space:pre-line;margin-left:14px;margin-bottom:10px}
+  .ft{margin-top:40px;font-size:8pt;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;text-align:center}
+  .np{text-align:center;margin:20px} @media print{.np{display:none}}
+  </style></head><body>`;
+  h+=`<h1>FAQ IKPA — Indikator Kinerja Pelaksanaan Anggaran</h1>`;
+  h+=`<div class="sub">DJPb Kementerian Keuangan · ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}</div>`;
+  topics.forEach(t=>{const qs=faq[t.id]||[];if(!qs.length)return;
+    h+=`<h2>${t.icon} ${t.no}. ${t.label}<span class="bw">(Bobot: ${t.bobot})</span></h2>`;
+    qs.forEach((q,i)=>{h+=`<div class="qt">${i+1}. ${q.q}</div><div class="qa">${q.a.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`;});
+  });
+  h+=`<div class="ft">FAQ IKPA · ${new Date().toISOString()}</div>`;
+  h+=`<div class="np"><button onclick="window.print()" style="padding:10px 24px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">🖨️ Print / Simpan PDF</button></div>`;
+  h+=`</body></html>`;
+  // Use hidden iframe — avoids popup blocker entirely
+  const old=document.getElementById('_pf');if(old)document.body.removeChild(old);
+  const fr=document.createElement('iframe');
+  fr.id='_pf';
+  fr.style.cssText='position:fixed;top:-9999px;left:-9999px;width:900px;height:600px;border:none;visibility:hidden;';
+  document.body.appendChild(fr);
+  const doc=fr.contentDocument||fr.contentWindow.document;
+  doc.open();doc.write(h);doc.close();
+  setTimeout(()=>{
+    fr.style.visibility='visible';
+    fr.contentWindow.focus();
+    fr.contentWindow.print();
+    setTimeout(()=>{if(document.body.contains(fr))document.body.removeChild(fr);},2000);
+  },400);
+}
+
+function exportXL(ops,type,filterAdmin){
+  // Filter by type, then by admin if specified (Fix #3: cluster by admin)
+  const rows=ops.filter(o=>o.type===type&&(!filterAdmin||o.admin_name===filterAdmin));
+  if(rows.length===0){alert(`Tidak ada data ${type} ${filterAdmin?'untuk '+filterAdmin:''}yang tersimpan.`);return;}
+  const now=new Date();const ts=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+' WIB';
+  const adminTag=filterAdmin?` - ${filterAdmin}`:'';
+  let aoa,sn,fn;
+  if(type==='realisasi'){
+    aoa=[[`OPEN PERIOD REALISASI CAPAIAN OUTPUT (per ${ts})${adminTag}`],
+      ['Kanwil DJPB','KPPN','Kode Satker','Nama Satker','K/L','Periode dari','s.d','Periode s.d','Tahun Anggaran','Tanggal Mulai','Tanggal Akhir','Admin'],
+      ...rows.map(o=>[o.nm_kanwil||'',o.nm_kppn||'',o.kode_satker,o.nm_satker||'',o.kl||'',o.periode_from||'','s.d',o.periode_to||'',o.tahun||'',fmtDateShort(o.tgl_mulai),fmtDateShort(o.tgl_akhir),o.admin_name||''])];
+    sn='Realisasi Caput';
+    fn=`rekap_realisasi${filterAdmin?'_'+filterAdmin.replace(/\s/g,'_'):''}_${now.toISOString().split('T')[0]}.xlsx`;
+  }else{
+    aoa=[[`DISPENSASI TARGET OUTPUT (per ${ts})${adminTag}`],
+      ['Tahun Anggaran','Kode Satker','Nama Satker','K/L','Kode Program','Kode Kegiatan','Kode KRO','Kode RO','Periode Awal Dibuka','Tanggal Mulai','Tanggal Akhir','Admin'],
+      ...rows.map(o=>[o.tahun_anggaran||'',o.kode_satker,o.nm_satker||'',o.kl||'',o.kd_program||'',o.kd_kegiatan||'',o.kd_kro||'',o.kd_ro||'',o.periode_awal||'',fmtDateShort(o.tgl_mulai),fmtDateShort(o.tgl_akhir),o.admin_name||''])];
+    sn='Dispensasi Target Caput';
+    fn=`rekap_target${filterAdmin?'_'+filterAdmin.replace(/\s/g,'_'):''}_${now.toISOString().split('T')[0]}.xlsx`;
+  }
+  const ws=XLSX.utils.aoa_to_sheet(aoa);const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sn);XLSX.writeFile(wb,fn);
+}
+
+function parseXLDate(v){
+  if(!v)return'';
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;}
+  const s=String(v).trim();
+  const m1=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m1)return`${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  return s;
+}
+
+function parseXLUpload(file,type,adminName){
+  return new Promise((res,rej)=>{
+    const rd=new FileReader();
+    rd.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        const recs=[];
+        rows.slice(2).forEach(r=>{
+          if(type==='realisasi'){
+            const kode=String(r[3]||'').trim();if(!kode)return;
+            const si=lookupSatker(kode)||[];const pf=String(r[4]||'').trim(),pt=String(r[6]||'').trim();
+            recs.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),type:'realisasi',
+              kode_satker:kode.padStart(6,'0'),nm_satker:si[1]||'',kl:si[2]||'',
+              kd_kppn:si[3]||String(r[1]||'').trim(),nm_kppn:si[4]||'',nm_kanwil:si[5]||String(r[0]||'').trim(),
+              periode_from:pf,periode_to:pt,
+              periode_bulan:pf&&pt?(pf===pt?`${pf} ${r[7]||''}`:`${pf} s.d ${pt} ${r[7]||''}`):'-',
+              tahun:String(r[7]||'2026').trim(),tgl_mulai:parseXLDate(r[8]),tgl_akhir:parseXLDate(r[9]),
+              admin_name:adminName,created_at:new Date().toISOString()});
+          }else{
+            const kode=String(r[1]||'').trim();if(!kode)return;
+            const si=lookupSatker(kode)||[];
+            recs.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),type:'target',
+              tahun_anggaran:String(r[0]||'2026').trim(),kode_satker:kode.padStart(6,'0'),nm_satker:si[1]||'',kl:si[2]||'',
+              kd_program:String(r[2]||'').trim(),kd_kegiatan:String(r[3]||'').trim(),
+              kd_kro:String(r[4]||'').trim(),kd_ro:String(r[5]||'').trim(),
+              periode_awal:String(r[6]||'').trim(),tgl_mulai:parseXLDate(r[7]),tgl_akhir:parseXLDate(r[8]),
+              admin_name:adminName,created_at:new Date().toISOString()});
+          }
+        });res(recs);
+      }catch(e){rej(e);}
+    };rd.readAsArrayBuffer(file);
+  });
+}
+
+const initFR=()=>({kode:'',nm_satker:'',kl:'',kanwil:'',kd_kppn:'',nm_kppn:'',periode_from:'',periode_to:'',tahun:'2026',tgl_mulai:'',tgl_akhir:''});
+const initFT=()=>({tahun:'2026',kode:'',nm_satker:'',kl:'',kd_program:'',kd_kegiatan:'',kd_kro:'',kd_ro:'',periode_awal:'',tgl_mulai:'',tgl_akhir:''});
+
+const inp={width:'100%',background:'var(--surf)',border:'1px solid var(--bdr2)',borderRadius:6,padding:'7px 9px',color:'var(--tx)',fontSize:12,outline:'none'};
+const B=(bg,co,ex={})=>({padding:'5px 11px',borderRadius:6,border:'none',cursor:'pointer',fontSize:11.5,fontWeight:600,background:bg,color:co,...ex});
+const card={background:'var(--surf)',border:'1px solid var(--bdr2)',borderRadius:9,padding:13,marginBottom:9};
+
+// ══════════════════════════════════════════════════════
+function App(){
+  const [theme,setTheme]=useState(()=>lsGet('ik-theme','dark'));
+  const [faq,setFaq]=useState(()=>lsGet('ik-faq3',INIT_FAQ));
+  const [ops,setOps]=useState(()=>{const raw=lsGet('ik-ops3',[]);const t=todayStr();return raw.filter(o=>o.tgl_akhir>=t);});
+  const [admins,setAdmins]=useState(()=>lsGet('ik-admins',['Admin X','Admin Y','Admin Z']));
+  const [opAdmin,setOpAdmin]=useState('');
+  const [dlAdmin,setDlAdmin]=useState(''); // filter admin for excel download (Fix #3)
+  const [topic,setTopic]=useState(null);
+  const [qItem,setQItem]=useState(null);
+  const [tab,setTab]=useState('faq');
+  const [opType,setOpType]=useState('realisasi');
+  const [adminMode,setAdmin]=useState(false);
+  const [search,setSearch]=useState('');
+  const [showAdd,setShowAdd]=useState(false);
+  const [addTopic,setAddTopic]=useState('');
+  const [addQ,setAddQ]=useState('');
+  const [addA,setAddA]=useState('');
+  const [opSearch,setOpSearch]=useState('');
+  const [opState,setOpState]=useState('idle');
+  const [opRecord,setOpRecord]=useState(null);
+  const [opMulti,setOpMulti]=useState([]);
+  const [opForm,setOpForm]=useState(initFR());
+  const [opFormT,setOpFormT]=useState(initFT());
+  const [dateErr,setDateErr]=useState('');
+  const [copied,setCopied]=useState('');
+  const [upStatus,setUpStatus]=useState('');
+  const [newAdminName,setNewAdminName]=useState('');
+  const fileRef=useRef();
+  const [dbInfo]=useState(()=>window.SATKER_DB?.length?`DB: ${window.SATKER_DB.length.toLocaleString()} satker`:'⚠ satker_db.js tidak ditemukan');
+
+  useEffect(()=>{document.documentElement.setAttribute('data-theme',theme);lsSet('ik-theme',theme);},[theme]);
+  useEffect(()=>{
+    const t=todayStr();const valid=ops.filter(o=>o.tgl_akhir>=t);
+    if(valid.length!==ops.length)setOps(valid);else lsSet('ik-ops3',ops);
+  },[ops]);
+  useEffect(()=>{lsSet('ik-admins',admins);},[admins]);
+
+  const saveFaq=d=>{setFaq(d);lsSet('ik-faq3',d);};
+  const saveOps=d=>{setOps(d);lsSet('ik-ops3',d);};
+  const saveAdmins=d=>{setAdmins(d);};
+
+  function fillSatker(kode,isT){
+    const clean=kode.replace(/\D/g,'');
+    if(clean.length>=6){
+      const r=lookupSatker(clean);
+      if(!isT)setOpForm(f=>({...f,kode:clean,nm_satker:r?.[1]||'',kl:r?.[2]||'',kd_kppn:r?.[3]||'',nm_kppn:r?.[4]||'',kanwil:r?.[5]||''}));
+      else setOpFormT(f=>({...f,kode:clean,nm_satker:r?.[1]||'',kl:r?.[2]||''}));
+    }else{
+      if(!isT)setOpForm(f=>({...f,kode:clean}));
+      else setOpFormT(f=>({...f,kode:clean}));
+    }
+  }
+
+  function doOpSearch(){
+    const k=opSearch.trim().padStart(6,'0');
+    if(!k||k==='000000')return;
+    const t=todayStr();
+    const active=ops.filter(o=>o.kode_satker===k&&o.type===opType&&o.tgl_akhir>=t);
+    if(active.length>0){setOpRecord(active[0]);setOpMulti(active);setOpState(active.length>1?'multi':'found');}
+    else{
+      const r=lookupSatker(k);
+      if(opType==='realisasi')setOpForm({...initFR(),kode:k,nm_satker:r?.[1]||'',kl:r?.[2]||'',kd_kppn:r?.[3]||'',nm_kppn:r?.[4]||'',kanwil:r?.[5]||''});
+      else setOpFormT({...initFT(),kode:k,nm_satker:r?.[1]||'',kl:r?.[2]||''});
+      setOpRecord(null);setOpState('new');setDateErr('');
+    }
+  }
+
+  function checkDates(mulai,akhir){
+    if(mulai&&akhir&&akhir<=mulai){setDateErr('⛔ Tanggal ditutup harus lebih besar dari tanggal mulai.');}
+    else setDateErr('');
+  }
+
+  function doSaveR(){
+    const f=opForm;
+    if(!f.kode||!f.tgl_mulai||!f.tgl_akhir||!f.periode_from||!f.periode_to)return;
+    if(!validDates(f.tgl_mulai,f.tgl_akhir)){setDateErr('⛔ Tanggal ditutup harus lebih besar dari tanggal mulai.');return;}
+    const pb=f.periode_from===f.periode_to?`${f.periode_from} ${f.tahun}`:`${f.periode_from} s.d ${f.periode_to} ${f.tahun}`;
+    const rec={id:Date.now()+'',type:'realisasi',kode_satker:f.kode.padStart(6,'0'),nm_satker:f.nm_satker,kl:f.kl,
+      kd_kppn:f.kd_kppn,nm_kppn:f.nm_kppn,nm_kanwil:f.kanwil,
+      periode_from:f.periode_from,periode_to:f.periode_to,periode_bulan:pb,tahun:f.tahun,
+      tgl_mulai:f.tgl_mulai,tgl_akhir:f.tgl_akhir,admin_name:opAdmin,created_at:new Date().toISOString()};
+    const next=[...ops,rec];saveOps(next);setOpRecord(rec);setOpState('saved');setOpForm(initFR());setDateErr('');
+  }
+
+  function doSaveT(){
+    const f=opFormT;
+    // Fix #4: periode_awal also required now
+    if(!f.kode||!f.tgl_mulai||!f.tgl_akhir||!f.kd_program||!f.kd_kegiatan||!f.kd_kro||!f.kd_ro||!f.periode_awal)return;
+    if(!validDates(f.tgl_mulai,f.tgl_akhir)){setDateErr('⛔ Tanggal ditutup harus lebih besar dari tanggal mulai.');return;}
+    const rec={id:Date.now()+'',type:'target',tahun_anggaran:f.tahun,kode_satker:f.kode.padStart(6,'0'),
+      nm_satker:f.nm_satker,kl:f.kl,kd_program:f.kd_program,kd_kegiatan:f.kd_kegiatan,
+      kd_kro:f.kd_kro,kd_ro:f.kd_ro,periode_awal:f.periode_awal,
+      tgl_mulai:f.tgl_mulai,tgl_akhir:f.tgl_akhir,admin_name:opAdmin,created_at:new Date().toISOString()};
+    const next=[...ops,rec];saveOps(next);setOpRecord(rec);setOpState('saved');setOpFormT(initFT());setDateErr('');
+  }
+
+  function resetOp(){setOpState('idle');setOpRecord(null);setOpMulti([]);setOpSearch('');setDateErr('');}
+  function delOp(id){const next=ops.filter(o=>o.id!==id);saveOps(next);if(opRecord?.id===id)resetOp();setOpMulti(prev=>prev.filter(o=>o.id!==id));}
+
+  function copy(text,k){
+    (navigator.clipboard?navigator.clipboard.writeText(text):new Promise(r=>{const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);r();}))
+    .then(()=>{setCopied(k);setTimeout(()=>setCopied(''),2500);});
+  }
+
+  async function handleUpload(e){
+    const file=e.target.files?.[0];if(!file)return;
+    setUpStatus('⏳ Memproses...');
+    try{
+      // Pass empty string so imported records have no admin_name (Fix #2)
+      const recs=await parseXLUpload(file,opType,'');
+      // Use functional update to avoid stale closure on ops (Fix #2)
+      setOps(prev=>{
+        const next=[...prev,...recs];
+        lsSet('ik-ops3',next);
+        return next;
+      });
+      setUpStatus(`✅ ${recs.length} data berhasil diimpor!`);
+    }catch(err){
+      console.error(err);
+      setUpStatus('❌ Gagal membaca file. Pastikan format sesuai.');
+    }
+    e.target.value='';setTimeout(()=>setUpStatus(''),5000);
+  }
+
+  function handleAddFaq(){
+    if(!addTopic||!addQ.trim()||!addA.trim())return;
+    const item={id:Date.now()+'',q:addQ.trim(),a:addA.trim()};
+    saveFaq({...faq,[addTopic]:[...(faq[addTopic]||[]),item]});
+    setShowAdd(false);setAddQ('');setAddA('');setAddTopic('');
+  }
+  function delFaq(tid,qid){saveFaq({...faq,[tid]:faq[tid].filter(q=>q.id!==qid)});if(qItem?.id===qid)setQItem(null);}
+
+  const srch=search.trim();
+  const searchRes=srch?IND.flatMap(ind=>(faq[ind.id]||[]).map(q=>({...q,ind}))).filter(x=>x.q.toLowerCase().includes(srch.toLowerCase())||x.a.toLowerCase().includes(srch.toLowerCase())):[];
+  const curQs=topic?(faq[topic.id]||[]):[];
+  const filteredOps=ops.filter(o=>o.type===opType&&isActive(o));
+
+  function previewNotifR(){
+    const f=opForm;if(!f.kode||!f.periode_from||!f.periode_to||!f.tgl_akhir)return null;
+    const pb=f.periode_from===f.periode_to?`${f.periode_from} ${f.tahun}`:`${f.periode_from} s.d ${f.periode_to} ${f.tahun}`;
+    return genNotifR({kode_satker:f.kode.padStart(6,'0'),periode_bulan:pb,tgl_akhir:f.tgl_akhir});
+  }
+  function previewNotifT(){
+    const f=opFormT;if(!f.kode||!f.tgl_akhir)return null;
+    return genNotifT({kode_satker:f.kode.padStart(6,'0'),tgl_akhir:f.tgl_akhir});
+  }
+
+  // ── Result block (found/saved) ──────────────
+  function ResultBlock({rec,savedMode}){
+    const notif=genNotif(rec);const ck='c'+rec.id;
+    const rows=rec.type==='realisasi'
+      ?[['Kode Satker',rec.kode_satker],['K/L',rec.kl||'-'],['Periode',rec.periode_bulan||'-'],['Tgl Mulai',fmtDate(rec.tgl_mulai)],['Dibuka s.d',fmtDate(rec.tgl_akhir)],['Admin',rec.admin_name||'-']]
+      :[['Kode Satker',rec.kode_satker],['Tahun',rec.tahun_anggaran||'-'],['Program/Keg',`${rec.kd_program||'-'}/${rec.kd_kegiatan||'-'}`],['KRO/RO',`${rec.kd_kro||'-'}/${rec.kd_ro||'-'}`],['Periode Awal',rec.periode_awal||'-'],['Tgl Mulai',fmtDate(rec.tgl_mulai)],['Dibuka s.d',fmtDate(rec.tgl_akhir)],['Admin',rec.admin_name||'-']];
+    return(
+      <div style={{background:'var(--gbg)',border:'1px solid var(--gbdr)',borderRadius:9,padding:13,marginBottom:9}}>
+        <div style={{fontWeight:700,fontSize:12,color:'var(--gtx)',marginBottom:9,display:'flex',alignItems:'center',gap:8}}>
+          {savedMode?'✅ Berhasil Direkam!':'✅ Sudah Tercatat'}
+          {rec.admin_name&&<span style={{fontWeight:400,fontSize:10.5,color:'var(--gtx2)',background:'var(--bg)',borderRadius:4,padding:'1px 6px',border:'1px solid var(--gbdr)'}}>oleh: {rec.admin_name}</span>}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
+          {rows.map(([k,v])=>(
+            <div key={k} style={{background:'var(--bg)',borderRadius:5,padding:'6px 8px',border:'1px solid var(--gbdr)'}}>
+              <div style={{fontSize:9,color:'var(--gtx)',fontWeight:700,marginBottom:1,textTransform:'uppercase'}}>{k}</div>
+              <div style={{fontSize:11,color:'var(--gtx2)',fontWeight:600,wordBreak:'break-all'}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{fontSize:9,fontWeight:700,letterSpacing:1,textTransform:'uppercase',color:'var(--gtx)',marginBottom:5}}>Notifikasi untuk Satker</div>
+        <div style={{background:'var(--bg)',border:'1px solid var(--gbdr)',borderRadius:6,padding:9,fontSize:12,color:'var(--gtx2)',lineHeight:1.75,marginBottom:9,fontStyle:'italic'}}>{notif}</div>
+        <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+          <button onClick={()=>copy(notif,ck)} style={B('var(--acc-l)','var(--acc-t)',{border:'1px solid var(--acc)'})}>
+            {copied===ck?'✓ Disalin!':'📋 Salin Notifikasi'}
+          </button>
+          {adminMode&&<button onClick={()=>delOp(rec.id)} style={B('var(--red-bg)','#f87171',{border:'1px solid #4a1515'})}>🗑 Hapus</button>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Admin dropdown (for open period forms) ──
+  function AdminSelect(){
+    return(
+      <div style={{marginBottom:8}}>
+        <label style={{fontSize:10,color:'var(--tx3)',display:'block',marginBottom:3}}>Diinput oleh *</label>
+        <select value={opAdmin} onChange={e=>setOpAdmin(e.target.value)} style={{...inp,color:opAdmin?'var(--tx)':'var(--tx3)'}}>
+          <option value="">-- Pilih Admin --</option>
+          {admins.map(a=><option key={a} value={a}>{a}</option>)}
+        </select>
+      </div>
+    );
+  }
+
+  const TS={
+    root:{display:'flex',flexDirection:'column',height:'100vh',background:'var(--bg)',color:'var(--tx)',overflow:'hidden',position:'relative'},
+    hd:{display:'flex',alignItems:'center',gap:9,padding:'9px 15px',background:'var(--surf2)',borderBottom:'1px solid var(--bdr)',flexShrink:0},
+    lay:{display:'grid',gridTemplateColumns:'190px 1fr 1fr',flex:1,minHeight:0,overflow:'hidden'},
+    nav:{borderRight:'1px solid var(--bdr)',overflowY:'auto',background:'var(--surf2)'},
+    mp:{borderRight:'1px solid var(--bdr)',display:'flex',flexDirection:'column',overflow:'hidden'},
+    mph:{padding:'10px 13px',borderBottom:'1px solid var(--bdr)',flexShrink:0},
+    mps:{overflowY:'auto',flex:1},
+    rp:{overflowY:'auto',padding:'17px 19px',display:'flex',flexDirection:'column'},
+    qi:{display:'flex',alignItems:'flex-start',gap:7,padding:'8px 13px',cursor:'pointer',borderLeft:'3px solid transparent',transition:'all .15s'},
+    qia:{background:'var(--acc-l)',borderLeftColor:'var(--acc)'},
+    gl:{fontSize:9,fontWeight:700,letterSpacing:1.6,textTransform:'uppercase',color:'var(--tx3)',padding:'9px 11px 2px',marginTop:2},
+  };
+
+  return(
+    <div style={TS.root}>
+      {/* HEADER */}
+      <div style={TS.hd} className="no-print">
+        <div style={{width:32,height:32,background:'linear-gradient(135deg,#1a40b0,#2563eb)',borderRadius:8,display:'grid',placeItems:'center',fontSize:15,flexShrink:0}}>📊</div>
+        <div>
+          <div style={{fontWeight:700,fontSize:13,color:'var(--tx)'}}>FAQ IKPA</div>
+          <div style={{fontSize:9,color:'var(--tx3)'}}>Indikator Kinerja Pelaksanaan Anggaran · DJPb</div>
+        </div>
+        <div style={{marginLeft:'auto',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+          <span style={{fontSize:9.5,color:'var(--tx3)'}}>{dbInfo}</span>
+          <button onClick={()=>printFAQ(faq,null)} style={B('var(--surf)','var(--tx2)',{border:'1px solid var(--bdr)'})} title="Cetak semua FAQ">🖨️ PDF IKPA</button>
+          {/* Admin filter for XL download — Fix #3 */}
+          <div style={{display:'flex',alignItems:'center',gap:4,background:'var(--surf)',border:'1px solid var(--bdr2)',borderRadius:6,padding:'2px 6px'}}>
+            <span style={{fontSize:9,color:'var(--tx3)',flexShrink:0}}>Filter XL:</span>
+            <select value={dlAdmin} onChange={e=>setDlAdmin(e.target.value)} style={{background:'transparent',border:'none',color:'var(--tx)',fontSize:11,outline:'none',cursor:'pointer'}}>
+              <option value="">Semua Admin</option>
+              {admins.map(a=><option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <button onClick={()=>exportXL(ops,'realisasi',dlAdmin)} style={B('#0a2010','var(--gtx)',{border:'1px solid var(--gbdr)'})} title={`Unduh rekap realisasi${dlAdmin?' ('+dlAdmin+')':''}`}>⬇ XLS Realisasi</button>
+          <button onClick={()=>exportXL(ops,'target',dlAdmin)} style={B('#1a1200','#f59e0b',{border:'1px solid #7a4a00'})} title={`Unduh rekap target${dlAdmin?' ('+dlAdmin+')':''}`}>⬇ XLS Target</button>
+          {adminMode&&<button onClick={()=>{setShowAdd(true);setAddTopic(topic?.id||'');}} style={B('var(--acc-l)','var(--acc-t)',{border:'1px solid var(--acc)'})}>+ FAQ</button>}
+          <button onClick={()=>setAdmin(v=>!v)} style={B(adminMode?'#130f02':'var(--surf)',adminMode?'#f59e0b':'var(--tx3)',{border:`1px solid ${adminMode?'#d97706':'var(--bdr)'}`})}>
+            {adminMode?'🔓 Admin ON':'🔒 Admin'}
+          </button>
+          <button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} style={B('var(--surf)','var(--tx2)',{border:'1px solid var(--bdr)',fontSize:14,padding:'3px 8px'})}>
+            {theme==='dark'?'☀️':'🌙'}
+          </button>
+        </div>
+      </div>
+
+      {/* SEARCH */}
+      <div style={{display:'flex',alignItems:'center',gap:7,padding:'6px 15px',background:'var(--surf2)',borderBottom:'1px solid var(--bdr)',flexShrink:0}} className="no-print">
+        <div style={{position:'relative',flex:1,maxWidth:420}}>
+          <span style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',fontSize:12,opacity:.35,pointerEvents:'none'}}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari pertanyaan di semua indikator IKPA..."
+            style={{...inp,paddingLeft:26,maxWidth:'100%'}}/>
+        </div>
+        {search&&<button onClick={()=>setSearch('')} style={B('var(--surf)','var(--tx3)',{border:'1px solid var(--bdr)',padding:'4px 8px'})}>✕</button>}
+      </div>
+
+      {/* 3 COLUMNS */}
+      <div style={TS.lay}>
+
+        {/* SIDEBAR */}
+        <nav style={TS.nav} className="no-print">
+          {GROUPS.map(g=>(
+            <div key={g.label}>
+              <div style={TS.gl}>{g.label}</div>
+              {g.ids.map(id=>{
+                const ind=IND.find(i=>i.id===id);
+                const active=topic?.id===id&&!search;const isPen=ind.bobot==='Pengurang';
+                return(
+                  <button key={id} onClick={()=>{setTopic(ind);setQItem(null);setTab('faq');setSearch('');resetOp();}}
+                    style={{display:'flex',alignItems:'center',gap:6,width:'100%',padding:'7px 11px',background:active?'var(--acc-l)':'transparent',border:'none',borderLeft:`3px solid ${active?'var(--acc)':'transparent'}`,color:active?'var(--acc-t)':'var(--tx3)',fontSize:11,fontWeight:500,cursor:'pointer',textAlign:'left',lineHeight:1.3,transition:'all .15s'}}>
+                    <span style={{fontSize:12,flexShrink:0}}>{ind.icon}</span>
+                    <span style={{flex:1,fontSize:10.5}}>{ind.no}. {ind.label}</span>
+                    <span style={{fontSize:9.5,background:active?'var(--acc)':'var(--surf)',color:active?'#fff':isPen?'#f87171':'var(--tx3)',padding:'1px 5px',borderRadius:8,flexShrink:0}}>
+                      {isPen?'⚠':(faq[id]||[]).length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* MIDDLE PANEL */}
+        <div style={TS.mp}>
+          {/* Search results */}
+          {search&&(
+            <>
+              <div style={TS.mph}>
+                <div style={{fontWeight:600,fontSize:12,color:'var(--tx)'}}>🔍 Hasil Pencarian</div>
+                <div style={{fontSize:10.5,color:'var(--tx3)',marginTop:2}}>{searchRes.length} hasil untuk "{search}"</div>
+              </div>
+              <div style={TS.mps}>
+                {searchRes.length===0&&<div style={{padding:18,fontSize:11.5,color:'var(--tx3)',textAlign:'center'}}>Tidak ada hasil.</div>}
+                {searchRes.map(x=>(
+                  <div key={x.id} onClick={()=>{setQItem(x);setTopic(x.ind);}} style={{...TS.qi,...(qItem?.id===x.id?TS.qia:{})}}>
+                    <span style={{fontSize:11,marginTop:1,flexShrink:0}}>{x.ind.icon}</span>
+                    <div><div style={{fontSize:9.5,color:'var(--tx3)',marginBottom:1}}>{x.ind.label}</div>
+                    <div style={{fontSize:11.5,color:qItem?.id===x.id?'var(--acc-t)':'var(--tx2)',lineHeight:1.45}}>{x.q}</div></div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Topic panel */}
+          {!search&&topic&&(
+            <>
+              <div style={TS.mph}>
+                {/* Topic header with PDF button — fix #1 */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:12.5,color:'var(--tx)'}}>{topic.icon} {topic.label}</div>
+                    <div style={{fontSize:10,color:'var(--tx3)',marginTop:1}}>Bobot: <span style={{color:topic.bobot==='Pengurang'?'#f87171':'var(--acc-t)'}}>{topic.bobot}</span> · {curQs.length} pertanyaan</div>
+                  </div>
+                  {tab==='faq'&&<button onClick={()=>printFAQ(faq,topic.id)} style={B('var(--surf)','var(--tx3)',{border:'1px solid var(--bdr)',fontSize:10.5,padding:'4px 9px',flexShrink:0})} title="Unduh PDF indikator ini">⬇ PDF</button>}
+                </div>
+                {topic.id==='capaian-output'&&(
+                  <div style={{display:'flex',gap:2,marginTop:8,background:'var(--bg)',borderRadius:7,padding:3}}>
+                    {[{k:'faq',l:'📋 FAQ'},{k:'open-period',l:'🔓 Open Period'}].map(({k,l})=>(
+                      <button key={k} onClick={()=>{setTab(k);setQItem(null);}} style={{flex:1,padding:'4px 0',borderRadius:5,border:'none',background:tab===k?'var(--acc-l)':'transparent',color:tab===k?'var(--acc-t)':'var(--tx3)',fontSize:10.5,fontWeight:600,cursor:'pointer',transition:'all .15s'}}>{l}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={TS.mps}>
+                {/* FAQ list */}
+                {tab==='faq'&&(
+                  <>
+                    {curQs.map((q,i)=>(
+                      <div key={q.id} onClick={()=>setQItem(q)} style={{...TS.qi,...(qItem?.id===q.id?TS.qia:{})}}>
+                        <span style={{fontSize:10,color:qItem?.id===q.id?'var(--acc)':'var(--tx3)',fontFamily:'monospace',marginTop:2,flexShrink:0}}>{String(i+1).padStart(2,'0')}</span>
+                        <span style={{fontSize:11.5,color:qItem?.id===q.id?'var(--acc-t)':'var(--tx2)',lineHeight:1.45,flex:1}}>{q.q}</span>
+                        {adminMode&&<button onClick={e=>{e.stopPropagation();delFaq(topic.id,q.id);}} style={B('var(--red-bg)','#f87171',{border:'1px solid #4a1515',padding:'1px 5px',fontSize:9.5,flexShrink:0})}>✕</button>}
+                      </div>
+                    ))}
+                    {curQs.length===0&&<div style={{padding:18,fontSize:11.5,color:'var(--tx3)',textAlign:'center'}}>Belum ada pertanyaan.</div>}
+                  </>
+                )}
+
+                {/* Open Period panel */}
+                {tab==='open-period'&&(
+                  <div style={{padding:9,display:'flex',flexDirection:'column',gap:7}}>
+                    {/* Type toggle */}
+                    <div style={{display:'flex',gap:2,background:'var(--bg)',borderRadius:7,padding:3}}>
+                      {[{k:'realisasi',l:'📊 Realisasi'},{k:'target',l:'🎯 Target'}].map(({k,l})=>(
+                        <button key={k} onClick={()=>{setOpType(k);resetOp();}} style={{flex:1,padding:'5px 0',borderRadius:5,border:'none',background:opType===k?'var(--acc)':'transparent',color:opType===k?'#fff':'var(--tx3)',fontSize:10.5,fontWeight:600,cursor:'pointer',transition:'all .15s'}}>{l}</button>
+                      ))}
+                    </div>
+
+                    {/* Search satker */}
+                    <div style={card}>
+                      <div style={{fontSize:9.5,fontWeight:700,color:'var(--acc-t)',marginBottom:6,letterSpacing:.5}}>CEK / REKAM {opType==='realisasi'?'OPEN PERIOD REALISASI':'DISPENSASI TARGET'}</div>
+                      <div style={{display:'flex',gap:5}}>
+                        <input value={opSearch} onChange={e=>setOpSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doOpSearch()}
+                          placeholder="Kode satker (6 digit)..." style={{...inp,flex:1,fontSize:11}}/>
+                        <button onClick={doOpSearch} style={B('var(--acc)','#fff',{padding:'7px 10px'})}>Cek</button>
+                      </div>
+                    </div>
+
+                    {/* Upload Excel */}
+                    <div style={{...card,padding:'9px 11px'}}>
+                      <div style={{fontSize:9.5,fontWeight:700,color:'#f59e0b',marginBottom:5}}>📤 IMPORT EXCEL BULK</div>
+                      <input type="file" accept=".xlsx,.xls" ref={fileRef} onChange={handleUpload} style={{display:'none'}}/>
+                      <div style={{display:'flex',gap:5,alignItems:'center'}}>
+                        <button onClick={()=>fileRef.current.click()} style={B('var(--surf)','var(--tx2)',{border:'1px solid var(--bdr2)',fontSize:10.5})}>📂 Pilih File Excel</button>
+                        {upStatus&&<span style={{fontSize:10.5,color:upStatus.startsWith('✅')?'var(--gtx)':'#f87171'}}>{upStatus}</span>}
+                      </div>
+                    </div>
+
+                    {/* Manage admins (admin mode only) */}
+                    {adminMode&&(
+                      <div style={{...card,padding:'9px 11px'}}>
+                        <div style={{fontSize:9.5,fontWeight:700,color:'#f59e0b',marginBottom:6}}>👤 KELOLA DAFTAR ADMIN</div>
+                        {admins.map((a,i)=>(
+                          <div key={i} style={{display:'flex',gap:5,marginBottom:5}}>
+                            <input value={a} onChange={e=>{const n=[...admins];n[i]=e.target.value;saveAdmins(n);}} style={{...inp,flex:1,fontSize:11}}/>
+                            <button onClick={()=>saveAdmins(admins.filter((_,j)=>j!==i))} style={B('var(--red-bg)','#f87171',{border:'1px solid #4a1515',padding:'3px 7px'})}>✕</button>
+                          </div>
+                        ))}
+                        <div style={{display:'flex',gap:5,marginTop:2}}>
+                          <input value={newAdminName} onChange={e=>setNewAdminName(e.target.value)} placeholder="Nama admin baru..." style={{...inp,flex:1,fontSize:11}}/>
+                          <button onClick={()=>{if(newAdminName.trim()){saveAdmins([...admins,newAdminName.trim()]);setNewAdminName('');}}} style={B('var(--acc-l)','var(--acc-t)',{border:'1px solid var(--acc)',padding:'4px 8px',fontSize:11})}>+ Tambah</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Active records — compact single-line fix #4 */}
+                    {filteredOps.length>0&&(
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',color:'var(--tx3)',marginBottom:4}}>Aktif ({filteredOps.length})</div>
+                        {filteredOps.map(op=>(
+                          <div key={op.id} onClick={()=>{setOpSearch(op.kode_satker);setOpRecord(op);setOpMulti([op]);setOpState('found');}}
+                            style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',marginBottom:3,cursor:'pointer',background:opRecord?.id===op.id?'var(--acc-l)':'var(--surf)',border:`1px solid ${opRecord?.id===op.id?'var(--acc)':'var(--bdr2)'}`,borderRadius:7,transition:'all .15s'}}>
+                            <span style={{fontWeight:700,fontSize:11,color:'var(--acc-t)',flexShrink:0,minWidth:52}}>{op.kode_satker}</span>
+                            <span style={{fontSize:10,color:'var(--tx2)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{op.nm_satker?.slice(0,22)||'-'}</span>
+                            <span style={{fontSize:9.5,color:'var(--tx3)',flexShrink:0,whiteSpace:'nowrap'}}>
+                              {op.type==='realisasi'?`${op.periode_bulan||''}`:op.kd_ro?`RO:${op.kd_ro}`:''}
+                            </span>
+                            <span style={{fontSize:9.5,color:'var(--tx3)',flexShrink:0,whiteSpace:'nowrap'}}>s.d {fmtDateShort(op.tgl_akhir)}</span>
+                            {op.admin_name&&<span style={{fontSize:9,color:'var(--tx3)',background:'var(--bg)',borderRadius:4,padding:'1px 5px',flexShrink:0}}>{op.admin_name}</span>}
+                            {adminMode&&<button onClick={e=>{e.stopPropagation();delOp(op.id);}} style={B('var(--red-bg)','#f87171',{border:'1px solid #4a1515',padding:'1px 5px',fontSize:9,flexShrink:0})}>✕</button>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {!search&&!topic&&(
+            <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,color:'var(--tx3)',textAlign:'center',padding:20}}>
+              <div style={{fontSize:36}}>📊</div>
+              <div style={{fontSize:11.5}}>Pilih indikator IKPA dari panel kiri</div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div style={TS.rp}>
+          {/* FAQ Answer */}
+          {tab==='faq'&&qItem&&(
+            <div className="fu">
+              <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'var(--acc-l)',border:'1px solid var(--acc)',padding:'3px 10px',borderRadius:20,fontSize:10.5,color:'var(--acc-t)',fontWeight:600,marginBottom:12}}>
+                {topic?.icon} {topic?.label} · {topic?.bobot}
+              </div>
+              <h2 style={{fontSize:15,fontWeight:700,lineHeight:1.45,color:'var(--tx)',margin:'0 0 12px 0'}}>{qItem.q}</h2>
+              <div style={{height:1,background:`linear-gradient(90deg,var(--acc)33,transparent)`,marginBottom:14}}/>
+              <div style={{fontSize:13.5,lineHeight:1.9,color:'var(--tx2)',whiteSpace:'pre-line'}}>{qItem.a}</div>
+              <div style={{marginTop:20,paddingTop:11,borderTop:'1px solid var(--bdr)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                <span style={{fontSize:11,color:'var(--tx3)'}}>Apakah jawaban ini membantu?</span>
+                {['👍 Ya','👎 Tidak'].map(t=>(
+                  <button key={t} onClick={e=>{e.currentTarget.textContent='✓ Terima kasih!';e.currentTarget.disabled=true;}} style={B('var(--surf)','var(--tx3)',{border:'1px solid var(--bdr)',padding:'4px 10px'})}>{t}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab==='faq'&&!qItem&&(
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flex:1,gap:9,color:'var(--tx3)',textAlign:'center',minHeight:180}}>
+              <div style={{fontSize:40}}>💬</div>
+              <div style={{fontSize:12.5,fontWeight:600,color:'var(--tx2)'}}>Pilih Pertanyaan</div>
+              <div style={{fontSize:11,maxWidth:190,lineHeight:1.6}}>Klik pertanyaan di panel tengah untuk melihat jawaban</div>
+            </div>
+          )}
+
+          {/* Open Period Right Panel */}
+          {tab==='open-period'&&(
+            <div>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:14,fontWeight:700,color:'var(--tx)',marginBottom:3}}>
+                  {opType==='realisasi'?'📊 Open Period Realisasi':'🎯 Dispensasi Target'} Capaian Output
+                </div>
+                <div style={{fontSize:11,color:'var(--tx3)',lineHeight:1.6}}>
+                  {opType==='realisasi'?'Rekam & pantau pembukaan periode pengisian realisasi capaian output':'Rekam & pantau pembukaan dispensasi pengisian target capaian output'}
+                </div>
+              </div>
+
+              {opState==='idle'&&(
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'28px 0',gap:9,color:'var(--tx3)',textAlign:'center'}}>
+                  <div style={{fontSize:42}}>🔍</div>
+                  <div style={{fontSize:12,maxWidth:200,lineHeight:1.6}}>Masukkan kode satker di panel kiri, lalu klik Cek</div>
+                </div>
+              )}
+
+              {(opState==='found'||opState==='saved')&&opRecord&&<ResultBlock rec={opRecord} savedMode={opState==='saved'}/>}
+
+              {opState==='multi'&&opMulti.length>0&&(
+                <div>
+                  <div style={{fontWeight:700,fontSize:11.5,color:'#f59e0b',marginBottom:9}}>⚠️ Satker ini memiliki {opMulti.length} data aktif:</div>
+                  {opMulti.map(op=><ResultBlock key={op.id} rec={op} savedMode={false}/>)}
+                  <button onClick={()=>{const r=lookupSatker(opSearch.padStart(6,'0'));setOpState('new');setDateErr('');
+                    if(opType==='realisasi')setOpForm({...initFR(),kode:opSearch.padStart(6,'0'),nm_satker:r?.[1]||'',kl:r?.[2]||'',kd_kppn:r?.[3]||'',nm_kppn:r?.[4]||'',kanwil:r?.[5]||''});
+                    else setOpFormT({...initFT(),kode:opSearch.padStart(6,'0'),nm_satker:r?.[1]||'',kl:r?.[2]||'',tahun:'2026'});}}
+                    style={B('var(--acc)','#fff',{marginTop:4})}>+ Tambah Open Period Baru untuk Satker Ini</button>
+                </div>
+              )}
+
+              {/* ── FORM REALISASI ── */}
+              {opState==='new'&&opType==='realisasi'&&(
+                <div style={card}>
+                  <div style={{fontWeight:700,fontSize:12,color:'#f59e0b',marginBottom:12}}>📝 Rekam Open Period Realisasi</div>
+                  <AdminSelect/>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:7}}>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Kode Satker *</label>
+                      <input value={opForm.kode} onChange={e=>fillSatker(e.target.value,false)} style={inp}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>K/L</label>
+                      <input value={opForm.kl} onChange={e=>setOpForm(f=>({...f,kl:e.target.value}))} placeholder="auto dari DB" style={inp}/></div>
+                  </div>
+                  <div style={{marginBottom:7}}>
+                    <label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Nama Satker</label>
+                    <input value={opForm.nm_satker} onChange={e=>setOpForm(f=>({...f,nm_satker:e.target.value}))} placeholder="auto dari DB" style={inp}/>
+                    {opForm.kode.length>=6&&!lookupSatker(opForm.kode)&&opForm.kode!=='000000'&&<div style={{fontSize:9,color:'#f59e0b',marginTop:2}}>⚠ Satker baru, belum terupdate dalam database</div>}
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:7}}>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Kanwil</label>
+                      <input value={opForm.kanwil} onChange={e=>setOpForm(f=>({...f,kanwil:e.target.value}))} placeholder="auto dari DB" style={inp}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>KPPN</label>
+                      <input value={opForm.nm_kppn} onChange={e=>setOpForm(f=>({...f,nm_kppn:e.target.value}))} placeholder="auto dari DB" style={inp}/></div>
+                  </div>
+                  <div style={{marginBottom:7}}>
+                    <label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Periode Pembukaan (Bulan) *</label>
+                    <div style={{display:'flex',gap:5,alignItems:'center'}}>
+                      <select value={opForm.periode_from} onChange={e=>setOpForm(f=>({...f,periode_from:e.target.value}))} style={{...inp,flex:1,color:opForm.periode_from?'var(--tx)':'var(--tx3)'}}>
+                        <option value="">Dari bulan...</option>{MOS.map(m=><option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <span style={{color:'var(--tx3)',fontSize:10,flexShrink:0}}>s.d</span>
+                      <select value={opForm.periode_to} onChange={e=>setOpForm(f=>({...f,periode_to:e.target.value}))} style={{...inp,flex:1,color:opForm.periode_to?'var(--tx)':'var(--tx3)'}}>
+                        <option value="">Sampai bulan...</option>{MOS.map(m=><option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <select value={opForm.tahun} onChange={e=>setOpForm(f=>({...f,tahun:e.target.value}))} style={{...inp,width:'auto',padding:'7px 5px'}}>
+                        {['2024','2025','2026','2027'].map(y=><option key={y}>{y}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:dateErr?4:9}}>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Tanggal Mulai Buka *</label>
+                      <input type="date" value={opForm.tgl_mulai} onChange={e=>{setOpForm(f=>({...f,tgl_mulai:e.target.value}));checkDates(e.target.value,opForm.tgl_akhir);}} style={inp}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Ditutup s.d Tanggal *</label>
+                      <input type="date" value={opForm.tgl_akhir} onChange={e=>{setOpForm(f=>({...f,tgl_akhir:e.target.value}));checkDates(opForm.tgl_mulai,e.target.value);}} style={inp}/></div>
+                  </div>
+                  {dateErr&&<div style={{fontSize:10.5,color:'#f87171',marginBottom:7,background:'var(--red-bg)',padding:'5px 9px',borderRadius:5,border:'1px solid #4a1515'}}>{dateErr}</div>}
+                  {previewNotifR()&&(
+                    <div style={{background:'var(--bg)',borderRadius:6,padding:8,marginBottom:9,border:'1px solid var(--bdr2)'}}>
+                      <div style={{fontSize:8.5,fontWeight:700,color:'var(--tx3)',marginBottom:3,letterSpacing:.5,textTransform:'uppercase'}}>Preview Notifikasi</div>
+                      <div style={{fontSize:10.5,color:'var(--tx3)',lineHeight:1.6,fontStyle:'italic'}}>{previewNotifR()}</div>
+                    </div>
+                  )}
+                  <div style={{display:'flex',gap:6}}>
+                    <button onClick={doSaveR} disabled={!!dateErr||!opForm.kode||!opForm.tgl_mulai||!opForm.tgl_akhir||!opForm.periode_from||!opForm.periode_to||!opAdmin}
+                      style={B('var(--acc)','#fff',{opacity:(!!dateErr||!opForm.kode||!opForm.tgl_mulai||!opForm.tgl_akhir||!opForm.periode_from||!opForm.periode_to||!opAdmin)?.45:1})}>💾 Simpan</button>
+                    <button onClick={resetOp} style={B('var(--surf)','var(--tx3)',{border:'1px solid var(--bdr)'})}>Batal</button>
+                    {!opAdmin&&<span style={{fontSize:10,color:'#f59e0b',alignSelf:'center'}}>⚠ Pilih admin terlebih dahulu</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* ── FORM TARGET ── */}
+              {opState==='new'&&opType==='target'&&(
+                <div style={card}>
+                  <div style={{fontWeight:700,fontSize:12,color:'#f59e0b',marginBottom:12}}>📝 Rekam Dispensasi Target</div>
+                  <AdminSelect/>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:7}}>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Tahun Anggaran *</label>
+                      <select value={opFormT.tahun} onChange={e=>setOpFormT(f=>({...f,tahun:e.target.value}))} style={inp}>
+                        {['2024','2025','2026','2027'].map(y=><option key={y}>{y}</option>)}
+                      </select></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Kode Satker *</label>
+                      <input value={opFormT.kode} onChange={e=>fillSatker(e.target.value,true)} style={inp}/></div>
+                  </div>
+                  <div style={{marginBottom:7}}>
+                    <label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Nama Satker</label>
+                    <input value={opFormT.nm_satker} onChange={e=>setOpFormT(f=>({...f,nm_satker:e.target.value}))} placeholder="auto dari DB" style={inp}/>
+                    {opFormT.kode.length>=6&&!lookupSatker(opFormT.kode)&&opFormT.kode!=='000000'&&<div style={{fontSize:9,color:'#f59e0b',marginTop:2}}>⚠ Satker baru, belum terupdate dalam database</div>}
+                  </div>
+                  <div style={{marginBottom:7}}>
+                    <label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>K/L</label>
+                    <input value={opFormT.kl} onChange={e=>setOpFormT(f=>({...f,kl:e.target.value}))} placeholder="auto dari DB" style={inp}/>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:7}}>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Kode Program *</label>
+                      <input value={opFormT.kd_program} onChange={e=>setOpFormT(f=>({...f,kd_program:e.target.value}))} placeholder="cth: EK" style={{...inp,borderColor:!opFormT.kd_program?'#7a3a00':'var(--bdr2)'}}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Kode Kegiatan *</label>
+                      <input value={opFormT.kd_kegiatan} onChange={e=>setOpFormT(f=>({...f,kd_kegiatan:e.target.value}))} placeholder="cth: 7223" style={{...inp,borderColor:!opFormT.kd_kegiatan?'#7a3a00':'var(--bdr2)'}}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Kode KRO *</label>
+                      <input value={opFormT.kd_kro} onChange={e=>setOpFormT(f=>({...f,kd_kro:e.target.value}))} placeholder="cth: AEH" style={{...inp,borderColor:!opFormT.kd_kro?'#7a3a00':'var(--bdr2)'}}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Kode RO *</label>
+                      <input value={opFormT.kd_ro} onChange={e=>setOpFormT(f=>({...f,kd_ro:e.target.value}))} placeholder="cth: 001" style={{...inp,borderColor:!opFormT.kd_ro?'#7a3a00':'var(--bdr2)'}}/></div>
+                  </div>
+                  {(!opFormT.kd_program||!opFormT.kd_kegiatan||!opFormT.kd_kro||!opFormT.kd_ro)&&(
+                    <div style={{fontSize:10,color:'#f59e0b',marginBottom:7}}>⚠ Kode Program, Kegiatan, KRO, dan RO wajib diisi</div>
+                  )}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:7,marginBottom:dateErr?4:9}}>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Periode Awal Dibuka</label>
+                      <input value={opFormT.periode_awal} onChange={e=>setOpFormT(f=>({...f,periode_awal:e.target.value}))} placeholder="cth: 4" style={inp}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Tanggal Mulai *</label>
+                      <input type="date" value={opFormT.tgl_mulai} onChange={e=>{setOpFormT(f=>({...f,tgl_mulai:e.target.value}));checkDates(e.target.value,opFormT.tgl_akhir);}} style={inp}/></div>
+                    <div><label style={{fontSize:9.5,color:'var(--tx3)',display:'block',marginBottom:3}}>Ditutup s.d *</label>
+                      <input type="date" value={opFormT.tgl_akhir} onChange={e=>{setOpFormT(f=>({...f,tgl_akhir:e.target.value}));checkDates(opFormT.tgl_mulai,e.target.value);}} style={inp}/></div>
+                  </div>
+                  {dateErr&&<div style={{fontSize:10.5,color:'#f87171',marginBottom:7,background:'var(--red-bg)',padding:'5px 9px',borderRadius:5,border:'1px solid #4a1515'}}>{dateErr}</div>}
+                  {previewNotifT()&&(
+                    <div style={{background:'var(--bg)',borderRadius:6,padding:8,marginBottom:9,border:'1px solid var(--bdr2)'}}>
+                      <div style={{fontSize:8.5,fontWeight:700,color:'var(--tx3)',marginBottom:3,letterSpacing:.5,textTransform:'uppercase'}}>Preview Notifikasi</div>
+                      <div style={{fontSize:10.5,color:'var(--tx3)',lineHeight:1.6,fontStyle:'italic'}}>{previewNotifT()}</div>
+                    </div>
+                  )}
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <button onClick={doSaveT} disabled={!!dateErr||!opFormT.kode||!opFormT.tgl_mulai||!opFormT.tgl_akhir||!opFormT.kd_program||!opFormT.kd_kegiatan||!opFormT.kd_kro||!opFormT.kd_ro||!opAdmin}
+                      style={B('var(--acc)','#fff',{opacity:(!!dateErr||!opFormT.kode||!opFormT.tgl_mulai||!opFormT.tgl_akhir||!opFormT.kd_program||!opFormT.kd_kegiatan||!opFormT.kd_kro||!opFormT.kd_ro||!opAdmin)?.45:1})}>💾 Simpan</button>
+                    <button onClick={resetOp} style={B('var(--surf)','var(--tx3)',{border:'1px solid var(--bdr)'})}>Batal</button>
+                    {!opAdmin&&<span style={{fontSize:10,color:'#f59e0b'}}>⚠ Pilih admin</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ADD FAQ MODAL */}
+      {showAdd&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.82)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999}}>
+          <div style={{background:'var(--surf)',border:'1px solid var(--bdr2)',borderRadius:12,padding:20,width:'92%',maxWidth:490,boxShadow:'0 30px 60px #0008'}}>
+            <div style={{fontWeight:700,fontSize:13.5,color:'var(--tx)',marginBottom:13}}>+ Tambah Pertanyaan FAQ</div>
+            <div style={{marginBottom:8}}>
+              <label style={{fontSize:10,color:'var(--tx3)',display:'block',marginBottom:4}}>Indikator / Topik *</label>
+              <select value={addTopic} onChange={e=>setAddTopic(e.target.value)} style={{...inp,color:addTopic?'var(--tx)':'var(--tx3)'}}>
+                <option value="">Pilih indikator...</option>
+                {IND.map(i=><option key={i.id} value={i.id}>{i.no}. {i.label}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:8}}>
+              <label style={{fontSize:10,color:'var(--tx3)',display:'block',marginBottom:4}}>Pertanyaan *</label>
+              <input value={addQ} onChange={e=>setAddQ(e.target.value)} placeholder="Tuliskan pertanyaan yang sering diajukan..." style={inp}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:10,color:'var(--tx3)',display:'block',marginBottom:4}}>Jawaban *</label>
+              <textarea value={addA} onChange={e=>setAddA(e.target.value)} rows={5} placeholder="Tuliskan jawaban lengkap... (gunakan • untuk bullet, Enter untuk paragraf baru)" style={{...inp,lineHeight:1.6}}/>
+            </div>
+            <div style={{display:'flex',gap:7,justifyContent:'flex-end'}}>
+              <button onClick={()=>{setShowAdd(false);setAddQ('');setAddA('');}} style={B('var(--surf)','var(--tx3)',{border:'1px solid var(--bdr)',padding:'7px 13px'})}>Batal</button>
+              <button onClick={handleAddFaq} disabled={!addTopic||!addQ||!addA}
+                style={B('var(--acc)','#fff',{opacity:(!addTopic||!addQ||!addA)?.45:1,padding:'7px 15px'})}>💾 Simpan FAQ</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
