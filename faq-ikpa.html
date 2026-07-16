@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IKPA — Indikator Kinerja Pelaksanaan Anggaran</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+/* ── TORING Design System (Light Only) ── */
+:root{
+  --r:#C0392B;--rd:#8E2A1F;--rdd:#6B1E15;--r-bg:rgba(192,57,43,.08);
+  --y:#F4C430;--ys:#FFE57A;--yb:#FFF8E1;
+  --g:#16A34A;--g-bg:rgba(22,163,74,.10);
+  --w:#F59E0B;--w-bg:rgba(245,158,11,.12);
+  --info:#2563EB;--info-bg:rgba(37,99,235,.10);
+  --t1:#1F2937;--t2:#6B7280;--t3:#9CA3AF;
+  --b:#E5E7EB;--bg:#F9F7F2;--card:#FFFFFF;
+  --rad:12px;--radsm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 12px rgba(0,0,0,.10);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;height:100%;overflow:hidden;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--b);border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--t3);}
+input,select,textarea,button{font-family:'Inter',sans-serif;}
+textarea{resize:vertical;}
+input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.5;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fu{animation:fadeUp .2s ease;}
+@media print{.no-print{display:none!important;}body{background:#fff;color:#000;overflow:auto;height:auto;}}
+
+/* ── LAYOUT ── */
+#root{display:flex;flex-direction:column;height:100vh;background:var(--bg);overflow:hidden;}
+
+/* ── HEADER ── */
+.ikpa-hd{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 20px;
+  background:#FBE080;
+  border-bottom:1px solid rgba(183,28,28,.15);
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+  flex-shrink:0;position:relative;overflow:hidden;
+}
+.ikpa-hd::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:120px;
+  background:linear-gradient(90deg,transparent,rgba(183,28,28,.06));
+  pointer-events:none;
+}
+.hd-logo{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--rdd),var(--r));
+  display:grid;place-items:center;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(107,19,9,.25);
+}
+.hd-logo svg{width:20px;height:20px;stroke:#FBE080;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.hd-title{line-height:1.2;}
+.hd-title strong{font-size:14px;font-weight:700;color:#6D2C1D;display:block;}
+.hd-title span{font-size:11px;color:#B71C1C;font-weight:500;}
+.hd-spacer{flex:1;}
+.hd-badge{
+  font-size:11px;font-weight:600;color:#6D2C1D;
+  background:rgba(183,28,28,.10);
+  padding:4px 10px;border-radius:20px;border:1px solid rgba(183,28,28,.15);
+  white-space:nowrap;
+}
+.hd-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  padding:6px 12px;border-radius:8px;border:none;
+  transition:all .15s;white-space:nowrap;
+}
+.hd-btn.outline{background:rgba(255,255,255,.55);color:#6D2C1D;border:1px solid rgba(183,28,28,.20);}
+.hd-btn.outline:hover{background:#fff;border-color:var(--r);}
+.hd-btn.green{background:rgba(22,163,74,.12);color:#15803d;border:1px solid rgba(22,163,74,.25);}
+.hd-btn.amber{background:rgba(245,158,11,.12);color:#92400e;border:1px solid rgba(245,158,11,.25);}
+.hd-btn.primary{background:var(--r);color:#fff;}
+.hd-btn.primary:hover{background:var(--rd);}
+.hd-btn.admin-on{background:rgba(245,158,11,.15);color:#92400e;border:1px solid rgba(245,158,11,.35);}
+.hd-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+
+/* ── MAIN TABS (FAQ / OPEN PERIOD) ── */
+.main-tabs{
+  display:flex;align-items:center;gap:0;
+  padding:0 20px;
+  background:#fff;
+  border-bottom:2px solid var(--b);
+  flex-shrink:0;
+}
+.main-tab{
+  padding:11px 18px;font-size:13px;font-weight:600;
+  color:var(--t2);cursor:pointer;border:none;background:none;
+  border-bottom:3px solid transparent;margin-bottom:-2px;
+  display:flex;align-items:center;gap:6px;
+  transition:color .15s;
+}
+.main-tab:hover{color:var(--rd);}
+.main-tab.active{color:var(--r);border-bottom-color:var(--r);}
+.main-tab svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.main-tab-spacer{flex:1;}
+/* Search inside FAQ tab header */
+.tab-search-wrap{padding:8px 20px;background:#fff;border-bottom:1px solid var(--b);flex-shrink:0;}
+.tab-search{position:relative;max-width:400px;}
+.tab-search input{
+  width:100%;padding:8px 12px 8px 34px;
+  border:1px solid var(--b);border-radius:8px;
+  font-size:12px;background:var(--bg);color:var(--t1);outline:none;
+  transition:border-color .15s;
+}
+.tab-search input:focus{border-color:var(--r);background:#fff;}
+.tab-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--t3);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;}
+
+/* ── FAQ 3-COL LAYOUT ── */
+.faq-body{display:grid;grid-template-columns:200px 1fr 1fr;flex:1;min-height:0;overflow:hidden;}
+.faq-sidebar{border-right:1px solid var(--b);overflow-y:auto;background:#fff;}
+.faq-mid{border-right:1px solid var(--b);display:flex;flex-direction:column;overflow:hidden;}
+.faq-mid-head{padding:12px 14px;border-bottom:1px solid var(--b);flex-shrink:0;background:#fff;}
+.faq-mid-body{overflow-y:auto;flex:1;}
+.faq-right{overflow-y:auto;padding:20px 22px;background:var(--bg);}
+
+/* sidebar nav */
+.nav-group-title{
+  font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--t3);padding:12px 14px 4px;
+}
+.nav-ind{
+  display:flex;align-items:center;gap:8px;
+  width:100%;padding:8px 14px;
+  background:none;border:none;border-left:3px solid transparent;
+  color:var(--t2);font-size:11.5px;font-weight:500;
+  cursor:pointer;text-align:left;transition:all .15s;
+}
+.nav-ind:hover{background:var(--yb);color:var(--rd);}
+.nav-ind.active{background:var(--yb);border-left-color:var(--r);color:var(--r);font-weight:600;}
+.nav-ind-icon{font-size:13px;flex-shrink:0;}
+.nav-ind-label{flex:1;line-height:1.3;font-size:11px;}
+.nav-ind-cnt{
+  font-size:10px;font-weight:700;
+  background:var(--b);color:var(--t2);
+  padding:1px 6px;border-radius:8px;flex-shrink:0;
+}
+.nav-ind.active .nav-ind-cnt{background:var(--r);color:#fff;}
+
+/* mid panel items */
+.q-item{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:10px 14px;cursor:pointer;
+  border-left:3px solid transparent;
+  transition:all .12s;
+}
+.q-item:hover{background:var(--yb);}
+.q-item.active{background:#FEF8EC;border-left-color:var(--r);}
+.q-item-num{font-size:10px;color:var(--t3);font-weight:700;font-family:monospace;margin-top:1px;flex-shrink:0;}
+.q-item-text{font-size:12px;color:var(--t1);line-height:1.45;flex:1;}
+.q-item.active .q-item-text{color:var(--rd);font-weight:500;}
+
+/* ── OPEN PERIOD LAYOUT ── */
+.op-body{display:grid;grid-template-columns:340px 1fr;flex:1;min-height:0;overflow:hidden;}
+.op-left{border-right:1px solid var(--b);overflow-y:auto;background:#fff;padding:14px;}
+.op-right{overflow-y:auto;background:var(--bg);padding:20px 22px;}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;box-shadow:var(--shadow);}
+.card+.card{margin-top:12px;}
+.card-title{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--r);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.card-title svg{width:14px;height:14px;stroke:var(--r);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+/* ── INPUTS ── */
+.inp{
+  width:100%;padding:8px 10px;
+  border:1px solid var(--b);border-radius:8px;
+  font-size:12px;color:var(--t1);background:#fff;outline:none;
+  font-family:'Inter',sans-serif;transition:border-color .15s;
+}
+.inp:focus{border-color:var(--r);box-shadow:0 0 0 3px rgba(192,57,43,.08);}
+.inp::placeholder{color:var(--t3);}
+.field-label{font-size:11px;font-weight:600;color:var(--t2);display:block;margin-bottom:4px;}
+.field-group{margin-bottom:10px;}
+.field-row{display:grid;gap:8px;margin-bottom:10px;}
+.field-row.col2{grid-template-columns:1fr 1fr;}
+.field-row.col3{grid-template-columns:1fr 1fr 1fr;}
+.field-row.col4{grid-template-columns:1fr 1fr 1fr 1fr;}
+
+/* ── TYPE TOGGLE ── */
+.type-toggle{display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:12px;}
+.type-btn{
+  flex:1;padding:6px 0;border-radius:6px;border:none;
+  font-size:12px;font-weight:600;cursor:pointer;
+  background:transparent;color:var(--t2);transition:all .15s;
+}
+.type-btn.active{background:var(--r);color:#fff;box-shadow:0 1px 4px rgba(192,57,43,.25);}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:8px 16px;border-radius:8px;border:none;
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.btn-primary{background:var(--r);color:#fff;}
+.btn-primary:hover{background:var(--rd);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-secondary{background:var(--bg);color:var(--t2);border:1px solid var(--b);}
+.btn-secondary:hover{background:var(--b);}
+.btn-danger{background:#FEE2E2;color:var(--r);border:1px solid #FECACA;}
+.btn-danger:hover{background:#FECACA;}
+.btn-green{background:var(--g-bg);color:#15803d;border:1px solid rgba(22,163,74,.25);}
+.btn-amber{background:var(--w-bg);color:#92400e;border:1px solid rgba(245,158,11,.25);}
+.btn-sm{padding:4px 10px;font-size:11px;}
+
+/* ── BADGE ── */
+.badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;display:inline-block;white-space:nowrap;}
+.badge.green{background:var(--g-bg);color:#15803d;}
+.badge.red{background:var(--r-bg);color:var(--r);}
+.badge.amber{background:var(--w-bg);color:#92400e;}
+.badge.info{background:var(--info-bg);color:var(--info);}
+
+/* ── RECORD LIST ITEM ── */
+.rec-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;margin-bottom:4px;
+  border:1px solid var(--b);border-radius:8px;
+  cursor:pointer;background:#fff;transition:all .15s;
+}
+.rec-item:hover{border-color:var(--r);background:var(--yb);}
+.rec-item.active{border-color:var(--r);background:#FEF8EC;}
+.rec-kode{font-weight:700;font-size:12px;color:var(--info);flex-shrink:0;min-width:56px;}
+.rec-nm{font-size:11px;color:var(--t1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rec-meta{font-size:10px;color:var(--t3);flex-shrink:0;white-space:nowrap;}
+
+/* ── RESULT BLOCK ── */
+.result-block{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--rad);padding:16px;margin-bottom:12px;}
+.result-header{font-weight:700;font-size:12.5px;color:#15803d;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;}
+.result-cell{background:#fff;border:1px solid #BBF7D0;border-radius:7px;padding:7px 9px;}
+.result-cell-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#15803d;margin-bottom:2px;}
+.result-cell-value{font-size:11.5px;font-weight:600;color:#166534;word-break:break-all;}
+.notif-box{background:#fff;border:1px solid #BBF7D0;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;color:#374151;line-height:1.75;font-style:italic;}
+
+/* ── DATE ERR ── */
+.date-err{font-size:11px;color:var(--r);background:#FEE2E2;border:1px solid #FECACA;border-radius:7px;padding:6px 10px;margin-bottom:8px;}
+
+/* ── PREVIEW NOTIF ── */
+.preview-notif{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:10px;margin-bottom:10px;}
+.preview-notif-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:4px;}
+.preview-notif-text{font-size:11px;color:var(--t2);line-height:1.6;font-style:italic;}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;}
+.modal-box{background:#fff;border-radius:var(--rad);padding:24px;width:92%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:15px;font-weight:700;color:var(--rd);margin-bottom:16px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+
+/* ── EMPTY STATE ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--t3);text-align:center;padding:40px 20px;flex:1;}
+.empty-icon{width:48px;height:48px;border-radius:16px;background:var(--bg);display:grid;place-items:center;margin-bottom:4px;}
+.empty-icon svg{width:26px;height:26px;stroke:var(--t3);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.empty p{font-size:13px;font-weight:600;color:var(--t2);}
+.empty span{font-size:12px;max-width:200px;line-height:1.5;}
+
+/* ── ANSWER PANEL ── */
+.answer-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--yb);border:1px solid var(--y);
+  padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:600;color:var(--rdd);margin-bottom:12px;
+}
+.answer-q{font-size:15px;font-weight:700;line-height:1.45;color:var(--t1);margin-bottom:12px;}
+.answer-divider{height:2px;background:linear-gradient(90deg,var(--r),transparent);margin-bottom:14px;border-radius:1px;}
+.answer-text{font-size:13.5px;line-height:1.9;color:var(--t2);white-space:pre-line;}
+.feedback-row{margin-top:20px;padding-top:12px;border-top:1px solid var(--b);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+/* ── SYNC STATUS ── */
+.sync-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.sync-dot.ok{background:var(--g);}
+.sync-dot.err{background:var(--r);}
+.sync-dot.loading{background:var(--w);animation:pulse .8s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── ADMINS ── */
+.admin-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--yb);border:1px solid var(--y);
+  font-size:10px;font-weight:600;color:var(--rdd);
+  padding:3px 8px;border-radius:6px;
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>window.SATKER_DB=[];</script>
+<script src="satker_db.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ── FIREBASE CONFIG ── */
+const FB_CFG={
+  apiKey:"AIzaSyC_ZKnUwPv40f_GytMTHb1MTaPO_p5lPHY",
+  authDomain:"toring-ikpa-apps.firebaseapp.com",
+  databaseURL:"https://toring-ikpa-apps-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"toring-ikpa-apps",
+  storageBucket:"toring-ikpa-apps.firebasestorage.app",
+  messagingSenderId:"59538058227",
+  appId:"1:59538058227:web:97d6ace98673d232bf0086"
+};
+let _db=null;
+function getDB(){
+  if(_db)return _db;
+  try{
+    if(typeof firebase==='undefined')return null;
+    if(!firebase.apps.length)firebase.initializeApp(FB_CFG);
+    _db=firebase.database();
+    console.log('%c🔥 Firebase IKPA aktif','color:#16A34A;font-weight:700');
+    return _db;
+  }catch(e){console.warn('Firebase init:',e);return null;}
+}
+
+/* Firebase path helpers */
+const FB={
+  faq:()=>'/ikpa_faq',
+  ops:()=>'/ikpa_ops',
+  admins:()=>'/ikpa_admins',
+};
+
+/* ── CONSTANTS ── */
+const MOS=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+const IND=[
+  {id:"revisi-dipa",no:1,label:"Revisi DIPA",bobot:"10%",grp:"Kualitas Perencanaan"},
+  {id:"deviasi-rpd",no:2,label:"Deviasi Rencana Penarikan Dana",bobot:"15%",grp:"Kualitas Perencanaan"},
+  {id:"penyerapan",no:3,label:"Penyerapan Anggaran",bobot:"20%",grp:"Kualitas Implementasi"},
+  {id:"belanja-kontraktual",no:4,label:"Belanja Kontraktual",bobot:"10%",grp:"Kualitas Implementasi"},
+  {id:"penyelesaian-tagihan",no:5,label:"Penyelesaian Tagihan",bobot:"10%",grp:"Kualitas Implementasi"},
+  {id:"up-tup",no:6,label:"Pengelolaan UP dan TUP",bobot:"10%",grp:"Kualitas Implementasi"},
+  {id:"dispensasi-spm",no:7,label:"Dispensasi SPM",bobot:"Pengurang",grp:"Kualitas Implementasi"},
+  {id:"capaian-output",no:8,label:"Capaian Output",bobot:"25%",grp:"Kualitas Hasil"},
+];
+const GROUPS=[
+  {label:"Kualitas Perencanaan",ids:["revisi-dipa","deviasi-rpd"]},
+  {label:"Kualitas Implementasi",ids:["penyerapan","belanja-kontraktual","penyelesaian-tagihan","up-tup","dispensasi-spm"]},
+  {label:"Kualitas Hasil",ids:["capaian-output"]},
+];
+const INIT_FAQ={
+  "revisi-dipa":[
+    {id:"rd1",q:"Apa yang dimaksud dengan Revisi DIPA?",a:"Revisi DIPA adalah perubahan terhadap Daftar Isian Pelaksanaan Anggaran (DIPA) yang meliputi perubahan rincian anggaran, perubahan pagu anggaran, maupun perubahan halaman III DIPA.\n\nRevisi DIPA menjadi salah satu indikator IKPA karena frekuensi revisi yang tinggi mencerminkan kurangnya kualitas perencanaan anggaran. Bobot indikator ini adalah 10% dari total nilai IKPA."},
+    {id:"rd2",q:"Bagaimana pengaruh Revisi DIPA terhadap nilai IKPA?",a:"Semakin sering satker melakukan revisi DIPA, semakin rendah nilainya pada indikator ini. Revisi yang minimal mencerminkan perencanaan yang matang dan berkualitas."},
+    {id:"rd3",q:"Revisi DIPA apa saja yang tidak mempengaruhi nilai IKPA?",a:"Revisi DIPA yang bersifat administratif atau karena kebijakan pemerintah pusat umumnya memiliki perlakuan khusus dalam penilaian IKPA.\n\nKonsultasikan dengan KPPN setempat untuk mendapatkan informasi yang akurat sesuai ketentuan berlaku."},
+  ],
+  "deviasi-rpd":[
+    {id:"drpd1",q:"Apa itu Deviasi Rencana Penarikan Dana (RPD)?",a:"Deviasi RPD adalah selisih antara rencana penarikan dana (Halaman III DIPA) dengan realisasi penarikan dana yang sesungguhnya. Bobot 15% dalam IKPA."},
+    {id:"drpd2",q:"Bagaimana cara menghitung deviasi RPD?",a:"Deviasi RPD dihitung berdasarkan selisih absolut antara rencana dan realisasi penarikan dana, dibagi total pagu anggaran. Target deviasi yang ideal di bawah 10%."},
+    {id:"drpd3",q:"Apa yang harus dilakukan agar deviasi RPD rendah?",a:"• Susun Halaman III DIPA secara cermat dan realistis\n• Update rencana penarikan dana secara berkala\n• Koordinasikan dengan semua unit teknis\n• Monitor realisasi vs rencana setiap bulan"},
+  ],
+  "penyerapan":[
+    {id:"pa1",q:"Berapa target penyerapan anggaran yang ideal?",a:"Target penyerapan yang ideal adalah 95% atau lebih dari total pagu pada akhir tahun. Yang terpenting adalah kualitas penyerapan — diikuti capaian output sesuai target. Bobot 20%."},
+    {id:"pa2",q:"Apa penyebab rendahnya penyerapan anggaran?",a:"• Proses pengadaan yang terlambat\n• Dokumen persyaratan tidak lengkap\n• Keterlambatan penerbitan SK atau kontrak\n• Kurangnya koordinasi antar unit kerja"},
+    {id:"pa3",q:"Apakah penyerapan tinggi selalu berarti IKPA baik?",a:"Tidak selalu. Penyerapan tinggi harus diimbangi capaian output yang sesuai. IKPA mengukur kualitas pelaksanaan, bukan hanya kuantitas serapan."},
+  ],
+  "belanja-kontraktual":[
+    {id:"bk1",q:"Apa yang dimaksud dengan Belanja Kontraktual dalam IKPA?",a:"Belanja Kontraktual mengukur ketepatan waktu penyelesaian kontrak pengadaan barang/jasa. Kontrak yang selesai tepat waktu mencerminkan pengelolaan pengadaan yang baik. Bobot 10%."},
+    {id:"bk2",q:"Apa yang harus dilakukan jika kontrak tidak bisa selesai tepat waktu?",a:"• Segera koordinasikan dengan pihak rekanan\n• Pertimbangkan addendum kontrak jika memenuhi syarat\n• Dokumentasikan alasan keterlambatan\n• Hindari penumpukan pembayaran di akhir tahun"},
+    {id:"bk3",q:"Apa yang dimaksud dengan kontrak kritis?",a:"Kontrak kritis adalah kontrak yang berpotensi tidak dapat diselesaikan sesuai waktu yang diperjanjikan. Harus segera diidentifikasi dan ditangani dengan langkah percepatan atau addendum."},
+  ],
+  "penyelesaian-tagihan":[
+    {id:"pt1",q:"Berapa batas waktu penyelesaian tagihan dalam IKPA?",a:"Penerbitan SPM harus dilakukan maksimal 17 hari kerja setelah dokumen tagihan lengkap dan benar. Keterlambatan akan mempengaruhi nilai indikator ini (bobot 10%)."},
+    {id:"pt2",q:"Apa saja dokumen tagihan yang harus dilengkapi?",a:"• Kuitansi/faktur dari rekanan\n• Berita acara serah terima (BAST)\n• Faktur pajak (jika ada)\n• Surat pernyataan tanggung jawab belanja\n• Dokumen pendukung sesuai jenis belanja"},
+    {id:"pt3",q:"Bagaimana cara meningkatkan nilai indikator Penyelesaian Tagihan?",a:"• Buat SOP internal untuk penyelesaian tagihan\n• Tetapkan tenggat waktu di setiap tahap\n• Monitor progres secara rutin\n• Koordinasikan dengan rekanan agar dokumen diajukan lengkap"},
+  ],
+  "up-tup":[
+    {id:"ut1",q:"Apa itu UP dan TUP?",a:"Uang Persediaan (UP) adalah uang muka kerja untuk bendahara pengeluaran membiayai kegiatan operasional yang tidak bisa melalui mekanisme LS. TUP adalah tambahan UP ketika UP tidak mencukupi."},
+    {id:"ut2",q:"Bagaimana pengelolaan UP/TUP yang baik?",a:"• Penggunaan UP sesuai peruntukan\n• Pertanggungjawaban tepat waktu (maks. 2 bulan)\n• Tidak menumpuk saldo UP di akhir tahun\n• Segera kembalikan sisa TUP yang tidak terpakai"},
+    {id:"ut3",q:"Apa konsekuensi jika UP tidak dipertanggungjawabkan tepat waktu?",a:"Mempengaruhi nilai IKPA indikator Pengelolaan UP dan TUP (bobot 10%). KPPN dapat meminta UP dikembalikan atau memblokir pengajuan GUP berikutnya."},
+  ],
+  "dispensasi-spm":[
+    {id:"ds1",q:"Apa itu Dispensasi SPM?",a:"Dispensasi SPM adalah izin khusus untuk mengajukan SPM setelah batas waktu yang ditentukan. Bersifat pengecualian dan setiap penggunaannya mengurangi nilai total IKPA satker secara langsung."},
+    {id:"ds2",q:"Bagaimana cara menghindari Dispensasi SPM?",a:"• Proses semua tagihan jauh sebelum akhir tahun\n• Percepat proses verifikasi dokumen\n• Koordinasikan dengan rekanan agar faktur tepat waktu\n• Buat monitoring rutin setiap bulan"},
+    {id:"ds3",q:"Seberapa besar pengaruh Dispensasi SPM terhadap nilai IKPA?",a:"Dispensasi SPM sebagai pengurang nilai IKPA (bukan berbobot persentase). Setiap penggunaan memotong langsung nilai total IKPA dari 7 indikator lainnya."},
+  ],
+  "capaian-output":[
+    {id:"co1",q:"Bagaimana cara mengisi realisasi Capaian Output?",a:"Realisasi Capaian Output diisi melalui aplikasi MyIntress. Pastikan data diinput secara berkala dan akurat sesuai realisasi fisik. Koordinasikan dengan penanggung jawab output di masing-masing unit."},
+    {id:"co2",q:"Apa yang dimaksud dengan Open Period Capaian Output?",a:"Open Period adalah pembukaan kembali periode pengisian capaian output yang sudah ditutup. Diperlukan ketika satker perlu memperbaiki/melengkapi data. Pembukaan dilakukan Tim Teknis atas permohonan satker."},
+    {id:"co3",q:"Bagaimana cara mengajukan permohonan Open Period?",a:"Satker dapat mengajukan open period melalui tab 'Open Period' pada aplikasi ini. Sertakan: kode satker, periode yang dibuka, dan rentang tanggal. Tim teknis akan memproses dan notifikasi tersedia setelah dibuka."},
+    {id:"co4",q:"Berapa bobot Capaian Output dalam IKPA?",a:"Capaian Output memiliki bobot tertinggi dalam IKPA yaitu 25%. Ini mencerminkan bahwa kualitas hasil pelaksanaan anggaran menjadi komponen terpenting dalam penilaian kinerja."},
+  ],
+};
+
+/* ── HELPERS ── */
+let _sMap=null;
+function getSM(){if(!_sMap&&window.SATKER_DB?.length){_sMap=new Map();window.SATKER_DB.forEach(r=>_sMap.set(r[0],r));}return _sMap;}
+function lookupSatker(k){const m=getSM();if(!m)return null;return m.get(String(k).trim().padStart(6,'0'))||null;}
+function fmtDate(s){if(!s)return'';const[y,mo,d]=s.split('-');return`${parseInt(d)} ${MOS[parseInt(mo)-1]} ${y}`;}
+function fmtDateShort(s){if(!s)return'';const[y,mo,d]=s.split('-');return`${d}/${mo}/${y}`;}
+function todayStr(){return new Date().toISOString().split('T')[0];}
+function isActive(op){return op.tgl_akhir>=todayStr();}
+function validDates(mulai,akhir){return mulai&&akhir&&akhir>mulai;}
+function dbId(){return Date.now()+'_'+Math.random().toString(36).slice(2,7);}
+
+/* ── NOTIFICATION GENERATORS ── */
+function genNotifR(op){
+  return`Dapat kami sampaikan bahwa saat ini sedang dilakukan proses open period kembali atas pengisian realisasi capaian output satker ${op.kode_satker} periode ${op.periode_bulan} yang dibuka s.d ${fmtDate(op.tgl_akhir)} oleh Tim Teknis aplikasi. Harap menunggu dan selalu melakukan pengecekan secara berkala pada aplikasi MyIntress berkaitan dengan status pembukaan periode capaian output.`;
+}
+function genNotifT(op){
+  return`Berdasarkan hasil konfirmasi ke tim teknis, saat ini sedang dilakukan proses pembukaan dispensasi pengisian target Satker ${op.kode_satker} di SAKTI. Open periode target tersebut akan dibuka sampai tanggal ${fmtDate(op.tgl_akhir)}. Mohon kesediaannya untuk menunggu beberapa saat dan mengecek kembali terkait pembukaan untuk RO tersebut di Aplikasi SAKTI Saudara. Pengisian pada Aplikasi SAKTI dapat dilakukan dengan klik baris RO >> klik tombol Ubah >> Isi/sesuaikan TPCRO dan TRVRO pada kolom Form Input yang terbuka >> Simpan >> Kirim.`;
+}
+function genNotif(op){return op.type==='target'?genNotifT(op):genNotifR(op);}
+
+/* ── PDF PRINT ── */
+function printFAQ(faqData,topicId){
+  const topics=topicId?[IND.find(i=>i.id===topicId)]:IND;
+  let h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>FAQ IKPA</title><style>
+  body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.6;margin:30px;color:#1e293b}
+  h1{color:#B71C1C;font-size:16pt;margin-bottom:4px}.sub{color:#64748b;font-size:9pt;border-bottom:2px solid #B71C1C;padding-bottom:8px;margin-bottom:20px}
+  h2{color:#8E2A1F;font-size:12pt;margin:18px 0 8px;padding:6px 10px;background:#FFF8E1;border-left:4px solid #C0392B}
+  .bw{font-size:9pt;color:#64748b;font-weight:normal;margin-left:6px}.qt{font-weight:bold;margin:10px 0 4px}
+  .qa{color:#374151;white-space:pre-line;margin-left:14px;margin-bottom:10px}
+  .ft{margin-top:40px;font-size:8pt;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;text-align:center}
+  .np{text-align:center;margin:20px}@media print{.np{display:none}}
+  </style></head><body>`;
+  h+=`<h1>FAQ IKPA — Indikator Kinerja Pelaksanaan Anggaran</h1>`;
+  h+=`<div class="sub">DJPb Kementerian Keuangan · ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}</div>`;
+  topics.forEach(t=>{const qs=faqData[t.id]||[];if(!qs.length)return;
+    h+=`<h2>${t.no}. ${t.label}<span class="bw">(Bobot: ${t.bobot})</span></h2>`;
+    qs.forEach((q,i)=>{h+=`<div class="qt">${i+1}. ${q.q}</div><div class="qa">${q.a.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`;});
+  });
+  h+=`<div class="ft">FAQ IKPA · ${new Date().toISOString()}</div>`;
+  h+=`<div class="np"><button onclick="window.print()" style="padding:10px 24px;background:#C0392B;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">🖨️ Print / Simpan PDF</button></div>`;
+  h+=`</body></html>`;
+  const old=document.getElementById('_pf');if(old)document.body.removeChild(old);
+  const fr=document.createElement('iframe');
+  fr.id='_pf';fr.style.cssText='position:fixed;top:-9999px;left:-9999px;width:900px;height:600px;border:none;visibility:hidden;';
+  document.body.appendChild(fr);
+  const doc=fr.contentDocument||fr.contentWindow.document;
+  doc.open();doc.write(h);doc.close();
+  setTimeout(()=>{fr.style.visibility='visible';fr.contentWindow.focus();fr.contentWindow.print();setTimeout(()=>{if(document.body.contains(fr))document.body.removeChild(fr);},2000);},400);
+}
+
+/* ── EXCEL EXPORT ── */
+function exportXL(ops,type,filterAdmin){
+  const rows=ops.filter(o=>o.type===type&&(!filterAdmin||o.admin_name===filterAdmin));
+  if(!rows.length){alert(`Tidak ada data ${type}${filterAdmin?' untuk '+filterAdmin:''}.`);return;}
+  const now=new Date();
+  let aoa,sn,fn;
+  if(type==='realisasi'){
+    /* Kolom: Kanwil DJPB | KPPN | BAES1 | Satker | Periode | Tahun Anggaran | Tanggal Mulai | Tanggal Akhir */
+    aoa=[
+      ['Kanwil DJPB','KPPN','BAES1','Satker','Periode','Tahun Anggaran','Tanggal Mulai','Tanggal Akhir'],
+      ...rows.map(o=>{
+        const baes1=o.kd_unit||'';
+        const mIdx=m=>MOS.indexOf(m)+1;
+        const fromIdx=mIdx(o.periode_from);const toIdx=mIdx(o.periode_to);
+        const periodeStr=(o.periode_from&&o.periode_to)
+          ?(fromIdx===toIdx?`${fromIdx}`:`${fromIdx} s.d. ${toIdx}`)
+          :(o.periode_bulan||'');
+        return[o.kd_kanwil||o.nm_kanwil||'',o.kd_kppn||'',baes1,o.kode_satker,periodeStr,o.tahun||'',fmtDateShort(o.tgl_mulai),fmtDateShort(o.tgl_akhir)];
+      })
+    ];
+    sn='Realisasi Caput';fn=`rekap_realisasi_${now.toISOString().split('T')[0]}.xlsx`;
+  }else{
+    /* Kolom: Tahun Anggaran | Kode Satker | Kode Program | Kode Kegiatan | Kode KRO | Kode RO | Periode Awal Dibuka | Tanggal Mulai | Tanggal Akhir */
+    aoa=[
+      ['Tahun Anggaran','Kode Satker','Kode Program','Kode Kegiatan','Kode KRO','Kode RO','Periode Awal Dibuka','Tanggal Mulai','Tanggal Akhir'],
+      ...rows.map(o=>[o.tahun_anggaran||'',o.kode_satker,o.kd_program||'',o.kd_kegiatan||'',o.kd_kro||'',o.kd_ro||'',o.periode_awal||'',fmtDateShort(o.tgl_mulai),fmtDateShort(o.tgl_akhir)])
+    ];
+    sn='Target Caput';fn=`rekap_target_${now.toISOString().split('T')[0]}.xlsx`;
+  }
+  const ws=XLSX.utils.aoa_to_sheet(aoa);const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sn);XLSX.writeFile(wb,fn);
+}
+
+/* ── EXCEL PARSE ── */
+function parseXLDate(v){
+  if(!v&&v!==0)return'';
+  // Excel numeric date serial
+  if(typeof v==='number'){
+    try{const d=XLSX.SSF.parse_date_code(v);return`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;}
+    catch(e){return'';}
+  }
+  const s=String(v).trim();
+  // YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  // DD/MM/YYYY  ← format Indonesia & Excel Indonesia
+  const m1=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m1)return`${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  // DD-MM-YYYY
+  const m2=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(m2)return`${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  // MM/DD/YYYY (US format fallback)
+  const m3=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if(m3)return`20${m3[3]}-${m3[1].padStart(2,'0')}-${m3[2].padStart(2,'0')}`;
+  return'';
+}
+function isValidDate(s){return s&&/^\d{4}-\d{2}-\d{2}$/.test(s);}
+function parseXLUpload(file,type){
+  return new Promise((res,rej)=>{
+    const rd=new FileReader();
+    rd.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        const recs=[];
+        rows.slice(2).forEach(r=>{
+          if(type==='realisasi'){
+            const kode=String(r[3]||'').trim();if(!kode)return;
+            const si=lookupSatker(kode)||[];const pf=String(r[4]||'').trim(),pt=String(r[6]||'').trim();
+            recs.push({id:dbId(),type:'realisasi',
+              kode_satker:kode.padStart(6,'0'),nm_satker:si[1]||'',kl:si[2]||'',
+              kd_kppn:si[3]||String(r[1]||'').trim(),nm_kppn:si[4]||'',nm_kanwil:si[5]||'',kd_kanwil:si[6]||String(r[0]||'').trim(),kd_unit:si[7]||'',
+              periode_from:pf,periode_to:pt,
+              periode_bulan:pf&&pt?(pf===pt?`${pf} ${r[7]||''}`:`${pf} s.d ${pt} ${r[7]||''}`):'-',
+              tahun:String(r[7]||'2026').trim(),tgl_mulai:parseXLDate(r[8]),tgl_akhir:parseXLDate(r[9]),
+              admin_name:'',created_at:new Date().toISOString()});
+            // Skip jika tgl_akhir tidak valid atau sudah lewat
+            const lastRec=recs[recs.length-1];
+            if(!isValidDate(lastRec?.tgl_akhir)||lastRec.tgl_akhir<todayStr())recs.pop();
+          }else{
+            const kode=String(r[1]||'').trim();if(!kode)return;
+            const si=lookupSatker(kode)||[];
+            recs.push({id:dbId(),type:'target',
+              tahun_anggaran:String(r[0]||'2026').trim(),kode_satker:kode.padStart(6,'0'),nm_satker:si[1]||'',kl:si[2]||'',
+              kd_program:String(r[2]||'').trim(),kd_kegiatan:String(r[3]||'').trim(),
+              kd_kro:String(r[4]||'').trim(),kd_ro:String(r[5]||'').trim(),
+              periode_awal:String(r[6]||'').trim(),tgl_mulai:parseXLDate(r[7]),tgl_akhir:parseXLDate(r[8]),
+              admin_name:'',created_at:new Date().toISOString()});
+            const lastRec=recs[recs.length-1];
+            if(!isValidDate(lastRec?.tgl_akhir)||lastRec.tgl_akhir<todayStr())recs.pop();
+          }
+        });res(recs);
+      }catch(e){rej(e);}
+    };rd.readAsArrayBuffer(file);
+  });
+}
+
+/* ── FORM INITS ── */
+const initFR=()=>({kode:'',nm_satker:'',kl:'',kanwil:'',kd_kppn:'',nm_kppn:'',kd_kanwil:'',kd_unit:'',periode_from:'',periode_to:'',tahun:'2026',tgl_mulai:'',tgl_akhir:''});
+const initFT=()=>({tahun:'2026',kode:'',nm_satker:'',kl:'',periode_awal:'',tgl_mulai:'',tgl_akhir:''});
+const initRO=()=>({id:dbId(),kd_program:'',kd_kegiatan:'',kd_kro:'',kd_ro:''});
+
+/* ══════════════════════════════════════════════════════ */
+function App(){
+  /* ── DB state ── */
+  const [dbReady,setDbReady]=useState(false);
+  const [syncStatus,setSyncStatus]=useState('loading'); // 'loading'|'ok'|'err'
+
+  /* ── FAQ state (Firebase) ── */
+  const [faq,setFaq]=useState(INIT_FAQ);
+  const [faqFireKeys,setFaqFireKeys]=useState({}); // {indicatorId: firebaseKey} - not needed here since faq stored as one object
+
+  /* ── Ops state (Firebase) ── */
+  const [ops,setOps]=useState([]);         // active records from Firebase
+  const [opsMap,setOpsMap]=useState({});   // fbKey -> record
+
+  /* ── Admins state (Firebase) ── */
+  const [admins,setAdmins]=useState(['Admin X','Admin Y','Admin Z']);
+  const [adminsKey,setAdminsKey]=useState(null); // single Firebase key for admins array
+
+  /* ── UI state ── */
+  const [mainTab,setMainTab]=useState('faq');     // 'faq' | 'open-period'
+  const [topic,setTopic]=useState(null);
+  const [qItem,setQItem]=useState(null);
+  const [search,setSearch]=useState('');
+  const [adminMode,setAdminMode]=useState(false);
+  const [showAdd,setShowAdd]=useState(false);
+  const [addTopic,setAddTopic]=useState('');
+  const [addQ,setAddQ]=useState('');
+  const [addA,setAddA]=useState('');
+  const [opAdmin,setOpAdmin]=useState('');
+  const [dlAdmin,setDlAdmin]=useState('');
+  const [opType,setOpType]=useState('realisasi');
+  const [opSearch,setOpSearch]=useState('');
+  const [opState,setOpState]=useState('idle');
+  const [opRecord,setOpRecord]=useState(null);
+  const [opMulti,setOpMulti]=useState([]);
+  const [opForm,setOpForm]=useState(initFR());
+  const [opFormT,setOpFormT]=useState(initFT());
+  const [roRows,setRoRows]=useState([initRO()]);
+  const [showPaste,setShowPaste]=useState(false);
+  const [pasteText,setPasteText]=useState('');
+  const [pasteErrs,setPasteErrs]=useState([]);
+  const [pasteDups,setPasteDups]=useState([]);
+  const [dateErr,setDateErr]=useState('');
+  const [copied,setCopied]=useState('');
+  const [upStatus,setUpStatus]=useState('');
+  const [newAdminName,setNewAdminName]=useState('');
+  const fileRef=useRef();
+  const [dbInfo]=useState(()=>window.SATKER_DB?.length?`DB: ${window.SATKER_DB.length.toLocaleString()} satker`:'⚠ satker_db.js tidak ditemukan');
+
+  /* ── Init Firebase & listeners ── */
+  useEffect(()=>{
+    let attempts=0;
+    function tryInit(){
+      const db=getDB();
+      if(!db){
+        if(attempts++<10)setTimeout(tryInit,500);
+        else setSyncStatus('err');
+        return;
+      }
+      setDbReady(true);
+
+      /* ── Listen FAQ ── */
+      db.ref(FB.faq()).on('value',snap=>{
+        const val=snap.val();
+        if(val){setFaq(prev=>({...INIT_FAQ,...val}));}
+        else{
+          // First load — seed with INIT_FAQ
+          db.ref(FB.faq()).set(INIT_FAQ);
+        }
+        setSyncStatus('ok');
+      },()=>setSyncStatus('err'));
+
+      /* ── Listen Ops ── */
+      db.ref(FB.ops()).on('value',snap=>{
+        const val=snap.val();
+        const today=todayStr();
+        if(val){
+          const map={};
+          Object.entries(val).forEach(([k,v])=>{map[k]={...v,_fbKey:k};});
+          // Filter aktif (tampilkan yang belum expired) — auto-delete TIDAK dilakukan
+          // agar import bulk tidak race dengan listener
+          const activeArr=Object.values(map).filter(r=>isValidDate(r.tgl_akhir)&&r.tgl_akhir>=today);
+          setOps(activeArr);setOpsMap(map);
+        }else{setOps([]);setOpsMap({});}
+      });
+
+      /* ── Listen Admins ── */
+      db.ref(FB.admins()).on('value',snap=>{
+        const val=snap.val();
+        if(val&&Array.isArray(val.list)){setAdmins(val.list);setAdminsKey(val._key||null);}
+        else if(!val){db.ref(FB.admins()).set({list:['Admin X','Admin Y','Admin Z']});}
+      });
+    }
+    tryInit();
+    return()=>{
+      const db=getDB();
+      if(db){db.ref(FB.faq()).off();db.ref(FB.ops()).off();db.ref(FB.admins()).off();}
+    };
+  },[]);
+
+  /* ── FAQ CRUD ── */
+  const saveFaqToFB=useCallback((newFaq)=>{
+    const db=getDB();if(!db)return;
+    db.ref(FB.faq()).set(newFaq);
+    setFaq(newFaq);
+  },[]);
+
+  /* ── Ops CRUD ── */
+  function addOpToFB(rec){
+    const db=getDB();if(!db)return Promise.resolve();
+    return db.ref(FB.ops()).push(rec);
+  }
+  function delOpFromFB(fbKey){
+    const db=getDB();if(!db)return;
+    db.ref(FB.ops()+'/'+fbKey).remove();
+  }
+
+  /* ── Admins CRUD ── */
+  function saveAdminsToFB(list){
+    const db=getDB();if(!db)return;
+    db.ref(FB.admins()).set({list});
+    setAdmins(list);
+  }
+
+  /* ── Satker auto-fill ── */
+  function fillSatker(kode,isT){
+    const clean=kode.replace(/\D/g,'');
+    if(clean.length>=6){
+      const r=lookupSatker(clean);
+      if(!isT)setOpForm(f=>({...f,kode:clean,nm_satker:r?.[1]||'',kl:r?.[2]||'',kd_kppn:r?.[3]||'',nm_kppn:r?.[4]||'',kanwil:r?.[5]||'',kd_kanwil:r?.[6]||'',kd_unit:r?.[7]||''}));
+      else setOpFormT(f=>({...f,kode:clean,nm_satker:r?.[1]||'',kl:r?.[2]||''}));
+    }else{
+      if(!isT)setOpForm(f=>({...f,kode:clean}));
+      else setOpFormT(f=>({...f,kode:clean}));
+    }
+  }
+
+  function checkDates(mulai,akhir){
+    if(mulai&&akhir&&akhir<=mulai)setDateErr('⛔ Tanggal ditutup harus lebih besar dari tanggal mulai.');
+    else setDateErr('');
+  }
+
+  function doOpSearch(){
+    const k=opSearch.trim().padStart(6,'0');
+    if(!k||k==='000000')return;
+    const t=todayStr();
+    const active=ops.filter(o=>o.kode_satker===k&&o.type===opType&&o.tgl_akhir>=t);
+    if(active.length>0){setOpRecord(active[0]);setOpMulti(active);setOpState(active.length>1?'multi':'found');}
+    else{
+      const r=lookupSatker(k);
+      if(opType==='realisasi')setOpForm({...initFR(),kode:k,nm_satker:r?.[1]||'',kl:r?.[2]||'',kd_kppn:r?.[3]||'',nm_kppn:r?.[4]||'',kanwil:r?.[5]||'',kd_kanwil:r?.[6]||'',kd_unit:r?.[7]||''});
+      else{setOpFormT({...initFT(),kode:k,nm_satker:r?.[1]||'',kl:r?.[2]||''});setRoRows([initRO()]);}
+      setOpRecord(null);setOpState('new');setDateErr('');
+    }
+  }
+
+  function doSaveR(){
+    const f=opForm;
+    if(!f.kode||!f.tgl_mulai||!f.tgl_akhir||!f.periode_from||!f.periode_to)return;
+    if(!validDates(f.tgl_mulai,f.tgl_akhir)){setDateErr('⛔ Tanggal ditutup harus lebih besar dari tanggal mulai.');return;}
+    const pb=f.periode_from===f.periode_to?`${f.periode_from} ${f.tahun}`:`${f.periode_from} s.d ${f.periode_to} ${f.tahun}`;
+    const rec={id:dbId(),type:'realisasi',kode_satker:f.kode.padStart(6,'0'),nm_satker:f.nm_satker,kl:f.kl,
+      kd_kppn:f.kd_kppn,nm_kppn:f.nm_kppn,nm_kanwil:f.kanwil,kd_kanwil:f.kd_kanwil||'',kd_unit:f.kd_unit||'',
+      periode_from:f.periode_from,periode_to:f.periode_to,periode_bulan:pb,tahun:f.tahun,
+      tgl_mulai:f.tgl_mulai,tgl_akhir:f.tgl_akhir,admin_name:opAdmin,created_at:new Date().toISOString()};
+    addOpToFB(rec);setOpRecord(rec);setOpState('saved');setOpForm(initFR());setDateErr('');
+  }
+
+  async function doSaveT(){
+    const f=opFormT;
+    if(!f.kode||!f.tgl_mulai||!f.tgl_akhir||!f.periode_awal)return;
+    if(!validDates(f.tgl_mulai,f.tgl_akhir)){setDateErr('⛔ Tanggal ditutup harus lebih besar dari tanggal mulai.');return;}
+    const validRows=roRows.filter(r=>r.kd_program&&r.kd_kegiatan&&r.kd_kro&&r.kd_ro);
+    if(!validRows.length){setDateErr('⛔ Minimal satu RO wajib diisi lengkap.');return;}
+    const now=new Date().toISOString();
+    const baseRec={type:'target',tahun_anggaran:f.tahun,kode_satker:f.kode.padStart(6,'0'),
+      nm_satker:f.nm_satker,kl:f.kl,periode_awal:f.periode_awal,
+      tgl_mulai:f.tgl_mulai,tgl_akhir:f.tgl_akhir,admin_name:opAdmin,created_at:now};
+    let lastRec=null;
+    for(const ro of validRows){
+      const rec={...baseRec,id:dbId(),kd_program:ro.kd_program,kd_kegiatan:ro.kd_kegiatan,kd_kro:ro.kd_kro,kd_ro:ro.kd_ro};
+      await addOpToFB(rec);lastRec=rec;
+    }
+    setOpRecord(lastRec);setOpState('saved');setOpFormT(initFT());setRoRows([initRO()]);setDateErr('');
+  }
+
+  function resetOp(){setOpState('idle');setOpRecord(null);setOpMulti([]);setOpSearch('');setDateErr('');}
+
+  function delOp(rec){
+    if(rec._fbKey)delOpFromFB(rec._fbKey);
+    if(opRecord?.id===rec.id)resetOp();
+  }
+
+  function copy(text,k){
+    (navigator.clipboard?navigator.clipboard.writeText(text):new Promise(r=>{const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);r();}))
+    .then(()=>{setCopied(k);setTimeout(()=>setCopied(''),2500);});
+  }
+
+  async function handleUpload(e){
+    const file=e.target.files?.[0];if(!file)return;
+    setUpStatus('⏳ Membaca file...');
+    try{
+      const recs=await parseXLUpload(file,opType);
+      if(recs.length===0){
+        setUpStatus('⚠ Tidak ada data valid. Periksa format tanggal (DD/MM/YYYY) & kolom sesuai template.');
+        e.target.value='';setTimeout(()=>setUpStatus(''),7000);return;
+      }
+      setUpStatus(`⏳ Mengimpor ${recs.length} data...`);
+      // Push satu per satu dengan delay kecil agar listener tidak race
+      for(let i=0;i<recs.length;i++){
+        await addOpToFB(recs[i]);
+        if((i+1)%10===0)setUpStatus(`⏳ ${i+1}/${recs.length} data diimpor...`);
+      }
+      setUpStatus(`✅ ${recs.length} data berhasil diimpor ke daftar aktif!`);
+    }catch(err){
+      console.error('Import error:',err);
+      setUpStatus('❌ Gagal: '+err.message);
+    }
+    e.target.value='';setTimeout(()=>setUpStatus(''),6000);
+  }
+
+  function handleAddFaq(){
+    if(!addTopic||!addQ.trim()||!addA.trim())return;
+    const item={id:dbId(),q:addQ.trim(),a:addA.trim()};
+    const newFaq={...faq,[addTopic]:[...(faq[addTopic]||[]),item]};
+    saveFaqToFB(newFaq);
+    setShowAdd(false);setAddQ('');setAddA('');setAddTopic('');
+  }
+  function delFaq(tid,qid){
+    const newFaq={...faq,[tid]:faq[tid].filter(q=>q.id!==qid)};
+    saveFaqToFB(newFaq);
+    if(qItem?.id===qid)setQItem(null);
+  }
+
+  /* ── Derived ── */
+  const srch=search.trim().toLowerCase();
+  const searchRes=srch?IND.flatMap(ind=>(faq[ind.id]||[]).map(q=>({...q,ind}))).filter(x=>x.q.toLowerCase().includes(srch)||x.a.toLowerCase().includes(srch)):[];
+  const curQs=topic?(faq[topic.id]||[]):[];
+  const filteredOps=ops.filter(o=>o.type===opType&&isActive(o));
+
+  function previewNotifR(){
+    const f=opForm;if(!f.kode||!f.periode_from||!f.periode_to||!f.tgl_akhir)return null;
+    const pb=f.periode_from===f.periode_to?`${f.periode_from} ${f.tahun}`:`${f.periode_from} s.d ${f.periode_to} ${f.tahun}`;
+    return genNotifR({kode_satker:f.kode.padStart(6,'0'),periode_bulan:pb,tgl_akhir:f.tgl_akhir});
+  }
+  function previewNotifT(){
+    const f=opFormT;if(!f.kode||!f.tgl_akhir)return null;
+    return genNotifT({kode_satker:f.kode.padStart(6,'0'),tgl_akhir:f.tgl_akhir});
+  }
+  /* ── RO row helpers ── */
+  function addRoRow(){setRoRows(r=>[...r,initRO()]);}
+  function delRoRow(idx){setRoRows(r=>r.length>1?r.filter((_,i)=>i!==idx):r);}
+  function updRoRow(idx,field,val){setRoRows(r=>r.map((row,i)=>i===idx?{...row,[field]:val}:row));}
+  /* ── Paste import parser ── */
+  function doPasteImport(){
+    const lines=pasteText.trim().split(/\r?\n/).filter(l=>l.trim());
+    const errs=[];const parsed=[];
+    const SKIP_HDRS=/^(program|kegiatan|kro|ro|kode)$/i;
+    lines.forEach((line,li)=>{
+      const cols=line.split('\t').map(c=>c.trim());
+      if(cols.length===4&&cols.every(c=>SKIP_HDRS.test(c)))return; // header row
+      if(cols.length!==4){errs.push(`Baris ${li+1}: harus 4 kolom, ditemukan ${cols.length}`);return;}
+      const [prog,keg,kro,ro]=cols;
+      if(!prog)errs.push(`Baris ${li+1}: Kode Program kosong`);
+      if(!keg)errs.push(`Baris ${li+1}: Kode Kegiatan kosong`);
+      if(!kro)errs.push(`Baris ${li+1}: Kode KRO kosong`);
+      if(!ro)errs.push(`Baris ${li+1}: Kode RO kosong`);
+      if(prog&&keg&&kro&&ro)parsed.push({id:dbId(),kd_program:prog,kd_kegiatan:keg,kd_kro:kro,kd_ro:ro});
+    });
+    // Deteksi duplikat dalam paste
+    const seen=new Map();const dups=[];
+    parsed.forEach((r,i)=>{const k=`${r.kd_program}|${r.kd_kegiatan}|${r.kd_kro}|${r.kd_ro}`;
+      if(seen.has(k))dups.push(`Duplikat: ${k} (baris ${seen.get(k)+1} & ${i+1})`);else seen.set(k,i);
+    });
+    setPasteErrs(errs);setPasteDups(dups);
+    if(errs.length===0){
+      setRoRows(parsed.length>0?parsed:[initRO()]);
+      setShowPaste(false);setPasteText('');setPasteErrs([]);setPasteDups([]);
+    }
+  }
+
+  /* ── Result block component ── */
+  function ResultBlock({rec,savedMode}){
+    const notif=genNotif(rec);const ck='c'+rec.id;
+    const rows=rec.type==='realisasi'
+      ?[['Kode Satker',rec.kode_satker],['K/L',rec.kl||'-'],['Periode',rec.periode_bulan||'-'],['Tgl Mulai',fmtDate(rec.tgl_mulai)],['Dibuka s.d',fmtDate(rec.tgl_akhir)]]
+      :[['Kode Satker',rec.kode_satker],['Tahun',rec.tahun_anggaran||'-'],['Program/Keg',`${rec.kd_program||'-'}/${rec.kd_kegiatan||'-'}`],['KRO/RO',`${rec.kd_kro||'-'}/${rec.kd_ro||'-'}`],['Periode Awal',rec.periode_awal||'-'],['Tgl Mulai',fmtDate(rec.tgl_mulai)],['Dibuka s.d',fmtDate(rec.tgl_akhir)]];
+    return(
+      <div className="result-block">
+        <div className="result-header">
+          <svg viewBox="0 0 24 24" style={{width:15,height:15,stroke:"#15803d",fill:"none",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",flexShrink:0}}><polyline points="20 6 9 17 4 12"/></svg>
+          {savedMode?'Berhasil Direkam!':'Sudah Tercatat'}
+          {rec.admin_name&&<span style={{fontWeight:400,fontSize:10.5,color:'#15803d',background:'#fff',borderRadius:6,padding:'1px 7px',border:'1px solid #BBF7D0',marginLeft:2}}>oleh: {rec.admin_name}</span>}
+        </div>
+        <div className="result-grid">
+          {rows.map(([k,v])=>(
+            <div key={k} className="result-cell">
+              <div className="result-cell-label">{k}</div>
+              <div className="result-cell-value">{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{fontSize:10.5,fontWeight:700,letterSpacing:1,textTransform:'uppercase',color:'#15803d',marginBottom:6}}>Notifikasi untuk Satker</div>
+        <div className="notif-box">{notif}</div>
+        <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+          <button className="btn btn-green btn-sm" onClick={()=>copy(notif,ck)}>
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            {copied===ck?'Disalin!':'Salin Notifikasi'}
+          </button>
+          {adminMode&&rec._fbKey&&<button className="btn btn-danger btn-sm" onClick={()=>delOp(rec)}>
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Hapus
+          </button>}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Admin Select ── */
+  function AdminSelect(){
+    return(
+      <div className="field-group">
+        <label className="field-label">Diinput oleh *</label>
+        <select value={opAdmin} onChange={e=>setOpAdmin(e.target.value)} className="inp" style={{color:opAdmin?'var(--t1)':'var(--t3)'}}>
+          <option value="">-- Pilih Admin --</option>
+          {admins.map(a=><option key={a} value={a}>{a}</option>)}
+        </select>
+      </div>
+    );
+  }
+
+  /* ══════════════ RENDER ══════════════ */
+  return(
+    <div id="root">
+      {/* ── HEADER ── */}
+      <div className="ikpa-hd no-print">
+        <div className="hd-title">
+          <strong style={{fontSize:14,fontWeight:700,color:'#6D2C1D'}}>Indikator Kinerja Pelaksanaan Anggaran · DJPb</strong>
+        </div>
+        <div className="hd-spacer"/>
+        {/* Sync indicator */}
+        <span style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'var(--t3)'}}>
+          <span className={`sync-dot ${syncStatus}`}/>
+          {syncStatus==='ok'?'Tersinkron':'Menghubungkan...'}
+        </span>
+        <span className="hd-badge">{dbInfo}</span>
+        {/* PDF All */}
+        <button className="hd-btn outline" onClick={()=>printFAQ(faq,null)} title="Cetak semua FAQ">
+          <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          PDF IKPA
+        </button>
+        {/* Filter & Download XL — only show on Open Period tab */}
+        {mainTab==='open-period'&&(<>
+          <div style={{display:'flex',alignItems:'center',gap:4,background:'rgba(255,255,255,.55)',border:'1px solid rgba(183,28,28,.2)',borderRadius:8,padding:'4px 8px'}}>
+            <span style={{fontSize:10,color:'#6D2C1D',flexShrink:0,fontWeight:600}}>Filter XL:</span>
+            <select value={dlAdmin} onChange={e=>setDlAdmin(e.target.value)} style={{background:'transparent',border:'none',color:'#6D2C1D',fontSize:11.5,outline:'none',cursor:'pointer',fontWeight:600}}>
+              <option value="">Semua Admin</option>
+              {admins.map(a=><option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <button className="hd-btn green" onClick={()=>exportXL(ops,'realisasi',dlAdmin)}>
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            XLS Realisasi
+          </button>
+          <button className="hd-btn amber" onClick={()=>exportXL(ops,'target',dlAdmin)}>
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            XLS Target
+          </button>
+        </>)}
+        {/* Add FAQ (only FAQ tab + admin mode) */}
+        {mainTab==='faq'&&adminMode&&(
+          <button className="hd-btn primary" onClick={()=>{setShowAdd(true);setAddTopic(topic?.id||'');}}>
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            FAQ Baru
+          </button>
+        )}
+        {/* Admin toggle */}
+        <button className={`hd-btn ${adminMode?'admin-on':'outline'}`} onClick={()=>setAdminMode(v=>!v)}>
+          <svg viewBox="0 0 24 24">{adminMode?<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>:<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>}</svg>
+          {adminMode?'Admin ON':'Admin'}
+        </button>
+      </div>
+
+      {/* ── MAIN TABS ── */}
+      <div className="main-tabs no-print">
+        <button className={`main-tab ${mainTab==='faq'?'active':''}`} onClick={()=>setMainTab('faq')}>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          FAQ
+        </button>
+        <button className={`main-tab ${mainTab==='open-period'?'active':''}`} onClick={()=>setMainTab('open-period')}>
+          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Open Period
+        </button>
+        <div className="main-tab-spacer"/>
+      </div>
+
+      {/* ══════════════ FAQ TAB ══════════════ */}
+      {mainTab==='faq'&&(
+        <>
+          {/* Search bar */}
+          <div className="tab-search-wrap no-print">
+            <div className="tab-search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari pertanyaan di semua indikator IKPA..."/>
+            </div>
+            {search&&<button onClick={()=>setSearch('')} style={{marginLeft:6,background:'none',border:'none',cursor:'pointer',fontSize:12,color:'var(--t2)'}}>✕ Hapus</button>}
+          </div>
+
+          <div className="faq-body" style={{flex:1}}>
+            {/* ── SIDEBAR ── */}
+            <nav className="faq-sidebar no-print">
+              {GROUPS.map(g=>(
+                <div key={g.label}>
+                  <div className="nav-group-title">{g.label}</div>
+                  {g.ids.map(id=>{
+                    const ind=IND.find(i=>i.id===id);
+                    const active=topic?.id===id&&!search;
+                    const isPen=ind.bobot==='Pengurang';
+                    const cnt=(faq[id]||[]).length;
+                    return(
+                      <button key={id} className={`nav-ind ${active?'active':''}`}
+                        onClick={()=>{setTopic(ind);setQItem(null);setSearch('');resetOp();}}>
+                        <span className="nav-ind-label">{ind.no}. {ind.label}</span>
+                        <span className="nav-ind-cnt">{isPen?'⚠':cnt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </nav>
+
+            {/* ── MIDDLE PANEL ── */}
+            <div className="faq-mid">
+              {/* Search results */}
+              {search&&(
+                <>
+                  <div className="faq-mid-head">
+                    <div style={{fontWeight:600,fontSize:13,color:'var(--t1)'}}>Hasil Pencarian</div>
+                    <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{searchRes.length} hasil untuk "{search}"</div>
+                  </div>
+                  <div className="faq-mid-body">
+                    {searchRes.length===0&&<div style={{padding:24,fontSize:12,color:'var(--t3)',textAlign:'center'}}>Tidak ada hasil ditemukan.</div>}
+                    {searchRes.map(x=>(
+                      <div key={x.id} className={`q-item ${qItem?.id===x.id?'active':''}`} onClick={()=>setQItem(x)}>
+                        <span style={{fontSize:10,color:'var(--r)',background:'var(--yb)',padding:'1px 5px',borderRadius:4,flexShrink:0,fontWeight:600}}>{x.ind.no}</span>
+                        <div>
+                          <div style={{fontSize:9.5,color:'var(--t3)',marginBottom:2}}>{x.ind.label}</div>
+                          <div className="q-item-text">{x.q}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Topic panel */}
+              {!search&&topic&&(
+                <>
+                  <div className="faq-mid-head">
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:13,color:'var(--t1)'}}>{topic.label}</div>
+                        <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>
+                          Bobot: <span style={{color:topic.bobot==='Pengurang'?'var(--r)':'var(--info)',fontWeight:600}}>{topic.bobot}</span>
+                          &nbsp;·&nbsp;{curQs.length} pertanyaan
+                        </div>
+                      </div>
+                      <button className="hd-btn outline" style={{fontSize:11,padding:'5px 10px'}} onClick={()=>printFAQ(faq,topic.id)}>
+                        <svg viewBox="0 0 24 24" style={{width:12,height:12,stroke:'currentColor',fill:'none',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round'}}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        PDF
+                      </button>
+                    </div>
+                  </div>
+                  <div className="faq-mid-body">
+                    {curQs.map((q,i)=>(
+                      <div key={q.id} className={`q-item ${qItem?.id===q.id?'active':''}`} onClick={()=>setQItem(q)}>
+                        <span className="q-item-num">{String(i+1).padStart(2,'0')}</span>
+                        <span className="q-item-text">{q.q}</span>
+                        {adminMode&&<button className="btn btn-danger btn-sm" style={{padding:'2px 7px',flexShrink:0}} onClick={e=>{e.stopPropagation();delFaq(topic.id,q.id);}}>✕</button>}
+                      </div>
+                    ))}
+                    {curQs.length===0&&<div style={{padding:24,fontSize:12,color:'var(--t3)',textAlign:'center'}}>Belum ada pertanyaan untuk indikator ini.</div>}
+                  </div>
+                </>
+              )}
+
+              {!search&&!topic&&(
+                <div className="empty">
+                  <div className="empty-icon"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>
+                  <p>Pilih indikator IKPA</p>
+                  <span>Klik salah satu indikator di panel kiri untuk melihat daftar pertanyaan</span>
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT PANEL (answer) ── */}
+            <div className="faq-right">
+              {qItem&&(
+                <div className="fu">
+                  <div className="answer-chip">
+                    {topic?.label} · {topic?.bobot}
+                  </div>
+                  <h2 className="answer-q">{qItem.q}</h2>
+                  <div className="answer-divider"/>
+                  <div className="answer-text">{qItem.a}</div>
+                  <div className="feedback-row">
+                    <span style={{fontSize:11.5,color:'var(--t3)'}}>Apakah jawaban ini membantu?</span>
+                    {['👍 Ya','👎 Tidak'].map(t=>(
+                      <button key={t} className="btn btn-secondary btn-sm" onClick={e=>{e.currentTarget.textContent='✓ Terima kasih!';e.currentTarget.disabled=true;}}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!qItem&&(
+                <div className="empty">
+                  <div className="empty-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                  <p>Pilih Pertanyaan</p>
+                  <span>Klik pertanyaan di panel tengah untuk melihat jawaban lengkap</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ══════════════ OPEN PERIOD TAB ══════════════ */}
+      {mainTab==='open-period'&&(
+        <div className="op-body" style={{flex:1}}>
+          {/* ── LEFT: controls ── */}
+          <div className="op-left">
+            {/* Type toggle */}
+            <div className="type-toggle">
+              {[{k:'realisasi',l:'📊 Realisasi'},{k:'target',l:'🎯 Target'}].map(({k,l})=>(
+                <button key={k} className={`type-btn ${opType===k?'active':''}`} onClick={()=>{setOpType(k);resetOp();}}>{l}</button>
+              ))}
+            </div>
+
+            {/* Cek Satker */}
+            <div className="card">
+              <div className="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Cek / Rekam {opType==='realisasi'?'Realisasi':'Target'}
+              </div>
+              <div style={{display:'flex',gap:6}}>
+                <input value={opSearch} onChange={e=>setOpSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doOpSearch()}
+                  placeholder="Kode satker (6 digit)..." className="inp" style={{flex:1,fontSize:12}}/>
+                <button className="btn btn-primary" onClick={doOpSearch} style={{padding:'8px 14px'}}>Cek</button>
+              </div>
+            </div>
+
+            {/* Import Excel */}
+            <div className="card">
+              <div className="card-title">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Import Excel Bulk
+              </div>
+              <input type="file" accept=".xlsx,.xls" ref={fileRef} onChange={handleUpload} style={{display:'none'}}/>
+              <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>
+                <button className="btn btn-secondary" onClick={()=>fileRef.current.click()}>
+                  <svg viewBox="0 0 24 24" style={{width:13,height:13,stroke:'currentColor',fill:'none',strokeWidth:1.8}}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  Pilih File Excel
+                </button>
+                {upStatus&&<span style={{fontSize:11,color:upStatus.startsWith('✅')?'var(--g)':'var(--r)'}}>{upStatus}</span>}
+              </div>
+            </div>
+
+            {/* Kelola Admin (admin mode only) */}
+            {adminMode&&(
+              <div className="card">
+                <div className="card-title">
+                  <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Kelola Daftar Admin
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  {admins.map((a,i)=>(
+                    <div key={i} style={{display:'flex',gap:6}}>
+                      <input value={a} onChange={e=>{const n=[...admins];n[i]=e.target.value;saveAdminsToFB(n);}} className="inp" style={{flex:1,fontSize:12}}/>
+                      <button className="btn btn-danger btn-sm" style={{padding:'4px 9px'}} onClick={()=>saveAdminsToFB(admins.filter((_,j)=>j!==i))}>✕</button>
+                    </div>
+                  ))}
+                  <div style={{display:'flex',gap:6,marginTop:2}}>
+                    <input value={newAdminName} onChange={e=>setNewAdminName(e.target.value)} placeholder="Nama admin baru..." className="inp" style={{flex:1,fontSize:12}}/>
+                    <button className="btn btn-primary btn-sm" onClick={()=>{if(newAdminName.trim()){saveAdminsToFB([...admins,newAdminName.trim()]);setNewAdminName('');}}}>+ Tambah</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Active records list */}
+            {filteredOps.length>0&&(
+              <div className="card">
+                <div className="card-title">
+                  <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  Aktif ({filteredOps.length})
+                </div>
+                {filteredOps.map(op=>(
+                  <div key={op.id} className={`rec-item ${opRecord?.id===op.id?'active':''}`}
+                    onClick={()=>{setOpSearch(op.kode_satker);setOpRecord(op);setOpMulti([op]);setOpState('found');}}>
+                    <span className="rec-kode">{op.kode_satker}</span>
+                    <span className="rec-nm">{op.nm_satker?.slice(0,20)||'-'}</span>
+                    <span className="rec-meta">
+                      {op.type==='realisasi'?op.periode_bulan?.slice(0,12)||'':op.kd_ro?`RO:${op.kd_ro}`:''}
+                    </span>
+                    <span className="rec-meta">s.d {fmtDateShort(op.tgl_akhir)}</span>
+                    {adminMode&&op._fbKey&&<button className="btn btn-danger btn-sm" style={{padding:'2px 6px',flexShrink:0,fontSize:10}} onClick={e=>{e.stopPropagation();delOp(op);}}>✕</button>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── RIGHT: result / form ── */}
+          <div className="op-right">
+            {/* Header */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:16,fontWeight:700,color:'var(--t1)',marginBottom:4}}>
+                {opType==='realisasi'?'Open Period Realisasi':'Dispensasi Target'} Capaian Output
+              </div>
+              <div style={{fontSize:12,color:'var(--t3)'}}>
+                {opType==='realisasi'?'Rekam & pantau pembukaan periode pengisian realisasi capaian output':'Rekam & pantau pembukaan dispensasi pengisian target capaian output'}
+              </div>
+            </div>
+
+            {/* Idle state */}
+            {opState==='idle'&&(
+              <div style={{padding:'14px 0'}}>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--t2)',marginBottom:5}}>Cek atau rekam open period</div>
+                <div style={{fontSize:12,color:'var(--t3)',lineHeight:1.6}}>Masukkan kode satker (6 digit) di panel kiri, lalu klik <strong style={{color:'var(--t2)'}}>Cek</strong> untuk mencari atau merekam data baru.</div>
+              </div>
+            )}
+
+            {/* Found / Saved */}
+            {(opState==='found'||opState==='saved')&&opRecord&&<ResultBlock rec={opRecord} savedMode={opState==='saved'}/>}
+
+            {/* Multi found */}
+            {opState==='multi'&&opMulti.length>0&&(
+              <div>
+                <div style={{fontWeight:700,fontSize:12,color:'var(--w)',marginBottom:12,display:'flex',alignItems:'center',gap:6}}>
+                  <svg viewBox="0 0 24 24" style={{width:15,height:15,stroke:'var(--w)',fill:'none',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round'}}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Satker ini memiliki {opMulti.length} data aktif:
+                </div>
+                {opMulti.map(op=><ResultBlock key={op.id} rec={op} savedMode={false}/>)}
+                <button className="btn btn-primary" style={{marginTop:4}}
+                  onClick={()=>{
+                    const r=lookupSatker(opSearch.padStart(6,'0'));
+                    setOpState('new');setDateErr('');
+                    if(opType==='realisasi')setOpForm({...initFR(),kode:opSearch.padStart(6,'0'),nm_satker:r?.[1]||'',kl:r?.[2]||'',kd_kppn:r?.[3]||'',nm_kppn:r?.[4]||'',kanwil:r?.[5]||'',kd_kanwil:r?.[6]||'',kd_unit:r?.[7]||''});
+                    else{setOpFormT({...initFT(),kode:opSearch.padStart(6,'0'),nm_satker:r?.[1]||'',kl:r?.[2]||''});setRoRows([initRO()]);}
+                  }}>
+                  <svg viewBox="0 0 24 24" style={{width:13,height:13,stroke:'#fff',fill:'none',strokeWidth:2}}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Tambah Open Period Baru untuk Satker Ini
+                </button>
+              </div>
+            )}
+
+            {/* ── FORM REALISASI ── */}
+            {opState==='new'&&opType==='realisasi'&&(
+              <div className="card fu">
+                <div style={{fontWeight:700,fontSize:13,color:'var(--rd)',marginBottom:14}}>Rekam Open Period Realisasi</div>
+                <AdminSelect/>
+                <div className="field-row col2">
+                  <div>
+                    <label className="field-label">Kode Satker *</label>
+                    <input className="inp" value={opForm.kode} onChange={e=>fillSatker(e.target.value,false)}/>
+                  </div>
+                  <div>
+                    <label className="field-label">K/L</label>
+                    <input className="inp" value={opForm.kl} onChange={e=>setOpForm(f=>({...f,kl:e.target.value}))} placeholder="auto dari DB"/>
+                  </div>
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Nama Satker</label>
+                  <input className="inp" value={opForm.nm_satker} onChange={e=>setOpForm(f=>({...f,nm_satker:e.target.value}))} placeholder="auto dari DB"/>
+                  {opForm.kode.length>=6&&!lookupSatker(opForm.kode)&&opForm.kode!=='000000'&&<div style={{fontSize:10,color:'var(--w)',marginTop:3}}>⚠ Satker baru, belum terupdate dalam database</div>}
+                </div>
+                <div className="field-row col2">
+                  <div>
+                    <label className="field-label">Kanwil</label>
+                    <input className="inp" value={opForm.kanwil} onChange={e=>setOpForm(f=>({...f,kanwil:e.target.value}))} placeholder="auto dari DB"/>
+                  </div>
+                  <div>
+                    <label className="field-label">KPPN</label>
+                    <input className="inp" value={opForm.nm_kppn} onChange={e=>setOpForm(f=>({...f,nm_kppn:e.target.value}))} placeholder="auto dari DB"/>
+                  </div>
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Periode Pembukaan (Bulan) *</label>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <select value={opForm.periode_from} onChange={e=>setOpForm(f=>({...f,periode_from:e.target.value}))} className="inp" style={{flex:1,color:opForm.periode_from?'var(--t1)':'var(--t3)'}}>
+                      <option value="">Dari bulan...</option>{MOS.map(m=><option key={m} value={m}>{m}</option>)}
+                    </select>
+                    <span style={{fontSize:11,color:'var(--t3)',flexShrink:0,fontWeight:500}}>s.d</span>
+                    <select value={opForm.periode_to} onChange={e=>setOpForm(f=>({...f,periode_to:e.target.value}))} className="inp" style={{flex:1,color:opForm.periode_to?'var(--t1)':'var(--t3)'}}>
+                      <option value="">Sampai bulan...</option>{MOS.map(m=><option key={m} value={m}>{m}</option>)}
+                    </select>
+                    <select value={opForm.tahun} onChange={e=>setOpForm(f=>({...f,tahun:e.target.value}))} className="inp" style={{width:80}}>
+                      {['2024','2025','2026','2027'].map(y=><option key={y}>{y}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="field-row col2">
+                  <div>
+                    <label className="field-label">Tanggal Mulai Buka *</label>
+                    <input type="date" className="inp" value={opForm.tgl_mulai} onChange={e=>{setOpForm(f=>({...f,tgl_mulai:e.target.value}));checkDates(e.target.value,opForm.tgl_akhir);}}/>
+                  </div>
+                  <div>
+                    <label className="field-label">Ditutup s.d Tanggal *</label>
+                    <input type="date" className="inp" value={opForm.tgl_akhir} onChange={e=>{setOpForm(f=>({...f,tgl_akhir:e.target.value}));checkDates(opForm.tgl_mulai,e.target.value);}}/>
+                  </div>
+                </div>
+                {dateErr&&<div className="date-err">{dateErr}</div>}
+                {previewNotifR()&&(
+                  <div className="preview-notif">
+                    <div className="preview-notif-label">Preview Notifikasi</div>
+                    <div className="preview-notif-text">{previewNotifR()}</div>
+                  </div>
+                )}
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <button className="btn btn-primary" onClick={doSaveR}
+                    disabled={!!dateErr||!opForm.kode||!opForm.tgl_mulai||!opForm.tgl_akhir||!opForm.periode_from||!opForm.periode_to||!opAdmin}
+                    style={{opacity:(!!dateErr||!opForm.kode||!opForm.tgl_mulai||!opForm.tgl_akhir||!opForm.periode_from||!opForm.periode_to||!opAdmin)?.4:1}}>
+                    Simpan
+                  </button>
+                  <button className="btn btn-secondary" onClick={resetOp}>Batal</button>
+                  {!opAdmin&&<span style={{fontSize:11,color:'var(--w)'}}>⚠ Pilih admin terlebih dahulu</span>}
+                </div>
+              </div>
+            )}
+
+            {/* ── FORM TARGET ── */}
+            {opState==='new'&&opType==='target'&&(
+              <div className="card fu">
+                <div style={{fontWeight:700,fontSize:13,color:'var(--rd)',marginBottom:14}}>Rekam Dispensasi Target</div>
+                <AdminSelect/>
+                <div className="field-row col2">
+                  <div>
+                    <label className="field-label">Tahun Anggaran *</label>
+                    <select className="inp" value={opFormT.tahun} onChange={e=>setOpFormT(f=>({...f,tahun:e.target.value}))}>
+                      {['2024','2025','2026','2027'].map(y=><option key={y}>{y}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="field-label">Kode Satker *</label>
+                    <input className="inp" value={opFormT.kode} onChange={e=>fillSatker(e.target.value,true)}/>
+                  </div>
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Nama Satker</label>
+                  <input className="inp" value={opFormT.nm_satker} onChange={e=>setOpFormT(f=>({...f,nm_satker:e.target.value}))} placeholder="auto dari DB"/>
+                  {opFormT.kode.length>=6&&!lookupSatker(opFormT.kode)&&opFormT.kode!=='000000'&&<div style={{fontSize:10,color:'var(--w)',marginTop:3}}>⚠ Satker baru, belum terupdate dalam database</div>}
+                </div>
+                <div className="field-group">
+                  <label className="field-label">K/L</label>
+                  <input className="inp" value={opFormT.kl} onChange={e=>setOpFormT(f=>({...f,kl:e.target.value}))} placeholder="auto dari DB"/>
+                </div>
+
+                {/* ── Dynamic RO Rows ── */}
+                <div style={{marginBottom:10}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                    <label className="field-label" style={{margin:0}}>Daftar Program / Kegiatan / KRO / RO *</label>
+                    <div style={{display:'flex',gap:6}}>
+                      <button type="button" className="btn btn-secondary btn-sm"
+                        onClick={()=>setShowPaste(true)}
+                        title="Paste dari Excel MyIntress">
+                        <svg viewBox="0 0 24 24" style={{width:12,height:12,stroke:'currentColor',fill:'none',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round'}}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                        Paste dari Excel
+                      </button>
+                      <button type="button" className="btn btn-secondary btn-sm"
+                        onClick={addRoRow}>
+                        <svg viewBox="0 0 24 24" style={{width:12,height:12,stroke:'currentColor',fill:'none',strokeWidth:2,strokeLinecap:'round'}}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Tambah RO
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Column headers */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 28px',gap:4,marginBottom:4,padding:'0 2px'}}>
+                    {['Program','Kegiatan','KRO','RO',''].map((h,i)=>(
+                      <div key={i} style={{fontSize:10,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:.4}}>{h}</div>
+                    ))}
+                  </div>
+
+                  {/* RO row list */}
+                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                    {roRows.map((ro,idx)=>{
+                      const incomplete=!ro.kd_program||!ro.kd_kegiatan||!ro.kd_kro||!ro.kd_ro;
+                      return(
+                        <div key={ro.id} style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 28px',gap:4,alignItems:'center'}}>
+                          <input className="inp" value={ro.kd_program}
+                            onChange={e=>updRoRow(idx,'kd_program',e.target.value)}
+                            placeholder="cth: EK"
+                            style={{borderColor:!ro.kd_program?'#FECACA':'var(--b)',fontSize:12,padding:'6px 8px'}}/>
+                          <input className="inp" value={ro.kd_kegiatan}
+                            onChange={e=>updRoRow(idx,'kd_kegiatan',e.target.value)}
+                            placeholder="cth: 7223"
+                            style={{borderColor:!ro.kd_kegiatan?'#FECACA':'var(--b)',fontSize:12,padding:'6px 8px'}}/>
+                          <input className="inp" value={ro.kd_kro}
+                            onChange={e=>updRoRow(idx,'kd_kro',e.target.value)}
+                            placeholder="cth: AEH"
+                            style={{borderColor:!ro.kd_kro?'#FECACA':'var(--b)',fontSize:12,padding:'6px 8px'}}/>
+                          <input className="inp" value={ro.kd_ro}
+                            onChange={e=>updRoRow(idx,'kd_ro',e.target.value)}
+                            placeholder="cth: 001"
+                            style={{borderColor:!ro.kd_ro?'#FECACA':'var(--b)',fontSize:12,padding:'6px 8px'}}/>
+                          <button type="button"
+                            onClick={()=>delRoRow(idx)}
+                            disabled={roRows.length===1}
+                            style={{
+                              width:26,height:26,border:'1px solid #FECACA',borderRadius:6,
+                              background:roRows.length===1?'var(--bg)':'#FEF2F2',
+                              color:roRows.length===1?'var(--t3)':'var(--r)',
+                              cursor:roRows.length===1?'not-allowed':'pointer',
+                              display:'grid',placeItems:'center',flexShrink:0
+                            }}>
+                            <svg viewBox="0 0 24 24" style={{width:12,height:12,stroke:'currentColor',fill:'none',strokeWidth:2.5,strokeLinecap:'round'}}><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Row count + warning */}
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}>
+                    <span style={{fontSize:11,color:'var(--t3)'}}>{roRows.length} RO</span>
+                    {roRows.some(r=>!r.kd_program||!r.kd_kegiatan||!r.kd_kro||!r.kd_ro)&&(
+                      <span style={{fontSize:11,color:'var(--w)'}}>⚠ Lengkapi semua field yang kosong</span>
+                    )}
+                    {(()=>{
+                      const seen=new Map();const dups=[];
+                      roRows.forEach((r,i)=>{const k=`${r.kd_program}|${r.kd_kegiatan}|${r.kd_kro}|${r.kd_ro}`;
+                        if(r.kd_program&&r.kd_ro){if(seen.has(k))dups.push(i+1);else seen.set(k,i+1);}
+                      });
+                      return dups.length>0?<span style={{fontSize:11,color:'var(--r)'}}>⚠ Duplikat di baris: {dups.join(', ')}</span>:null;
+                    })()}
+                  </div>
+                </div>
+
+                <div className="field-row col3">
+                  <div>
+                    <label className="field-label">Periode Awal Dibuka *</label>
+                    <input className="inp" value={opFormT.periode_awal} onChange={e=>setOpFormT(f=>({...f,periode_awal:e.target.value}))} placeholder="cth: 4"/>
+                  </div>
+                  <div>
+                    <label className="field-label">Tanggal Mulai *</label>
+                    <input type="date" className="inp" value={opFormT.tgl_mulai} onChange={e=>{setOpFormT(f=>({...f,tgl_mulai:e.target.value}));checkDates(e.target.value,opFormT.tgl_akhir);}}/>
+                  </div>
+                  <div>
+                    <label className="field-label">Ditutup s.d *</label>
+                    <input type="date" className="inp" value={opFormT.tgl_akhir} onChange={e=>{setOpFormT(f=>({...f,tgl_akhir:e.target.value}));checkDates(opFormT.tgl_mulai,e.target.value);}}/>
+                  </div>
+                </div>
+                {dateErr&&<div className="date-err">{dateErr}</div>}
+                {previewNotifT()&&(
+                  <div className="preview-notif">
+                    <div className="preview-notif-label">Preview Notifikasi</div>
+                    <div className="preview-notif-text">{previewNotifT()}</div>
+                  </div>
+                )}
+                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                  <button className="btn btn-primary" onClick={doSaveT}
+                    disabled={!!dateErr||!opFormT.kode||!opFormT.tgl_mulai||!opFormT.tgl_akhir||!opAdmin||!opFormT.periode_awal||!roRows.some(r=>r.kd_program&&r.kd_kegiatan&&r.kd_kro&&r.kd_ro)}
+                    style={{opacity:(!!dateErr||!opFormT.kode||!opFormT.tgl_mulai||!opFormT.tgl_akhir||!opAdmin||!opFormT.periode_awal||!roRows.some(r=>r.kd_program&&r.kd_kegiatan&&r.kd_kro&&r.kd_ro))?.4:1}}>
+                    <svg viewBox="0 0 24 24" style={{width:13,height:13,stroke:'#fff',fill:'none',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'}}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Simpan {roRows.filter(r=>r.kd_program&&r.kd_kegiatan&&r.kd_kro&&r.kd_ro).length} RO
+                  </button>
+                  <button className="btn btn-secondary" onClick={resetOp}>Batal</button>
+                  {!opAdmin&&<span style={{fontSize:11,color:'var(--w)'}}>⚠ Pilih admin terlebih dahulu</span>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ MODAL PASTE RO ══════════════ */}
+      {showPaste&&(
+        <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget){setShowPaste(false);setPasteText('');setPasteErrs([]);setPasteDups([]);}}}>
+          <div className="modal-box" style={{maxWidth:580}}>
+            <div className="modal-title">
+              <svg viewBox="0 0 24 24" style={{width:18,height:18,stroke:'var(--rd)',fill:'none',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round',display:'inline',marginRight:7,verticalAlign:'middle'}}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+              Paste Daftar RO dari Excel
+            </div>
+            <div style={{fontSize:12,color:'var(--t2)',background:'var(--yb)',border:'1px solid var(--y)',borderRadius:8,padding:'10px 12px',marginBottom:12,lineHeight:1.7}}>
+              <strong style={{color:'var(--rdd)'}}>Cara penggunaan:</strong><br/>
+              1. Buka file Excel MyIntress → pilih kolom <strong>Program, Kegiatan, KRO, RO</strong> (4 kolom berurutan)<br/>
+              2. Seleksi baris data (tanpa header) → <kbd style={{background:'#fff',border:'1px solid var(--b)',borderRadius:4,padding:'1px 5px',fontSize:11}}>Ctrl+C</kbd><br/>
+              3. Klik di area bawah → <kbd style={{background:'#fff',border:'1px solid var(--b)',borderRadius:4,padding:'1px 5px',fontSize:11}}>Ctrl+V</kbd> → klik <strong>Import</strong>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Area Paste (Tab-separated dari Excel)</label>
+              <textarea
+                value={pasteText}
+                onChange={e=>{setPasteText(e.target.value);setPasteErrs([]);setPasteDups([]);}}
+                placeholder={"Contoh hasil Ctrl+C dari Excel:
+EK	7223	AEH	001
+EK	7223	AEH	002
+EK	7224	CAB	001"}
+                className="inp"
+                rows={8}
+                style={{fontFamily:'monospace',fontSize:12,lineHeight:1.6}}
+                autoFocus
+              />
+            </div>
+            <div style={{fontSize:11,color:'var(--t3)',marginBottom:10}}>
+              {pasteText.trim()&&(()=>{
+                const lines=pasteText.trim().split(/?
+/).filter(l=>l.trim());
+                const dataLines=lines.filter(l=>{const c=l.split('	');return!(c.length===4&&c.every(x=>/^(program|kegiatan|kro|ro|kode)$/i.test(x.trim())));});
+                return<span>Terdeteksi <strong>{dataLines.length} baris</strong> data</span>;
+              })()}
+            </div>
+            {pasteErrs.length>0&&(
+              <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:'10px 12px',marginBottom:10}}>
+                <div style={{fontWeight:700,fontSize:11,color:'var(--r)',marginBottom:6}}>⛔ Error ({pasteErrs.length})</div>
+                {pasteErrs.map((e,i)=><div key={i} style={{fontSize:11,color:'var(--r)',lineHeight:1.6}}>{e}</div>)}
+              </div>
+            )}
+            {pasteDups.length>0&&(
+              <div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:8,padding:'10px 12px',marginBottom:10}}>
+                <div style={{fontWeight:700,fontSize:11,color:'#92400e',marginBottom:6}}>⚠ Peringatan Duplikat</div>
+                {pasteDups.map((d,i)=><div key={i} style={{fontSize:11,color:'#92400e',lineHeight:1.6}}>{d}</div>)}
+                <div style={{fontSize:11,color:'#92400e',marginTop:6}}>Data duplikat akan tetap diimport. Hapus baris yang tidak diperlukan setelah import.</div>
+              </div>
+            )}
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={()=>{setShowPaste(false);setPasteText('');setPasteErrs([]);setPasteDups([]);}}>Batal</button>
+              <button className="btn btn-primary" onClick={doPasteImport} disabled={!pasteText.trim()}
+                style={{opacity:!pasteText.trim()?.4:1}}>
+                <svg viewBox="0 0 24 24" style={{width:13,height:13,stroke:'#fff',fill:'none',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'}}><polyline points="20 6 9 17 4 12"/></svg>
+                Import ke Form
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ MODAL ADD FAQ ══════════════ */}
+      {showAdd&&(
+        <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget){setShowAdd(false);setAddQ('');setAddA('');}}}>
+          <div className="modal-box">
+            <div className="modal-title">Tambah Pertanyaan FAQ</div>
+            <div className="field-group">
+              <label className="field-label">Indikator / Topik *</label>
+              <select value={addTopic} onChange={e=>setAddTopic(e.target.value)} className="inp" style={{color:addTopic?'var(--t1)':'var(--t3)'}}>
+                <option value="">Pilih indikator...</option>
+                {IND.map(i=><option key={i.id} value={i.id}>{i.no}. {i.label}</option>)}
+              </select>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Pertanyaan *</label>
+              <input value={addQ} onChange={e=>setAddQ(e.target.value)} placeholder="Tuliskan pertanyaan yang sering diajukan..." className="inp"/>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Jawaban *</label>
+              <textarea value={addA} onChange={e=>setAddA(e.target.value)} rows={5}
+                placeholder="Tuliskan jawaban lengkap... (gunakan • untuk bullet, Enter untuk paragraf baru)"
+                className="inp" style={{lineHeight:1.6}}/>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={()=>{setShowAdd(false);setAddQ('');setAddA('');}}>Batal</button>
+              <button className="btn btn-primary" onClick={handleAddFaq} disabled={!addTopic||!addQ||!addA}
+                style={{opacity:(!addTopic||!addQ||!addA)?.4:1}}>Simpan FAQ</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
