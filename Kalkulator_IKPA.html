@@ -1,0 +1,2873 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#F9F7F2;color:#1F2937}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Kalkulator Nilai IKU IKPA BUN</title>
+<style>
+  :root{
+    --bg:#F9F7F2;
+    --surface:#FFFFFF;
+    --surface-2:#FFF8E1;
+    --ink:#1F2937;
+    --ink-soft:#6B7280;
+    --ink-faint:#9CA3AF;
+    --primary:#C0392B;
+    --primary-ink:#FFFFFF;
+    --primary-soft:#FBEAE7;
+    --accent:#B8860B;
+    --accent-soft:#FFF3D1;
+    --border:#E5E7EB;
+    --good:#16A34A;
+    --good-soft:#E6F4EA;
+    --warn:#B45309;
+    --warn-soft:#FDF0E1;
+    --danger:#DC2626;
+    --danger-soft:#FCE8E8;
+    --shadow:0 1px 2px rgba(0,0,0,.05),0 10px 28px rgba(0,0,0,.08);
+    --radius:14px;
+    --radius-sm:10px;
+    color-scheme:light;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter','Segoe UI',system-ui,sans-serif;
+    padding-inline:0;
+  }
+  h1,h2,h3{font-family:'Inter',system-ui,sans-serif;margin:0;text-wrap:balance;}
+  .num{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;}
+
+  .wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
+
+  /* ---------- header ---------- */
+  .app-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:22px;flex-wrap:wrap;}
+  .badge{
+    flex:none;width:46px;height:46px;border-radius:12px;
+    background:linear-gradient(155deg,var(--primary),var(--accent));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow);
+  }
+  .badge svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+  .app-header h1{font-size:1.5rem;font-weight:700;color:var(--ink);}
+  .app-header p{margin:.2rem 0 0;color:var(--ink-soft);font-size:.92rem;max-width:60ch;}
+  .privacy-note{
+    display:flex;gap:8px;align-items:flex-start;
+    background:var(--primary-soft);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:10px 13px;margin-top:16px;
+    font-size:.83rem;color:var(--ink-soft);line-height:1.5;
+  }
+  .privacy-note svg{flex:none;width:16px;height:16px;margin-top:2px;stroke:var(--primary);fill:none;stroke-width:2;}
+
+  /* ---------- tabs ---------- */
+  .tabs{
+    display:flex;gap:6px;overflow-x:auto;padding-block:4px 2px;margin-top:22px;
+    scrollbar-width:thin;
+  }
+  .tab{
+    flex:none;appearance:none;border:1px solid var(--border);background:var(--surface);
+    color:var(--ink-soft);font:inherit;font-size:.83rem;font-weight:600;
+    padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;
+    transition:background .12s,color .12s,border-color .12s;
+  }
+  .tab:hover{border-color:var(--primary);color:var(--ink);}
+  .tab[aria-selected="true"]{background:var(--primary);border-color:var(--primary);color:var(--primary-ink);}
+  .tab .tab-ix{opacity:.65;margin-right:5px;}
+
+  /* ---------- cards ---------- */
+  .panel{margin-top:18px;}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px;box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .card h2{font-size:1.15rem;font-weight:700;}
+  .card h3{font-size:.95rem;font-weight:700;margin-bottom:10px;}
+  .formula-box{
+    margin-top:10px;background:var(--surface-2);border-radius:var(--radius-sm);
+    padding:12px 14px;font-size:.86rem;color:var(--ink-soft);line-height:1.55;
+  }
+  .level-note{
+    margin-top:8px;font-size:.78rem;color:var(--ink-faint);
+  }
+
+  /* ---------- fields / file input ---------- */
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field-label{display:block;font-size:.85rem;font-weight:600;color:var(--ink);margin-bottom:6px;}
+  .field-hint{margin:6px 0 0;font-size:.78rem;color:var(--ink-faint);line-height:1.5;}
+  .file-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .file-input-hidden{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;}
+  .file-btn{
+    flex:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--ink);
+    font-size:.82rem;font-weight:600;padding:8px 13px;border-radius:var(--radius-sm);
+    transition:border-color .12s,background .12s;
+  }
+  .file-btn:hover{border-color:var(--primary);}
+  .file-btn:focus-visible,.tab:focus-visible,.btn:focus-visible,input:focus-visible,.level-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+  .file-name{font-size:.82rem;color:var(--ink-faint);word-break:break-all;}
+  .file-name[data-empty="false"]{color:var(--ink);}
+  .file-clear{
+    flex:none;border:none;background:none;color:var(--ink-faint);cursor:pointer;
+    font-size:1rem;line-height:1;padding:2px 4px;display:none;
+  }
+  .file-clear.show{display:inline;}
+  .file-clear:hover{color:var(--danger);}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    appearance:none;border:1px solid transparent;border-radius:var(--radius-sm);
+    font:inherit;font-weight:700;font-size:.88rem;padding:10px 18px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:filter .12s,opacity .12s;
+  }
+  .btn-primary{background:var(--primary);color:var(--primary-ink);}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.08);}
+  .btn-secondary{background:var(--surface-2);color:var(--ink);border-color:var(--border);}
+  .btn-secondary:hover:not(:disabled){border-color:var(--primary);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn .spinner{
+    width:14px;height:14px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.4);border-top-color:currentColor;
+    animation:spin .7s linear infinite;display:none;
+  }
+  .btn.busy .spinner{display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .action-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px;}
+
+  /* ---------- status ---------- */
+  .status{
+    margin-top:14px;border-radius:var(--radius-sm);padding:11px 14px;font-size:.85rem;
+    display:none;line-height:1.5;
+  }
+  .status.show{display:block;}
+  .status-error{background:var(--danger-soft);color:var(--danger);}
+  .status-success{background:var(--good-soft);color:var(--good);}
+  .status-info{background:var(--primary-soft);color:var(--primary);}
+
+  /* ---------- results table ---------- */
+  .results-card{display:none;}
+  .results-card.show{display:block;}
+  .results-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .level-switch{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:3px;}
+  .level-btn{
+    appearance:none;border:none;background:none;color:var(--ink-soft);font:inherit;
+    font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:999px;cursor:pointer;
+  }
+  .level-btn[aria-pressed="true"]{background:var(--primary);color:var(--primary-ink);}
+  .table-scroll{overflow-x:auto;overflow-y:auto;max-height:520px;border:1px solid var(--border);border-radius:var(--radius-sm);}
+
+  /* ---------- period (Triwulan) bar ---------- */
+  .period-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-color:var(--primary);}
+  .period-bar-label{display:flex;flex-direction:column;gap:2px;}
+  .period-bar-title{font-size:.95rem;font-weight:700;color:var(--ink);}
+  .period-bar-hint{font-size:.78rem;color:var(--ink-faint);max-width:60ch;}
+  #period-switch .level-btn{font-size:.82rem;padding:8px 14px;}
+
+  /* ---------- date input (Capaian Output deadline) ---------- */
+  .date-input{
+    font:inherit;font-size:.9rem;color:var(--ink);background:var(--surface);
+    border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;
+  }
+  table.rekap{border-collapse:collapse;width:100%;min-width:560px;font-size:.82rem;}
+  table.rekap th, table.rekap td{padding:8px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border);}
+  table.rekap th:first-child, table.rekap td:first-child{text-align:left;position:sticky;left:0;background:inherit;}
+  table.rekap thead th{
+    background:var(--primary);color:var(--primary-ink);font-weight:700;
+    position:sticky;top:0;z-index:1;
+  }
+  table.rekap thead th:first-child{background:var(--primary);}
+  table.rekap tbody tr:nth-child(even){background:var(--surface-2);}
+  table.rekap tbody tr.total-row td{background:var(--accent-soft);font-weight:700;border-top:2px solid var(--accent);}
+  table.rekap td.highlight{color:var(--primary);font-weight:700;}
+  table.rekap tbody tr.total-row td.highlight{color:var(--accent);}
+  .results-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;}
+  .results-note{font-size:.78rem;color:var(--ink-faint);}
+
+  /* ---------- composite status grid ---------- */
+  .status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:12px;}
+  .status-chip{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);
+    padding:9px 12px;font-size:.82rem;font-weight:600;
+  }
+  .status-pill{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;}
+  .status-pill.pending{background:var(--warn-soft);color:var(--warn);}
+  .status-pill.done{background:var(--good-soft);color:var(--good);}
+
+  /* ---------- footer ---------- */
+  .footnote{margin-top:30px;font-size:.78rem;color:var(--ink-faint);text-align:center;line-height:1.6;}
+
+  @media (max-width:640px){
+    .wrap{padding-inline:16px;}
+    .card{padding:16px;}
+    .app-header h1{font-size:1.3rem;}
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+
+<div class="wrap">
+  <header class="app-header">
+    <div class="badge">
+      <svg viewBox="0 0 24 24"><path d="M4 19V10"/><path d="M11 19V5"/><path d="M18 19v-7"/><path d="M3 19h18"/></svg>
+    </div>
+    <div>
+      <h1>Kalkulator IKPA</h1>
+      <p>Menghitung 7 indikator Kinerja Pelaksanaan Anggaran dan Nilai IKPA komposit untuk triwulan pilihan Anda, sekaligus di tiga level agregasi &mdash; K3 PA, K4 PA, dan K4 Kanwil &mdash; langsung dari file sumber yang Anda unggah.</p>
+    </div>
+  </header>
+
+  <div class="privacy-note">
+    <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    <span>Seluruh perhitungan berjalan di peramban Anda sendiri &mdash; file yang diunggah tidak dikirim atau disimpan di server mana pun. Unggah kembali file sumber dan file referensi setiap kali menjalankan perhitungan.</span>
+  </div>
+
+  <div class="period-bar card" id="period-bar">
+    <div class="period-bar-label">
+      <span class="period-bar-title">Periode Perhitungan</span>
+      <span class="period-bar-hint">Berlaku untuk seluruh indikator dan Nilai IKPA. Mengganti triwulan akan mengosongkan hasil yang sudah dihitung di sesi ini.</span>
+    </div>
+    <div class="level-switch" id="period-switch"></div>
+  </div>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Pilih indikator"></nav>
+
+  <main id="panels"></main>
+
+  <p class="footnote">Kalkulator ini mereplikasi metodologi yang sudah diverifikasi pada berkas Excel formula-driven untuk setiap indikator, termasuk agregasi K4 Kanwil yang sudah dipakai sebelumnya. Hasil di sini bersifat ringkasan (Rekap per level) &mdash; untuk audit trail lengkap per Satker, gunakan berkas Excel masing-masing indikator.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+// IKPA Core — shared calculation logic, ported line-by-line from the validated
+// Python build_*.py scripts used earlier in this session. This module must
+// behave IDENTICALLY in Node (for testing) and in the browser (inside the
+// published Artifact). It has no dependency on the DOM or on SheetJS itself —
+// callers pass in plain arrays of rows (array-of-arrays), exactly the shape
+// XLSX.utils.sheet_to_json(ws, {header:1, raw:true}) returns.
+//
+// Every indicator is computed at THREE aggregation levels simultaneously,
+// from the same per-satker pass over the data:
+//   - K4 PA      (4 Subdit x 4 Seksi = 16 groups)
+//   - K3 PA      (4 Subdit)
+//   - K4 Kanwil  (34 Kanwil x 4 Seksi = 136 groups)
+// The satker-inclusion rule (terpetakan / BLU / Full Blokir / Pagu Seribu)
+// is identical across all three levels for a given indicator, so the TOTAL
+// row is always identical across levels — that invariant is what the test
+// harness checks in addition to ground truth.
+//
+// Environment note: works as a CommonJS module under Node (module.exports at
+// the bottom, guarded) and as a plain global (window.IkpaCore) in the browser.
+
+(function (root) {
+  'use strict';
+
+  const K4PA_ORDER = [
+    'PA I-A', 'PA I-B', 'PA I-C', 'PA I-D',
+    'PA II-A', 'PA II-B', 'PA II-C', 'PA II-D',
+    'PA III-A', 'PA III-B', 'PA III-C', 'PA III-D',
+    'PA IV-A', 'PA IV-B', 'PA IV-C', 'PA IV-D',
+  ];
+
+  const K3PA_ORDER = ['PA I', 'PA II', 'PA III', 'PA IV'];
+
+  // Canonical 34 Kanwil, in the order already established and delivered
+  // earlier in this session (Indikator_Pengelolaan_UP_TUP_K4Kanwil).
+  const KANWIL_LIST = [
+    'DAERAH ISTIMEWA ACEH', 'SUMATERA UTARA', 'SUMATERA BARAT', 'RIAU', 'JAMBI',
+    'SUMATERA SELATAN', 'LAMPUNG', 'BENGKULU', 'BANGKA BELITING', 'BANTEN',
+    'DKI JAKARTA', 'JAWA BARAT', 'JAWA TENGAH', 'DI JOGJAKARTA', 'JAWA TIMUR',
+    'KALIMANTAN BARAT', 'KALIMANTAN TENGAH', 'KALIMANTAN SELATAN', 'KALIMANTAN TIMUR',
+    'BALI', 'NUSA TENGGARA BARAT', 'NUSA TENGGARA TIMUR', 'SULAWESI SELATAN',
+    'SULAWESI TENGAH', 'SULAWESI TENGGARA', 'GORONTALO', 'SULAWESI UTARA',
+    'MALUKU UTARA', 'MALUKU', 'PAPUA', 'KEPULAUAN RIAU', 'SULAWESI BARAT',
+    'PAPUA BARAT', 'KALIMANTAN UTARA',
+  ];
+  const SEKSI_LIST = ['Seksi PPA I A', 'Seksi PPA I B', 'Seksi PPA I C', 'Seksi PPA I D'];
+  const KANWIL_SEP = ' - ';
+  const K4KANWIL_ORDER = [];
+  for (const kw of KANWIL_LIST) {
+    for (const sk of SEKSI_LIST) K4KANWIL_ORDER.push(kw + KANWIL_SEP + sk);
+  }
+
+  // Canonical Kode Kanwil '01'..'34', in the SAME order as KANWIL_LIST above
+  // (index-for-index verified against the Referensi Satker file's own "Kode
+  // Kanwil" column) -- used for the standalone "Kanwil" level in Nilai IKU
+  // (distinct from K4 Kanwil, which is Kanwil x Seksi).
+  const KANWIL_CODE_ORDER = KANWIL_LIST.map((_, i) => String(i + 1).padStart(2, '0'));
+  const KANWIL_CODE_TO_NAME = {};
+  KANWIL_LIST.forEach((nm, i) => { KANWIL_CODE_TO_NAME[String(i + 1).padStart(2, '0')] = nm; });
+
+  const LEVELS = [
+    { key: 'k4pa', order: K4PA_ORDER, label: 'K4 PA' },
+    { key: 'k3pa', order: K3PA_ORDER, label: 'K3 PA' },
+    { key: 'k4kanwil', order: K4KANWIL_ORDER, label: 'K4 Kanwil' },
+  ];
+
+  // ---- period (Triwulan) selection ------------------------------------
+  //
+  // Every indicator's source data carries a PERIODE column (2-digit month,
+  // cumulative-to-date per row). Which month(s) a computeXxx() function
+  // reads from is driven by a `periodKey` ('TW1'..'TW4') so the same code
+  // that was validated for TW2 (Juni) generalizes to any triwulan:
+  //   - Point-in-time indicators (Tagihan, Revisi DIPA) read the single row
+  //     at the target triwulan's end month.
+  //   - Cumulative/monthly-average indicators (Deviasi, Belanja Kontraktual)
+  //     average Januari through the target triwulan's end month.
+  //   - Checkpoint-average indicators (Penyerapan, and the UP KKP component
+  //     of Pengelolaan UP/TUP) average every triwulan checkpoint from TW1
+  //     up to and including the selected triwulan.
+  const TRIWULAN = [
+    { key: 'TW1', endMonth: '03', label: 'Triwulan I (s.d. Maret)' },
+    { key: 'TW2', endMonth: '06', label: 'Triwulan II (s.d. Juni)' },
+    { key: 'TW3', endMonth: '09', label: 'Triwulan III (s.d. September)' },
+    { key: 'TW4', endMonth: '12', label: 'Triwulan IV (s.d. Desember)' },
+  ];
+  const TRIWULAN_BY_KEY = {};
+  TRIWULAN.forEach((t) => { TRIWULAN_BY_KEY[t.key] = t; });
+  const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  function resolvePeriod(periodKey) {
+    const t = TRIWULAN_BY_KEY[periodKey || 'TW2'];
+    if (!t) throw new Error('Periode "' + periodKey + '" tidak dikenal.');
+    return t;
+  }
+
+  // ['01', '02', ..., endMonth]
+  function monthsUpTo(endMonth) {
+    const n = parseInt(endMonth, 10);
+    const arr = [];
+    for (let m = 1; m <= n; m++) arr.push(String(m).padStart(2, '0'));
+    return arr;
+  }
+
+  // Triwulan entries from TW1 up to and including periodKey.
+  function checkpointsUpTo(periodKey) {
+    const t = resolvePeriod(periodKey);
+    const idx = TRIWULAN.findIndex((x) => x.key === t.key);
+    return TRIWULAN.slice(0, idx + 1);
+  }
+
+  function monthLabel(mm) {
+    const n = parseInt(mm, 10);
+    return MONTH_NAMES[n - 1] || mm;
+  }
+
+  // ---- helpers -------------------------------------------------------
+
+  function normCode(code) {
+    if (code === null || code === undefined) return null;
+    let s = String(code).trim();
+    if (s === '') return null;
+    if (/^-?\d+$/.test(s)) return String(parseInt(s, 10));
+    return s;
+  }
+
+  // Zero-pad a code (Kode Kanwil = 2 digits, Kode KPPN = 3 digits) so the
+  // same satker/Kanwil/KPPN joins correctly whether the source cell was
+  // read as text ("01") or as a number (1) by the spreadsheet library.
+  // Unlike normCode (which strips leading zeros for generic satker codes),
+  // this re-adds them to a fixed width.
+  function padCode(v, width) {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    if (s === '') return null;
+    if (/^\d+$/.test(s)) return s.padStart(width, '0');
+    return s;
+  }
+
+  function num(v) {
+    if (v === null || v === undefined || v === '') return 0;
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function isBlank(v) {
+    return v === null || v === undefined || v === '';
+  }
+
+  // Strip characters that look invisible/identical to a human reading the
+  // cell in Excel but that break a strict string match: BOM, NBSP, zero-width
+  // spaces, and ordinary leading/trailing whitespace. Some export pipelines
+  // (Oracle/SQL-based exports in particular) can leave these in header cells.
+  function cleanHeaderText(s) {
+    return String(s)
+      .replace(/^﻿/, '')
+      .replace(/[ ​‌‍⁠]/g, ' ')
+      .trim();
+  }
+
+  // Build a {headerName: colIndex} map from the first row of an AOA sheet.
+  function headerIndex(rows) {
+    const hdr = rows[0] || [];
+    const idx = {};
+    for (let i = 0; i < hdr.length; i++) {
+      if (hdr[i] !== null && hdr[i] !== undefined) idx[cleanHeaderText(hdr[i])] = i;
+    }
+    return idx;
+  }
+
+  // Validates that every column in `need` was found in `idx` (as produced by
+  // headerIndex). Throws ONE error listing every missing column plus a
+  // preview of what was actually detected in the header row, so a mismatch
+  // (wrong sheet picked, unexpected export format, etc.) is diagnosable from
+  // the error message alone instead of a bare "column not found".
+  function requireColumns(idx, need, fileLabel) {
+    const missing = need.filter((k) => !(k in idx));
+    if (!missing.length) return;
+    const found = Object.keys(idx);
+    const preview = found.slice(0, 25).join(', ') + (found.length > 25 ? ', …' : '');
+    throw new Error(
+      'Kolom ' + missing.map((k) => '"' + k + '"').join(', ') +
+      ' tidak ditemukan pada file ' + fileLabel + '. ' +
+      (found.length
+        ? 'Header yang terbaca pada baris pertama (' + found.length + ' kolom): ' + preview + '.'
+        : 'Tidak ada header yang terbaca sama sekali pada baris pertama sheet ini — kemungkinan sheet yang salah terbaca atau file kosong.')
+    );
+  }
+
+  // Coerce a cell value that might be a JS Date, an Excel serial number, or a
+  // string, into a JS Date (or null). Mirrors openpyxl's automatic datetime
+  // parsing when reading with data_only=True on a source file with proper
+  // date-formatted cells.
+  function toDate(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+    if (typeof v === 'number') {
+      const epoch = Date.UTC(1899, 11, 30);
+      return new Date(epoch + v * 86400000);
+    }
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  // The "K4 Kanwil" (Seksi) column in the reference file has inconsistent
+  // casing in the raw data ("Seksi PPA I A", "SEKSI PPA I A", "seksi PPA I A"
+  // all occur for the same seksi). Normalize to the canonical form used in
+  // K4KANWIL_ORDER by pulling out the trailing A/B/C/D letter.
+  function normSeksi(v) {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    if (s === '') return null;
+    const m = s.match(/PPA\s*I\s*([ABCD])\b/i);
+    if (m) return 'Seksi PPA I ' + m[1].toUpperCase();
+    return s;
+  }
+
+  // ---- reference file (Referensi Satker) ------------------------------
+
+  function buildReferenceMaps(refSheets) {
+    // refSheets: {'ref satker': rows, 'ref blokir seribu': rows, 'ref BLU': rows}
+    const satkerMap = new Map();
+    const refSatker = refSheets['ref satker'] || [];
+    for (let i = 1; i < refSatker.length; i++) {
+      const row = refSatker[i];
+      if (!row || isBlank(row[0])) continue;
+      const code = normCode(row[0]);
+      satkerMap.set(code, {
+        nama: row[1],
+        kdKanwil: padCode(row[2], 2),
+        namaKanwil: row[3],
+        seksiKanwil: normSeksi(row[4]),
+        k3pa: row[7],
+        k4pa: row[8],
+      });
+    }
+
+    const blokirMap = new Map();
+    const refBlokir = refSheets['ref blokir seribu'] || [];
+    for (let i = 1; i < refBlokir.length; i++) {
+      const row = refBlokir[i];
+      if (!row || isBlank(row[2])) continue;
+      const code = normCode(row[2]);
+      blokirMap.set(code, { fullBlokir: row[11], paguSeribu: row[12], nmDekon: row[7] });
+    }
+
+    const buSet = new Set();
+    const refBlu = refSheets['ref BLU'] || [];
+    for (let i = 1; i < refBlu.length; i++) {
+      const row = refBlu[i];
+      if (!row || isBlank(row[0])) continue;
+      buSet.add(normCode(row[0]));
+    }
+
+    return { satkerMap, blokirMap, buSet };
+  }
+
+  // NMDEKON categories observed in "ref blokir seribu": 'Kantor Pusat',
+  // 'Kantor Daerah', 'Kewenangan Desentralisasi', 'Dekonsentrasi', 'Tugas
+  // Pembantuan'. Only the last two are excluded from Nilai IKU's per-satker
+  // pass (per user confirmation) -- NOT from any of the 7 indicators above,
+  // whose own inclusion rules are unchanged.
+  const DEKON_TP_CATEGORIES = new Set(['Dekonsentrasi', 'Tugas Pembantuan']);
+
+  function classify(code, ref) {
+    // Returns {nama, k3pa, k4pa, k4kanwil, kdKanwil, namaKanwil, seksiKanwil,
+    //          terpetakan, isBlu, isFb, isPs, nmDekon, isDekonTp}
+    const sat = ref.satkerMap.get(code);
+    const isBlu = ref.buSet.has(code);
+    const bl = ref.blokirMap.get(code) || {};
+    const isFb = bl.fullBlokir === 'FULL BLOKIR';
+    const isPs = bl.paguSeribu === 'PAGU SERIBU';
+    const nmDekon = bl.nmDekon !== undefined ? bl.nmDekon : null;
+    const isDekonTp = DEKON_TP_CATEGORIES.has(nmDekon);
+    if (sat) {
+      const k4kanwil = (sat.namaKanwil && sat.seksiKanwil) ? (sat.namaKanwil + KANWIL_SEP + sat.seksiKanwil) : '-';
+      return {
+        nama: sat.nama, k3pa: sat.k3pa, k4pa: sat.k4pa, k4kanwil,
+        kdKanwil: sat.kdKanwil || null, namaKanwil: sat.namaKanwil, seksiKanwil: sat.seksiKanwil,
+        terpetakan: true, isBlu, isFb, isPs, nmDekon, isDekonTp,
+      };
+    }
+    return {
+      nama: '(tidak ditemukan pada ref satker)', k3pa: '-', k4pa: '-', k4kanwil: '-',
+      kdKanwil: null, namaKanwil: '-', seksiKanwil: '-',
+      terpetakan: false, isBlu, isFb, isPs, nmDekon, isDekonTp,
+    };
+  }
+
+  // ---- generic multi-level group accumulation -------------------------
+  //
+  // Each computeXxx() below does ONE pass over the per-satker data, and for
+  // every included satker feeds the same raw `values` into three parallel
+  // accumulators — one per aggregation level (K4 PA, K3 PA, K4 Kanwil) —
+  // keyed by that satker's group label at that level. A TOTAL bucket is
+  // always kept too. This mirrors "sum raw components first, apply the
+  // ratio/formula once at group level", now repeated once per level instead
+  // of just for K4 PA.
+
+  function newGroupAcc() {
+    return {}; // lazily populated: { [groupLabel]: record, TOTAL: record }
+  }
+
+  function zeroRecord(fields) {
+    const r = {};
+    for (const f of fields) r[f] = 0;
+    r.nSatker = 0;
+    return r;
+  }
+
+  function addToGroup(acc, key, fields, values) {
+    if (key === null || key === undefined) return;
+    if (!acc[key]) acc[key] = zeroRecord(fields);
+    if (!acc.TOTAL) acc.TOTAL = zeroRecord(fields);
+    const t1 = acc[key];
+    const t2 = acc.TOTAL;
+    for (const f of fields) {
+      t1[f] += values[f] || 0;
+      t2[f] += values[f] || 0;
+    }
+    t1.nSatker += 1;
+    t2.nSatker += 1;
+  }
+
+  function addToAllLevels(byLevelAcc, cls, fields, values) {
+    addToGroup(byLevelAcc.k4pa, cls.k4pa, fields, values);
+    addToGroup(byLevelAcc.k3pa, cls.k3pa, fields, values);
+    addToGroup(byLevelAcc.k4kanwil, cls.k4kanwil, fields, values);
+  }
+
+  // Turn one level's accumulator into {group: {...calc(record), group}} for
+  // every official group in `order`, plus TOTAL. Also reports any group key
+  // that appeared in the data but isn't part of the official order list
+  // (e.g. a Kanwil/Seksi combination the reference file didn't expect).
+  function finalizeLevel(acc, order, fields, calc) {
+    const result = {};
+    for (const key of order.concat(['TOTAL'])) {
+      const a = acc[key] || zeroRecord(fields);
+      result[key] = Object.assign({ group: key }, calc(a));
+    }
+    const known = new Set(order);
+    const extra = Object.keys(acc).filter((k) => k !== 'TOTAL' && !known.has(k));
+    return { result, extra };
+  }
+
+  function finalizeAllLevels(byLevelAcc, fields, calc) {
+    const rekap = {};
+    const extraGroups = {};
+    for (const lvl of LEVELS) {
+      const { result, extra } = finalizeLevel(byLevelAcc[lvl.key], lvl.order, fields, calc);
+      rekap[lvl.key] = result;
+      if (extra.length) extraGroups[lvl.key] = extra;
+    }
+    return { rekap, extraGroups };
+  }
+
+  // =====================================================================
+  // 1. Penyelesaian Tagihan
+  // =====================================================================
+  // Source: IKPA_T_TAGIHAN_SATKER_2026.xlsx, sheet "Export Worksheet".
+  // Positional columns (no header lookup, matches build_output.py):
+  //   0 KDSATKER, 1 KDKPPN, 2 PERIODE, 3 TOTAL (Jumlah Tagihan), 4 TEPAT, 5 TELAT
+  // Filtered PERIODE = end month of the selected triwulan. Excludes BLU and
+  // Full Blokir only (Pagu Seribu tetap dihitung, per permintaan pengguna).
+  function computeTagihan(rows, ref, periodKey) {
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const fields = ['jumlah', 'tepat', 'telat'];
+    const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
+    const satkerRows = [];
+    const unmapped = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[0])) continue;
+      const periode = row[2] === null || row[2] === undefined ? null : String(row[2]).padStart(2, '0');
+      if (periode !== targetMonth) continue;
+      const code = normCode(row[0]);
+      const kdkppn = row[1];
+      const jumlah = num(row[3]);
+      const tepat = num(row[4]);
+      const telat = num(row[5]);
+      const cls = classify(code, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb;
+      satkerRows.push({ code, kdkppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
+        isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan,
+        included, jumlah, tepat, telat, nilai: calc({ jumlah, tepat, telat }).nilai });
+      if (!cls.terpetakan) unmapped.push({ code, kdkppn, jumlah, tepat, telat });
+      if (included) addToAllLevels(byLevel, cls, fields, { jumlah, tepat, telat });
+    }
+    function calc(a) {
+      const nilai = a.jumlah > 0 ? (a.tepat / a.jumlah) * 100 : null;
+      return { nSatker: a.nSatker, jumlah: a.jumlah, tepat: a.tepat, telat: a.telat, nilai };
+    }
+    const { rekap, extraGroups } = finalizeAllLevels(byLevel, fields, calc);
+    return { rekap, satkerRows, unmapped, extraGroups };
+  }
+
+  // =====================================================================
+  // 2. Pengelolaan UP dan TUP
+  // =====================================================================
+  // Source: IKPA_T_UPTUP_SATKER_2026.xlsx, sheet "Export Worksheet", header-based.
+  // UP Tunai component uses the single snapshot row at the target triwulan's
+  // end month. UP KKP component averages the TARGET_TW/AMOUNT_TW checkpoint
+  // at every triwulan from TW1 up to and including the target triwulan
+  // (TW2: avg of TW1,TW2 — TW3: avg of TW1,TW2,TW3 — etc.), per user
+  // confirmation. Excludes BLU and Full Blokir only.
+  function computeUpTup(rows, ref, periodKey) {
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const checkpoints = checkpointsUpTo(periodKey);
+    const checkpointMonths = checkpoints.map((c) => c.endMonth);
+    const checkpointMonthSet = new Set(checkpointMonths);
+
+    const idx = headerIndex(rows);
+    const need = ['KDSATKER', 'KDKPPN', 'PERIODE', 'TEPAT_WAKTU', 'JUMLAH_UP_TUP_KETEPATAN',
+      'PERSEN_SEBULAN', 'JUMLAH_UP_DISEBULANKAN', 'TOTAL_SETORAN_TUP', 'JUMLAH_TUP',
+      'TARGET_TW', 'AMOUNT_TW'];
+    requireColumns(idx, need, 'UP/TUP');
+    const dataCurrent = new Map();
+    const dataByCheckpoint = new Map();
+    for (const m of checkpointMonths) dataByCheckpoint.set(m, new Map());
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[idx.KDSATKER])) continue;
+      const code = normCode(row[idx.KDSATKER]);
+      const p = row[idx.PERIODE] === null || row[idx.PERIODE] === undefined ? null : String(row[idx.PERIODE]).padStart(2, '0');
+      if (!checkpointMonthSet.has(p)) continue;
+      dataByCheckpoint.get(p).set(code, { targetTw: num(row[idx.TARGET_TW]), amountTw: num(row[idx.AMOUNT_TW]) });
+      if (p === targetMonth) {
+        dataCurrent.set(code, {
+          kdkppn: row[idx.KDKPPN],
+          tepatWaktu: num(row[idx.TEPAT_WAKTU]),
+          jumlahUpTupKetepatan: num(row[idx.JUMLAH_UP_TUP_KETEPATAN]),
+          persenSebulan: num(row[idx.PERSEN_SEBULAN]),
+          jumlahUpDisebulankan: num(row[idx.JUMLAH_UP_DISEBULANKAN]),
+          totalSetoranTup: num(row[idx.TOTAL_SETORAN_TUP]),
+          jumlahTup: num(row[idx.JUMLAH_TUP]),
+        });
+      }
+    }
+
+    const kkpFields = [];
+    for (const m of checkpointMonths) kkpFields.push('t_' + m, 'a_' + m);
+    const fields = ['tepat', 'ketDenom', 'sumprod', 'jmlDiseb', 'setoran', 'jmlTup'].concat(kkpFields);
+    const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
+    const satkerRows = [];
+    const unmapped = [];
+    for (const [code, cur] of dataCurrent) {
+      const cls = classify(code, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb;
+      const values = {
+        tepat: cur.tepatWaktu, ketDenom: cur.jumlahUpTupKetepatan,
+        sumprod: cur.persenSebulan * cur.jumlahUpDisebulankan, jmlDiseb: cur.jumlahUpDisebulankan,
+        setoran: cur.totalSetoranTup, jmlTup: cur.jumlahTup,
+      };
+      for (const m of checkpointMonths) {
+        const cp = dataByCheckpoint.get(m).get(code) || { targetTw: 0, amountTw: 0 };
+        values['t_' + m] = cp.targetTw;
+        values['a_' + m] = cp.amountTw;
+      }
+      satkerRows.push({ code, kdkppn: cur.kdkppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
+        isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan, included, ...values,
+        nilai: calc(values).nilai });
+      if (!cls.terpetakan) unmapped.push({ code, kdkppn: cur.kdkppn });
+      if (included) addToAllLevels(byLevel, cls, fields, values);
+    }
+
+    function calc(a) {
+      const ketepatanWaktu = a.ketDenom > 0 ? (a.tepat / a.ketDenom) * 100 : 0;
+      const persenGup = a.jmlDiseb > 0 ? a.sumprod / a.jmlDiseb : 0;
+      const setoranTup = a.jmlTup === 0 ? 100 : 100 - (a.setoran / a.jmlTup) * 100;
+      const nilaiUpTunai = 0.5 * ketepatanWaktu + 0.25 * persenGup + 0.25 * setoranTup;
+      const komponenUpTunai = 0.9 * nilaiUpTunai;
+      const kkpByCheckpoint = {};
+      let kkpSum = 0;
+      for (let i = 0; i < checkpoints.length; i++) {
+        const m = checkpointMonths[i];
+        const v = a['a_' + m] >= a['t_' + m] ? 110 : 100;
+        kkpByCheckpoint['nilaiKkp' + checkpoints[i].key] = v;
+        kkpSum += v;
+      }
+      const rataKkp = kkpSum / checkpoints.length;
+      const komponenUpKkp = 0.1 * rataKkp;
+      const nilai = Math.min(komponenUpTunai + komponenUpKkp, 100);
+      return Object.assign({ nSatker: a.nSatker, ketepatanWaktu, persenGup, setoranTup,
+        nilaiUpTunai, komponenUpTunai }, kkpByCheckpoint, { rataKkp, komponenUpKkp, nilai });
+    }
+    const { rekap, extraGroups } = finalizeAllLevels(byLevel, fields, calc);
+    return { rekap, satkerRows, unmapped, extraGroups };
+  }
+
+  // =====================================================================
+  // 3. Revisi DIPA
+  // =====================================================================
+  // Source: IKPA_T_CAPAIAN_SATKER_2026.xlsx, sheet "Export Worksheet", header-based.
+  // Filtered PERIODE = end month of the selected triwulan. Nilai =
+  // AVERAGEIFS(IK_REVISI_DIPA)/100 per group (a simple average, which the
+  // raw-sum-then-divide accumulator produces automatically since fields are
+  // {sumIk, cnt}). Excludes BLU and Full Blokir only.
+  function computeRevisiDipa(rows, ref, periodKey) {
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const idx = headerIndex(rows);
+    const need = ['KDSATKER', 'PERIODE', 'KDKPPN', 'IK_REVISI_DIPA'];
+    requireColumns(idx, need, 'Revisi DIPA');
+    const data06 = new Map();
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[idx.KDSATKER])) continue;
+      const p = row[idx.PERIODE] === null || row[idx.PERIODE] === undefined ? null : String(row[idx.PERIODE]).padStart(2, '0');
+      if (p !== targetMonth) continue;
+      const code = normCode(row[idx.KDSATKER]);
+      data06.set(code, { kdkppn: row[idx.KDKPPN], ikRevisiDipa: num(row[idx.IK_REVISI_DIPA]) });
+    }
+
+    const fields = ['sumIk', 'cnt'];
+    const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
+    const satkerRows = [];
+    const unmapped = [];
+    for (const [code, d] of data06) {
+      const cls = classify(code, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb;
+      satkerRows.push({ code, kdkppn: d.kdkppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
+        isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan, included,
+        ikRevisiDipa: d.ikRevisiDipa, nilai: calc({ sumIk: d.ikRevisiDipa, cnt: 1 }).nilai });
+      if (!cls.terpetakan) unmapped.push({ code, kdkppn: d.kdkppn });
+      if (included) addToAllLevels(byLevel, cls, fields, { sumIk: d.ikRevisiDipa, cnt: 1 });
+    }
+    function calc(a) {
+      const nilai = a.cnt > 0 ? (a.sumIk / a.cnt) / 100 : 0;
+      return { nSatker: a.nSatker, nilai };
+    }
+    const { rekap, extraGroups } = finalizeAllLevels(byLevel, fields, calc);
+    return { rekap, satkerRows, unmapped, extraGroups };
+  }
+
+  // =====================================================================
+  // 4. Deviasi Halaman III DIPA
+  // =====================================================================
+  // Sources: IKPA_T_DEVIASI_SATKER_2026.xlsx (RENCANA/REALISASI 51/52/53/57 per
+  // PERIODE) and IKPA_T_SERAP_SATKER_2026.xlsx (PAGU 51/52/53/57 per PERIODE,
+  // used as pagu bruto weights). Periods Januari s.d. bulan akhir triwulan
+  // terpilih (per konfirmasi pengguna). Only BLU + Full Blokir excluded
+  // (Pagu Seribu is NOT excluded for this indicator). Dispensasi: JB 51/52 di
+  // Februari (02) dan Maret (03) selalu deviasi 0%.
+  const DEV_JB = ['51', '52', '53', '57'];
+  const DISPENSASI = new Set(['02:51', '02:52', '03:51', '03:52']);
+
+  function deviasiJb(period, jb, rencana, realisasi) {
+    if (DISPENSASI.has(period + ':' + jb)) return 0;
+    if (rencana === 0 && realisasi === 0) return 0;
+    if (rencana === 0 || realisasi === 0) return 100;
+    return Math.min(Math.abs(((realisasi - rencana) / rencana) * 100), 100);
+  }
+
+  function computeDeviasi(deviasiRows, serapRows, ref, periodKey) {
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const DEV_PERIODS = monthsUpTo(targetMonth);
+    const dIdx = headerIndex(deviasiRows);
+    const sIdx = headerIndex(serapRows);
+    const dNeed = ['KDSATKER', 'KDKPPN', 'PERIODE'];
+    for (const jb of DEV_JB) { dNeed.push('RENCANA' + jb, 'REALISASI' + jb); }
+    requireColumns(dIdx, dNeed, 'Deviasi');
+    const sNeed = ['SATKER', 'PERIODE'].concat(DEV_JB.map((jb) => 'PAGU' + jb));
+    requireColumns(sIdx, sNeed, 'Serap (pagu bruto)');
+
+    const deviasi = new Map();
+    for (let i = 1; i < deviasiRows.length; i++) {
+      const row = deviasiRows[i];
+      if (!row || isBlank(row[dIdx.KDSATKER])) continue;
+      const code = row[dIdx.KDSATKER];
+      const p = row[dIdx.PERIODE] === null || row[dIdx.PERIODE] === undefined ? null : String(row[dIdx.PERIODE]).padStart(2, '0');
+      if (!DEV_PERIODS.includes(p)) continue;
+      const rec = { kdkppn: row[dIdx.KDKPPN] };
+      for (const jb of DEV_JB) {
+        rec['RENCANA' + jb] = num(row[dIdx['RENCANA' + jb]]);
+        rec['REALISASI' + jb] = num(row[dIdx['REALISASI' + jb]]);
+      }
+      deviasi.set(code + '|' + p, rec);
+    }
+    const serapPagu = new Map();
+    for (let i = 1; i < serapRows.length; i++) {
+      const row = serapRows[i];
+      if (!row || isBlank(row[sIdx.SATKER])) continue;
+      const code = row[sIdx.SATKER];
+      const p = row[sIdx.PERIODE] === null || row[sIdx.PERIODE] === undefined ? null : String(row[sIdx.PERIODE]).padStart(2, '0');
+      if (!DEV_PERIODS.includes(p)) continue;
+      const rec = {};
+      for (const jb of DEV_JB) rec[jb] = num(row[sIdx['PAGU' + jb]]);
+      serapPagu.set(code + '|' + p, rec);
+    }
+
+    const codesSet = new Set();
+    for (const key of deviasi.keys()) {
+      const [code, p] = key.split('|');
+      if (p === targetMonth) codesSet.add(code);
+    }
+
+    const rawFields = [];
+    for (const p of DEV_PERIODS) {
+      for (const jb of DEV_JB) rawFields.push(`r_${p}_${jb}`, `a_${p}_${jb}`, `pg_${p}_${jb}`);
+    }
+    const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
+    const satkerRows = [];
+    const unmapped = [];
+
+    for (const code of codesSet) {
+      const codeN = normCode(code);
+      const cls = classify(codeN, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb; // Pagu Seribu NOT excluded
+      const d06 = deviasi.get(code + '|' + targetMonth);
+      const values = {};
+      let rata2Sum = 0;
+      for (const p of DEV_PERIODS) {
+        const d = deviasi.get(code + '|' + p) || { RENCANA51: 0, RENCANA52: 0, RENCANA53: 0, RENCANA57: 0, REALISASI51: 0, REALISASI52: 0, REALISASI53: 0, REALISASI57: 0 };
+        const s = serapPagu.get(code + '|' + p) || { 51: 0, 52: 0, 53: 0, 57: 0 };
+        let paguTotal = 0;
+        for (const jb of DEV_JB) paguTotal += s[jb];
+        let weighted = 0;
+        for (const jb of DEV_JB) {
+          const dev = deviasiJb(p, jb, d['RENCANA' + jb], d['REALISASI' + jb]);
+          weighted += dev * s[jb];
+          values[`r_${p}_${jb}`] = d['RENCANA' + jb];
+          values[`a_${p}_${jb}`] = d['REALISASI' + jb];
+          values[`pg_${p}_${jb}`] = s[jb];
+        }
+        const tdb = paguTotal === 0 ? 0 : weighted / paguTotal;
+        rata2Sum += tdb;
+      }
+      const rata2 = rata2Sum / DEV_PERIODS.length;
+      const nilaiSatker = rata2 <= 5 ? 100 : 100 - rata2;
+      satkerRows.push({ code: codeN, kdkppn: d06 ? d06.kdkppn : null, nama: cls.nama, k3pa: cls.k3pa,
+        k4pa: cls.k4pa, k4kanwil: cls.k4kanwil, isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan,
+        included, rata2, nilaiSatker, nilai: nilaiSatker });
+      if (!cls.terpetakan) unmapped.push({ code: codeN, kdkppn: d06 ? d06.kdkppn : null });
+      if (included) addToAllLevels(byLevel, cls, rawFields, values);
+    }
+
+    function calc(a) {
+      let rata2Sum = 0;
+      for (const p of DEV_PERIODS) {
+        let paguTotal = 0;
+        for (const jb of DEV_JB) paguTotal += a[`pg_${p}_${jb}`];
+        let weighted = 0;
+        for (const jb of DEV_JB) {
+          const dev = deviasiJb(p, jb, a[`r_${p}_${jb}`], a[`a_${p}_${jb}`]);
+          weighted += dev * a[`pg_${p}_${jb}`];
+        }
+        const tdb = paguTotal === 0 ? 0 : weighted / paguTotal;
+        rata2Sum += tdb;
+      }
+      const rata2 = rata2Sum / DEV_PERIODS.length;
+      const nilai = rata2 <= 5 ? 100 : 100 - rata2;
+      return { nSatker: a.nSatker, rata2, nilai };
+    }
+    const { rekap, extraGroups } = finalizeAllLevels(byLevel, rawFields, calc);
+    return { rekap, satkerRows, unmapped, extraGroups };
+  }
+
+  // =====================================================================
+  // 5. Penyerapan Anggaran
+  // =====================================================================
+  // Source: IKPA_T_SERAP_SATKER_2026.xlsx, sheet "Export Worksheet", header-based.
+  // Nilai = rata-rata Nilai per-triwulan-checkpoint dari TW1 s.d. triwulan
+  // terpilih (TW2: rata-rata TW1,TW2 — TW3: rata-rata TW1,TW2,TW3 — dst.),
+  // per konfirmasi pengguna. Only BLU + Full Blokir excluded.
+  const SERAP_JB = ['51', '52', '53', '57'];
+
+  function computePenyerapan(rows, ref, periodKey) {
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const checkpoints = checkpointsUpTo(periodKey);
+    const SERAP_TW = checkpoints.map((c) => [c.endMonth, c.key]);
+
+    const idx = headerIndex(rows);
+    const need = ['SATKER', 'KDKPPN', 'PERIODE'];
+    for (const jb of SERAP_JB) need.push('PAGU_NETTO' + jb, 'TARGET_PAGU' + jb, 'REALISASI' + jb);
+    requireColumns(idx, need, 'Penyerapan (SERAP)');
+
+    const byPeriod = new Map();
+    for (const [p] of SERAP_TW) byPeriod.set(p, new Map());
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[idx.SATKER])) continue;
+      const p = row[idx.PERIODE] === null || row[idx.PERIODE] === undefined ? null : String(row[idx.PERIODE]).padStart(2, '0');
+      if (!byPeriod.has(p)) continue;
+      const code = row[idx.SATKER];
+      const rec = { kdkppn: row[idx.KDKPPN] };
+      for (const jb of SERAP_JB) {
+        rec['PAGU_NETTO' + jb] = num(row[idx['PAGU_NETTO' + jb]]);
+        rec['TARGET_PAGU' + jb] = num(row[idx['TARGET_PAGU' + jb]]);
+        rec['REALISASI' + jb] = num(row[idx['REALISASI' + jb]]);
+      }
+      byPeriod.get(p).set(code, rec);
+    }
+
+    const codesSet = new Set(byPeriod.get(targetMonth).keys());
+
+    const rawFields = [];
+    for (const [p] of SERAP_TW) for (const jb of SERAP_JB) rawFields.push(`rea_${p}_${jb}`, `tgt_${p}_${jb}`, `pn_${p}_${jb}`);
+    const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
+    const satkerRows = [];
+    const unmapped = [];
+
+    function nilaiTwFromTotals(a, p) {
+      let pnt = 0;
+      for (const jb of SERAP_JB) pnt += a[`pn_${p}_${jb}`];
+      if (pnt === 0) return 0;
+      let sum = 0;
+      for (const jb of SERAP_JB) {
+        const tgt = a[`tgt_${p}_${jb}`];
+        const rea = a[`rea_${p}_${jb}`];
+        const ratio = tgt === 0 ? 0 : Math.min((rea / tgt) * 100, 100);
+        sum += ratio * a[`pn_${p}_${jb}`];
+      }
+      return sum / pnt;
+    }
+
+    for (const code of codesSet) {
+      const codeN = normCode(code);
+      const cls = classify(codeN, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb;
+      const recCur = byPeriod.get(targetMonth).get(code);
+      const values = {};
+      for (const [p] of SERAP_TW) {
+        const rec = byPeriod.get(p).get(code) || {};
+        for (const jb of SERAP_JB) {
+          values[`rea_${p}_${jb}`] = rec['REALISASI' + jb] || 0;
+          values[`tgt_${p}_${jb}`] = rec['TARGET_PAGU' + jb] || 0;
+          values[`pn_${p}_${jb}`] = rec['PAGU_NETTO' + jb] || 0;
+        }
+      }
+      const nilaiByTw = {};
+      for (const [p, twKey] of SERAP_TW) nilaiByTw['nilai' + twKey] = nilaiTwFromTotals(values, p);
+      const nilaiSatkerAvg = Object.values(nilaiByTw).reduce((s, v) => s + v, 0) / SERAP_TW.length;
+      satkerRows.push({ code: codeN, kdkppn: recCur ? recCur.kdkppn : null, nama: cls.nama, k3pa: cls.k3pa,
+        k4pa: cls.k4pa, k4kanwil: cls.k4kanwil, isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan,
+        included, ...nilaiByTw, nilai: nilaiSatkerAvg });
+      if (!cls.terpetakan) unmapped.push({ code: codeN, kdkppn: recCur ? recCur.kdkppn : null });
+      if (included) addToAllLevels(byLevel, cls, rawFields, values);
+    }
+
+    function calc(a) {
+      const nilaiByTw = {};
+      let sum = 0;
+      for (const [p, twKey] of SERAP_TW) {
+        const v = nilaiTwFromTotals(a, p);
+        nilaiByTw['nilai' + twKey] = v;
+        sum += v;
+      }
+      const nilai = sum / SERAP_TW.length;
+      return Object.assign({ nSatker: a.nSatker }, nilaiByTw, { nilai });
+    }
+    const { rekap, extraGroups } = finalizeAllLevels(byLevel, rawFields, calc);
+    return { rekap, satkerRows, unmapped, extraGroups };
+  }
+
+  // =====================================================================
+  // 6. Capaian Output
+  // =====================================================================
+  // Source: IKPA_T_CAPUT_SATKER_DETAIL_*.xlsx, sheet "Sheet1" (per-RO detail),
+  // header-based. Nilai Capaian numerator = SUM(NILAI) over ALL rows (incl.
+  // RO_AKTIF=0); denominator = COUNT(RO_AKTIF=1); capped at 100. Nilai
+  // Ketepatan Waktu computed per RO (satker's flag replicated across all its
+  // RO rows), weighted by RO count.
+  //
+  // The on-time deadline is NOT a fixed formula (it follows the official
+  // hari-kerja calendar published each triwulan, confirmed by the user to
+  // differ from a naive "H+10 kalender" guess — e.g. TW2 2026 = 10 Juli,
+  // TW3 2026 = 10 Oktober/last on-time day 9 Oktober). It must be supplied
+  // explicitly by the caller as `deadlineMs` (exclusive upper bound, UTC ms
+  // — a TGL_KIRIM_SAKTI strictly before this counts as tepat waktu). Falls
+  // back to the validated TW2 2026 deadline (10 Juli 2026) when omitted, for
+  // backward compatibility with existing callers/tests.
+  const CO_DEADLINE_DEFAULT = Date.UTC(2026, 6, 10); // 10 July 2026 00:00 UTC (month is 0-indexed)
+
+  function computeCapaianOutput(rows, ref, deadlineMs) {
+    if (deadlineMs === undefined || deadlineMs === null) deadlineMs = CO_DEADLINE_DEFAULT;
+    const idx = headerIndex(rows);
+    const need = ['KDSATKER', 'KPPN', 'RO_AKTIF', 'NILAI', 'TGL_KIRIM_SAKTI'];
+    requireColumns(idx, need, 'Capaian Output');
+
+    const agg = new Map();
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[idx.KDSATKER])) continue;
+      const code = normCode(row[idx.KDSATKER]);
+      let a = agg.get(code);
+      if (!a) { a = { totalNilaiAll: 0, roAktifCount: 0, roTotalRows: 0, tglMax: null, kppn: row[idx.KPPN] }; agg.set(code, a); }
+      const nilai = num(row[idx.NILAI]);
+      const roAktif = row[idx.RO_AKTIF];
+      a.totalNilaiAll += nilai;
+      a.roTotalRows += 1;
+      if (roAktif === 1 || roAktif === '1') a.roAktifCount += 1;
+      const tgl = toDate(row[idx.TGL_KIRIM_SAKTI]);
+      if (tgl && (a.tglMax === null || tgl.getTime() > a.tglMax.getTime())) a.tglMax = tgl;
+    }
+
+    const fields = ['nilaiAll', 'roAktif', 'roTotal', 'ketContrib'];
+    const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
+    const satkerRows = [];
+    const unmapped = [];
+
+    for (const [code, a] of agg) {
+      const cls = classify(code, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb;
+      const nilaiCapaian = a.roAktifCount > 0 ? Math.min(a.totalNilaiAll / a.roAktifCount, 100) : 0;
+      const ketepatan = a.tglMax !== null && a.tglMax.getTime() < deadlineMs ? 100 : 0;
+      const ketContrib = ketepatan * a.roTotalRows;
+      satkerRows.push({ code, kdkppn: a.kppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
+        isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan, included,
+        nilaiCapaian, ketepatan, nilai: 0.7 * nilaiCapaian + 0.3 * ketepatan });
+      if (!cls.terpetakan) unmapped.push({ code, kdkppn: a.kppn });
+      if (included) addToAllLevels(byLevel, cls, fields, {
+        nilaiAll: a.totalNilaiAll, roAktif: a.roAktifCount, roTotal: a.roTotalRows, ketContrib,
+      });
+    }
+
+    function calc(a) {
+      const nilaiCapaian = a.roAktif > 0 ? Math.min(a.nilaiAll / a.roAktif, 100) : 0;
+      const nilaiKetepatan = a.roTotal > 0 ? a.ketContrib / a.roTotal : 0;
+      const nilai = 0.7 * nilaiCapaian + 0.3 * nilaiKetepatan;
+      return { nSatker: a.nSatker, nilaiCapaian, nilaiKetepatan, nilai };
+    }
+    const { rekap, extraGroups } = finalizeAllLevels(byLevel, fields, calc);
+    return { rekap, satkerRows, unmapped, extraGroups };
+  }
+
+  // =====================================================================
+  // 7. Belanja Kontraktual
+  // =====================================================================
+  // Source: IKPA_T_KONTRAK_SATKER_DETAIL_*.xlsx, sheet "Export Worksheet",
+  // header-based (per-kontrak-per-periode detail). Component 1 & 2 use
+  // PERIODE Januari s.d. bulan akhir triwulan terpilih; component 3 uses
+  // AKUN=53 rows filtered by the MONTH of MAX_CHECK_DATE (2026, up to the
+  // same end month), not the PERIODE column. Final blended Nilai capped at
+  // 100 (components themselves are not capped).
+  function computeBelanjaKontraktual(rows, ref, periodKey) {
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const BK_PERIODS = new Set(monthsUpTo(targetMonth));
+    const targetMonthIdx = parseInt(targetMonth, 10) - 1; // 0-based, matches getUTCMonth()
+
+    const idx = headerIndex(rows);
+    const need = ['KDKPPN', 'KDSATKER', 'AKUN', 'MAX_CHECK_DATE', 'PERIODE', 'AKSELERASI53',
+      'NILAI_RAW_DIST_KONTRAK', 'AVG_PRADIPA'];
+    requireColumns(idx, need, 'Belanja Kontraktual');
+
+    const agg = new Map();
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[idx.KDSATKER])) continue;
+      const code = normCode(row[idx.KDSATKER]);
+      let a = agg.get(code);
+      if (!a) { a = { c1Sum: 0, c1Cnt: 0, c2Sum: 0, c2Cnt: 0, c3Sum: 0, c3Cnt: 0, kppn: row[idx.KDKPPN] }; agg.set(code, a); }
+
+      const periode = row[idx.PERIODE] === null || row[idx.PERIODE] === undefined ? null : String(row[idx.PERIODE]).padStart(2, '0');
+      if (BK_PERIODS.has(periode)) {
+        const v1 = row[idx.NILAI_RAW_DIST_KONTRAK];
+        if (!isBlank(v1)) { a.c1Sum += num(v1); a.c1Cnt += 1; }
+        const v2 = row[idx.AVG_PRADIPA];
+        if (!isBlank(v2)) { a.c2Sum += num(v2); a.c2Cnt += 1; }
+      }
+      if (String(row[idx.AKUN]) === '53') {
+        const mcd = toDate(row[idx.MAX_CHECK_DATE]);
+        const v3 = row[idx.AKSELERASI53];
+        if (mcd && mcd.getUTCFullYear() === 2026 && mcd.getUTCMonth() >= 0 && mcd.getUTCMonth() <= targetMonthIdx && !isBlank(v3)) {
+          a.c3Sum += num(v3); a.c3Cnt += 1;
+        }
+      }
+    }
+
+    const fields = ['c1Sum', 'c1Cnt', 'c2Sum', 'c2Cnt', 'c3Sum', 'c3Cnt'];
+    const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
+    const satkerRows = [];
+    const unmapped = [];
+
+    for (const [code, a] of agg) {
+      const cls = classify(code, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb;
+      const comp1 = a.c1Cnt > 0 ? a.c1Sum / a.c1Cnt : 0;
+      const comp2 = a.c2Cnt > 0 ? a.c2Sum / a.c2Cnt : 0;
+      const comp3 = a.c3Cnt > 0 ? a.c3Sum / a.c3Cnt : 0;
+      const nilai = Math.min(0.2 * comp1 + 0.4 * comp2 + 0.4 * comp3, 100);
+      satkerRows.push({ code, kdkppn: a.kppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
+        isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan, included,
+        comp1, comp2, comp3, nilai });
+      if (!cls.terpetakan) unmapped.push({ code, kdkppn: a.kppn });
+      if (included) addToAllLevels(byLevel, cls, fields, a);
+    }
+
+    function calc(a) {
+      const comp1 = a.c1Cnt > 0 ? a.c1Sum / a.c1Cnt : 0;
+      const comp2 = a.c2Cnt > 0 ? a.c2Sum / a.c2Cnt : 0;
+      const comp3 = a.c3Cnt > 0 ? a.c3Sum / a.c3Cnt : 0;
+      const nilai = Math.min(0.2 * comp1 + 0.4 * comp2 + 0.4 * comp3, 100);
+      return { nSatker: a.nSatker, comp1, comp2, comp3, nilai };
+    }
+    const { rekap, extraGroups } = finalizeAllLevels(byLevel, fields, calc);
+    return { rekap, satkerRows, unmapped, extraGroups };
+  }
+
+  // =====================================================================
+  // 8. Nilai IKPA (composite)
+  // =====================================================================
+  const IKPA_WEIGHTS = {
+    revisiDipa: 0.10,
+    deviasi: 0.15,
+    penyerapan: 0.20,
+    belanjaKontraktual: 0.10,
+    tagihan: 0.10,
+    upTup: 0.10,
+    capaianOutput: 0.25,
+  };
+
+  function computeIkpaAtLevel(componentsAtLevel, order) {
+    // componentsAtLevel: {tagihan: rekapAtThisLevel, upTup: ..., ...}, each a
+    // {groupLabel: {..., nilai}} dict for ONE level.
+    const result = {};
+    for (const key of order.concat(['TOTAL'])) {
+      let nilai = 0;
+      const parts = {};
+      for (const k of Object.keys(IKPA_WEIGHTS)) {
+        const rec = componentsAtLevel[k] ? componentsAtLevel[k][key] : null;
+        const v = rec ? rec.nilai : null;
+        parts[k] = v;
+        nilai += (v || 0) * IKPA_WEIGHTS[k];
+      }
+      result[key] = Object.assign({ group: key }, parts, { nilai });
+    }
+    return result;
+  }
+
+  function computeIkpa(componentsByLevel) {
+    // componentsByLevel: {k4pa:{tagihan:rekap,...}, k3pa:{...}, k4kanwil:{...}}
+    const rekap = {};
+    for (const lvl of LEVELS) {
+      rekap[lvl.key] = computeIkpaAtLevel(componentsByLevel[lvl.key], lvl.order);
+    }
+    return rekap;
+  }
+
+  // =====================================================================
+  // 9. Nilai IKPA per KPPN / per Kanwil (langsung dari file yang sudah jadi)
+  // =====================================================================
+  // Some users already have a final, pre-computed "Nilai Akhir" IKPA value
+  // per KPPN or per Kanwil (e.g. IKPA_T_CAPAIAN_KPPN_2026.xlsx /
+  // IKPA_T_CAPAIAN_KANWIL_2026.xlsx, each with KDxxx/NMxxx/PERIODE/
+  // NILAI_AKHIR columns) and want to feed that straight into Nilai IKU
+  // instead of recomputing a composite from the 7 raw indicator files.
+  // This is a thin, generic parser for that "flat" shape: no reference file,
+  // no satker-level classification -- just filter to the selected period and
+  // read the code/name/value columns.
+  function computeIkpaLevelUpload(rows, colNames, periodKey) {
+    // colNames: { code: 'KDKANWIL'|'KDKPPN', name: 'NMKANWIL'|'NMKPPN',
+    //             codeWidth: 2|3, fileLabel }
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const idx = headerIndex(rows);
+    const need = [colNames.code, colNames.name, 'PERIODE', 'NILAI_AKHIR'];
+    requireColumns(idx, need, colNames.fileLabel || 'Nilai IKPA');
+    const byCode = {};
+    const codesSeen = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[idx[colNames.code]])) continue;
+      const p = row[idx.PERIODE] === null || row[idx.PERIODE] === undefined ? null : String(row[idx.PERIODE]).padStart(2, '0');
+      if (p !== targetMonth) continue;
+      const code = padCode(row[idx[colNames.code]], colNames.codeWidth || 2);
+      if (!(code in byCode)) codesSeen.push(code);
+      byCode[code] = { code, nama: row[idx[colNames.name]], nilaiAkhir: num(row[idx.NILAI_AKHIR]) };
+    }
+    return { byCode, codesSeen: codesSeen.sort() };
+  }
+
+  // =====================================================================
+  // 10. Nilai IKU (5 level: K3 PA, K4 PA, K4 Kanwil, Kanwil, KPPN)
+  // =====================================================================
+  // Nilai IKU = 70% x Nilai IKPA (grup) + 30% x persentase Satker anggota
+  // grup yang Nilai Akhir IKPA-nya (per Satker) >= ambang (default 89).
+  // Per konfirmasi pengguna, dihitung terpisah untuk 5 level -- K3 PA, K4 PA,
+  // dan K4 Kanwil (Nilai IKPA-nya berasal dari tab "Nilai IKPA" komposit),
+  // plus Kanwil dan KPPN (Nilai IKPA-nya diunggah langsung, lihat Bagian 9
+  // di atas). Persentase Satker >= ambang dihitung dari SATU sumber yang
+  // sama di kelima level: sebuah file "Nilai Akhir IKPA per Satker" yang
+  // sudah diunggah pengguna (bukan hasil gabungan ketujuh indikator lagi).
+
+  // Parses the uploaded per-satker "Nilai Akhir IKPA" file (columns
+  // KDSATKER, KDKPPN, PERIODE, NILAI_AKHIR -- e.g. the "Export Worksheet"
+  // sheet of IKPA_T_CAPAIAN_SATKER_2026.xlsx) for the selected period, and
+  // joins it against the Referensi Satker maps for K3 PA/K4 PA/K4
+  // Kanwil/Kanwil classification AND for the 4 exclusion categories: Satker
+  // BLU, Full Blokir, Pagu Seribu, dan NMDEKON Dekonsentrasi/Tugas
+  // Pembantuan (all four, per user confirmation -- a stricter rule than the
+  // 7 indicators above, which only exclude BLU+Full Blokir).
+  function computeSatkerNilaiAkhir(rows, ref, periodKey) {
+    const targetMonth = resolvePeriod(periodKey).endMonth;
+    const idx = headerIndex(rows);
+    const need = ['KDSATKER', 'KDKPPN', 'PERIODE', 'NILAI_AKHIR'];
+    requireColumns(idx, need, 'Nilai Akhir IKPA Satker');
+    const satkerRows = [];
+    const unmapped = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || isBlank(row[idx.KDSATKER])) continue;
+      const p = row[idx.PERIODE] === null || row[idx.PERIODE] === undefined ? null : String(row[idx.PERIODE]).padStart(2, '0');
+      if (p !== targetMonth) continue;
+      const code = normCode(row[idx.KDSATKER]);
+      const kdkppn = padCode(row[idx.KDKPPN], 3);
+      const nilaiAkhir = num(row[idx.NILAI_AKHIR]);
+      const cls = classify(code, ref);
+      const included = cls.terpetakan && !cls.isBlu && !cls.isFb && !cls.isPs && !cls.isDekonTp;
+      satkerRows.push({
+        code, kdkppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
+        kdKanwil: cls.kdKanwil, namaKanwil: cls.namaKanwil,
+        isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, nmDekon: cls.nmDekon, isDekonTp: cls.isDekonTp,
+        terpetakan: cls.terpetakan, included, nilaiAkhir,
+      });
+      if (!cls.terpetakan) unmapped.push({ code, kdkppn });
+    }
+    return { satkerRows, unmapped };
+  }
+
+  const IKU_LEVELS = [
+    { key: 'k3pa', label: 'K3 PA', order: K3PA_ORDER },
+    { key: 'k4pa', label: 'K4 PA', order: K4PA_ORDER },
+    { key: 'k4kanwil', label: 'K4 Kanwil', order: K4KANWIL_ORDER },
+    { key: 'kanwil', label: 'Kanwil', order: KANWIL_CODE_ORDER },
+    { key: 'kppn', label: 'KPPN', order: null }, // dynamic: no fixed canonical list
+  ];
+
+  // Groups computeSatkerNilaiAkhir()'s included satker by each of the 5
+  // levels, counting how many cleared `threshold` (default 89). Levels with
+  // a fixed canonical order (k3pa/k4pa/k4kanwil/kanwil) always list every
+  // official group (0 if empty); 'kppn' has no fixed list in this app, so
+  // its order is whatever KPPN codes are actually present, sorted.
+  function computeIkuPersentaseByLevels(satkerRows, threshold) {
+    if (threshold === undefined || threshold === null) threshold = 89;
+    const included = satkerRows.filter((r) => r.included);
+    const byLevel = {};
+    for (const lvl of IKU_LEVELS) {
+      const keyFn = lvl.key === 'kanwil' ? (r) => r.kdKanwil
+        : lvl.key === 'kppn' ? (r) => r.kdkppn
+        : (r) => r[lvl.key];
+      const acc = {};
+      const nameByKey = {};
+      for (const r of included) {
+        const key = keyFn(r);
+        if (key === null || key === undefined || key === '-' || key === '') continue;
+        if (!acc[key]) acc[key] = { count: 0, above: 0 };
+        acc[key].count += 1;
+        if (r.nilaiAkhir >= threshold) acc[key].above += 1;
+        if (!nameByKey[key] && r.namaKanwil) nameByKey[key] = r.namaKanwil;
+      }
+      const order = lvl.order || Object.keys(acc).sort();
+      const result = {};
+      let totalCount = 0;
+      let totalAbove = 0;
+      for (const key of order) {
+        const a = acc[key] || { count: 0, above: 0 };
+        const persentase = a.count > 0 ? (a.above / a.count) * 100 : 0;
+        result[key] = {
+          group: key, nama: nameByKey[key] || (lvl.key === 'kanwil' ? KANWIL_CODE_TO_NAME[key] : null) || null,
+          jumlahSatker: a.count, jumlahDiatasAmbang: a.above, persentase, threshold,
+        };
+        totalCount += a.count;
+        totalAbove += a.above;
+      }
+      result.TOTAL = {
+        group: 'TOTAL', nama: null, jumlahSatker: totalCount, jumlahDiatasAmbang: totalAbove,
+        persentase: totalCount > 0 ? (totalAbove / totalCount) * 100 : 0, threshold,
+      };
+      byLevel[lvl.key] = result;
+    }
+    return byLevel;
+  }
+
+  // Indeksasi Nilai IKU -> Indeks (skala 1-4), tabel ambang tetap.
+  const IKU_INDEKS_BANDS = [
+    { min: 100, indeks: 4 },
+    { min: 95, indeks: 3.75 },
+    { min: 90, indeks: 3.5 },
+    { min: 85, indeks: 3.25 },
+    { min: 79, indeks: 3 },
+    { min: 70, indeks: 2.75 },
+    { min: -Infinity, indeks: 2.5 },
+  ];
+
+  function ikuToIndeks(nilai) {
+    if (nilai === null || nilai === undefined || !Number.isFinite(nilai)) return null;
+    for (const band of IKU_INDEKS_BANDS) {
+      if (nilai >= band.min) return band.indeks;
+    }
+    return 2.5;
+  }
+
+  // Blends one level's persentase rekap (from computeIkuPersentaseByLevels)
+  // with that level's own Nilai IKPA lookup (group -> number; for k3pa/k4pa/
+  // k4kanwil this is sessionResults.ikpa[level] from the app, for kanwil/
+  // kppn it is the .byCode map from computeIkpaLevelUpload) into the final
+  // Nilai IKU + Indeks per group. A group whose Nilai IKPA is unavailable
+  // gets nilaiIku/indeks = null rather than silently treating it as 0.
+  function combineIku(persentaseRekapAtLevel, nilaiIkpaByGroup) {
+    const result = {};
+    for (const [key, p] of Object.entries(persentaseRekapAtLevel)) {
+      const src = nilaiIkpaByGroup ? nilaiIkpaByGroup[key] : undefined;
+      const nilaiIkpa = (src === undefined || src === null) ? null : (typeof src === 'number' ? src : src.nilai);
+      const hasIkpa = typeof nilaiIkpa === 'number' && Number.isFinite(nilaiIkpa);
+      const nilaiIku = hasIkpa ? 0.7 * nilaiIkpa + 0.3 * p.persentase : null;
+      result[key] = Object.assign({}, p, {
+        nilaiIkpa: hasIkpa ? nilaiIkpa : null,
+        nilaiIku,
+        indeks: nilaiIku !== null ? ikuToIndeks(nilaiIku) : null,
+      });
+    }
+    return result;
+  }
+
+  // ---- exports --------------------------------------------------------
+
+  const IkpaCore = {
+    K4PA_ORDER, K3PA_ORDER, K4KANWIL_ORDER, KANWIL_CODE_ORDER, KANWIL_CODE_TO_NAME, LEVELS, IKU_LEVELS, IKPA_WEIGHTS,
+    TRIWULAN, resolvePeriod, monthsUpTo, checkpointsUpTo, monthLabel,
+    normCode, num, padCode, headerIndex, cleanHeaderText, requireColumns, toDate, normSeksi,
+    buildReferenceMaps, classify,
+    computeTagihan, computeUpTup, computeRevisiDipa, computeDeviasi,
+    computePenyerapan, computeCapaianOutput, computeBelanjaKontraktual,
+    computeIkpa,
+    computeIkpaLevelUpload, computeSatkerNilaiAkhir, computeIkuPersentaseByLevels,
+    combineIku, ikuToIndeks, IKU_INDEKS_BANDS,
+  };
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = IkpaCore;
+  } else {
+    root.IkpaCore = IkpaCore;
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script>
+// =====================================================================
+// APP — UI wiring: tabs, file uploads, compute (all 3 levels at once),
+// level-switchable results tables, and a 3-sheet Excel export.
+// =====================================================================
+(function () {
+  'use strict';
+
+  const LEVEL_DEFS = [
+    { key: 'k3pa', label: 'K3 PA', order: IkpaCore.K3PA_ORDER.concat(['TOTAL']), sheetName: 'Rekap K3 PA' },
+    { key: 'k4pa', label: 'K4 PA', order: IkpaCore.K4PA_ORDER.concat(['TOTAL']), sheetName: 'Rekap K4 PA' },
+    { key: 'k4kanwil', label: 'K4 Kanwil', order: IkpaCore.K4KANWIL_ORDER.concat(['TOTAL']), sheetName: 'Rekap K4 Kanwil' },
+  ];
+  const DEFAULT_LEVEL = 'k4pa';
+
+  // ---- period (Triwulan) selection --------------------------------------
+  //
+  // A single global selector drives which month(s) every indicator reads,
+  // via IkpaCore's periodKey parameter. Switching it invalidates all
+  // session results (they'd otherwise silently mix periods in the
+  // composite Nilai IKPA).
+  const PERIOD_UI = [
+    { key: 'TW1', label: 'Triwulan I', hint: 's.d. Maret' },
+    { key: 'TW2', label: 'Triwulan II', hint: 's.d. Juni' },
+    { key: 'TW3', label: 'Triwulan III', hint: 's.d. September' },
+    { key: 'TW4', label: 'Triwulan IV', hint: 's.d. Desember' },
+  ];
+  const DEFAULT_PERIOD = 'TW2';
+  let currentPeriodKey = DEFAULT_PERIOD;
+  const periodChangeListeners = [];
+  function onPeriodChange(fn) { periodChangeListeners.push(fn); }
+  function setPeriod(pk) {
+    if (pk === currentPeriodKey) return;
+    currentPeriodKey = pk;
+    periodChangeListeners.forEach((fn) => fn(pk));
+  }
+
+  // Suggested Capaian Output deadline per triwulan (the exclusive upper
+  // bound date -- a TGL_KIRIM_SAKTI strictly before this counts as tepat
+  // waktu). This is NOT a formula: the real deadline follows the official
+  // hari-kerja calendar published each triwulan, which this tool cannot
+  // compute. TW2 2026 (10 Juli) and TW3 2026 (10 Oktober, i.e. batas akhir
+  // tepat waktu 9 Oktober) were confirmed directly by the user; TW1/TW4 use
+  // a naive "H+10 kalender" guess flagged as needing manual confirmation.
+  const CO_DEADLINE_SUGGEST = {
+    TW1: { date: '2026-04-10', confirmed: false },
+    TW2: { date: '2026-07-10', confirmed: true },
+    TW3: { date: '2026-10-10', confirmed: true },
+    TW4: { date: '2027-01-10', confirmed: false },
+  };
+
+  const NUM_INT = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+  const NUM_2 = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  function fmt(kind, v) {
+    if (v === null || v === undefined || (typeof v === 'number' && Number.isNaN(v))) return '–';
+    if (kind === 'int') return NUM_INT.format(v);
+    return NUM_2.format(v);
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s === null || s === undefined ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  const REF_HINT = 'File referensi berisi 3 sheet: "ref satker", "ref blokir seribu", dan "ref BLU" (format sama seperti file Referensi Satker yang dipakai pada seluruh indikator sebelumnya). Kolom Kanwil, Seksi, K3 PA dan K4 PA pada file ini dipakai untuk menghasilkan ketiga level rekap sekaligus.';
+
+  function periodLabel(pk) {
+    const p = PERIOD_UI.find((p) => p.key === pk);
+    return p ? p.label + ' (' + p.hint + ')' : pk;
+  }
+  function periodEndMonthName(pk) {
+    return IkpaCore.monthLabel(IkpaCore.resolvePeriod(pk).endMonth) + ' 2026';
+  }
+
+  const INDICATOR_DEFS = [
+    {
+      key: 'tagihan',
+      title: 'Penyelesaian Tagihan',
+      weightLabel: '10%',
+      formula(pk) { return 'Nilai = (Tagihan Tepat Waktu ÷ Jumlah Tagihan) × 100, periode ' + periodEndMonthName(pk) + '. Satker BLU dan Full Blokir dikeluarkan dari perhitungan (Pagu Seribu tetap dihitung).'; },
+      sources: [
+        { id: 'src', label: 'File Sumber Tagihan', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+          hint: 'Kolom berurutan: Kode Satker, Kode KPPN, Periode, Jumlah Tagihan, Tepat Waktu, Terlambat.' },
+      ],
+      resultColumns: [
+        { key: 'nSatker', label: 'Jumlah Satker', kind: 'int' },
+        { key: 'jumlah', label: 'Jumlah Tagihan', kind: 'int' },
+        { key: 'tepat', label: 'Tepat Waktu', kind: 'int' },
+        { key: 'telat', label: 'Terlambat', kind: 'int' },
+        { key: 'nilai', label: 'Nilai Indikator Penyelesaian Tagihan', kind: 'num2', highlight: true },
+      ],
+      compute(src, ref, pk) { return IkpaCore.computeTagihan(src[0], ref, pk); },
+    },
+    {
+      key: 'uptup',
+      title: 'Pengelolaan UP dan TUP',
+      weightLabel: '10%',
+      formula(pk) {
+        return 'Nilai = MIN(90% × Nilai UP Tunai + 10% × rata-rata Nilai UP KKP dari TW1 s.d. triwulan terpilih, 100). UP Tunai memakai periode ' + periodEndMonthName(pk) + '; UP KKP dirata-rata dari checkpoint Maret s.d. ' + periodEndMonthName(pk) + '. Satker BLU dan Full Blokir dikeluarkan (Pagu Seribu tetap dihitung).';
+      },
+      sources: [
+        { id: 'src', label: 'File Sumber UP dan TUP', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+          hint: 'Kolom header: KDSATKER, KDKPPN, PERIODE, TEPAT_WAKTU, JUMLAH_UP_TUP_KETEPATAN, PERSEN_SEBULAN, JUMLAH_UP_DISEBULANKAN, TOTAL_SETORAN_TUP, JUMLAH_TUP, TARGET_TW, AMOUNT_TW.' },
+      ],
+      resultColumns: [
+        { key: 'nSatker', label: 'Jumlah Satker', kind: 'int' },
+        { key: 'ketepatanWaktu', label: 'Ketepatan Waktu (%)', kind: 'num2' },
+        { key: 'persenGup', label: 'Persentase GUP (%)', kind: 'num2' },
+        { key: 'setoranTup', label: 'Setoran TUP (%)', kind: 'num2' },
+        { key: 'komponenUpTunai', label: 'Komponen UP Tunai (90%)', kind: 'num2' },
+        { key: 'rataKkp', label: 'Rata-rata Nilai UP KKP', kind: 'num2' },
+        { key: 'komponenUpKkp', label: 'Komponen UP KKP (10%)', kind: 'num2' },
+        { key: 'nilai', label: 'Nilai Indikator Pengelolaan UP dan TUP', kind: 'num2', highlight: true },
+      ],
+      compute(src, ref, pk) { return IkpaCore.computeUpTup(src[0], ref, pk); },
+    },
+    {
+      key: 'revisidipa',
+      title: 'Revisi DIPA',
+      weightLabel: '10%',
+      formula(pk) { return 'Nilai = rata-rata (IK_REVISI_DIPA ÷ 100) seluruh Satker, periode ' + periodEndMonthName(pk) + '. Satker BLU dan Full Blokir dikeluarkan (Pagu Seribu tetap dihitung).'; },
+      sources: [
+        { id: 'src', label: 'File Sumber Revisi DIPA', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+          hint: 'Kolom header: KDSATKER, PERIODE, KDKPPN, IK_REVISI_DIPA.' },
+      ],
+      resultColumns: [
+        { key: 'nSatker', label: 'Jumlah Satker', kind: 'int' },
+        { key: 'nilai', label: 'Nilai Indikator Revisi DIPA', kind: 'num2', highlight: true },
+      ],
+      compute(src, ref, pk) { return IkpaCore.computeRevisiDipa(src[0], ref, pk); },
+    },
+    {
+      key: 'deviasi',
+      title: 'Deviasi Halaman III DIPA',
+      weightLabel: '15%',
+      formula(pk) {
+        return 'Nilai = 100 jika rata-rata deviasi tertimbang Januari–' + periodEndMonthName(pk) + ' ≤ 5%, selebihnya 100 − rata-rata deviasi. Belanja 51/52 pada Februari–Maret mendapat dispensasi (deviasi 0%). Hanya Satker BLU dan Full Blokir yang dikeluarkan (Pagu Seribu tetap dihitung).';
+      },
+      sources: [
+        { id: 'src', label: 'File Sumber Deviasi', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+          hint: 'Kolom header: KDSATKER, KDKPPN, PERIODE, RENCANA51/52/53/57, REALISASI51/52/53/57.' },
+        { id: 'serap', label: 'File Sumber Pagu Bruto (Serap)', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+          hint: 'Kolom header: SATKER, PERIODE, PAGU51/52/53/57.' },
+      ],
+      resultColumns: [
+        { key: 'nSatker', label: 'Jumlah Satker', kind: 'int' },
+        { key: 'rata2', label: 'Rata-rata Deviasi Tertimbang (%)', kind: 'num2' },
+        { key: 'nilai', label: 'Nilai Indikator Deviasi Halaman III DIPA', kind: 'num2', highlight: true },
+      ],
+      compute(src, ref, pk) { return IkpaCore.computeDeviasi(src[0], src[1], ref, pk); },
+    },
+    {
+      key: 'penyerapan',
+      title: 'Penyerapan Anggaran',
+      weightLabel: '20%',
+      formula(pk) {
+        return 'Nilai = rata-rata Nilai per-triwulan-checkpoint dari Triwulan I s.d. triwulan terpilih (checkpoint Maret' + (pk === 'TW1' ? '' : pk === 'TW2' ? ', Juni' : pk === 'TW3' ? ', Juni, September' : ', Juni, September, Desember') + '), masing-masing dibobot pagu netto per jenis belanja (51/52/53/57) dan dibatasi maksimal 100 per jenis belanja. Satker BLU dan Full Blokir dikeluarkan.';
+      },
+      sources: [
+        { id: 'src', label: 'File Sumber Penyerapan (Serap)', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+          hint: 'Kolom header: SATKER, KDKPPN, PERIODE, PAGU_NETTO51/52/53/57, TARGET_PAGU51/52/53/57, REALISASI51/52/53/57.' },
+      ],
+      resultColumns(pk) {
+        const checkpoints = IkpaCore.checkpointsUpTo(pk);
+        const cols = [{ key: 'nSatker', label: 'Jumlah Satker', kind: 'int' }];
+        checkpoints.forEach((c) => cols.push({ key: 'nilai' + c.key, label: 'Nilai ' + c.label, kind: 'num2' }));
+        cols.push({ key: 'nilai', label: 'Nilai Indikator Penyerapan Anggaran', kind: 'num2', highlight: true });
+        return cols;
+      },
+      compute(src, ref, pk) { return IkpaCore.computePenyerapan(src[0], ref, pk); },
+    },
+    {
+      key: 'capaianoutput',
+      title: 'Capaian Output',
+      weightLabel: '25%',
+      formula(pk, deadlineLabel) {
+        return 'Nilai = 70% × Nilai Capaian + 30% × Nilai Ketepatan Waktu. Nilai Capaian = total NILAI seluruh RO ÷ jumlah RO aktif (maks. 100). Nilai Ketepatan Waktu = 100 jika tanggal kirim terakhir sebelum ' + (deadlineLabel || '(pilih tanggal batas di bawah)') + ', selebihnya 0. Satker BLU dan Full Blokir dikeluarkan.';
+      },
+      sources: [
+        { id: 'src', label: 'File Detail Capaian Output per RO', sheetCandidates: ['Sheet1', 'Export Worksheet'],
+          hint: 'Kolom header: KDSATKER, KPPN, RO_AKTIF, NILAI, TGL_KIRIM_SAKTI.' },
+      ],
+      resultColumns: [
+        { key: 'nSatker', label: 'Jumlah Satker', kind: 'int' },
+        { key: 'nilaiCapaian', label: 'Nilai Capaian', kind: 'num2' },
+        { key: 'nilaiKetepatan', label: 'Nilai Ketepatan Waktu', kind: 'num2' },
+        { key: 'nilai', label: 'Nilai Indikator Capaian Output', kind: 'num2', highlight: true },
+      ],
+      compute(src, ref, pk, deadlineMs) { return IkpaCore.computeCapaianOutput(src[0], ref, deadlineMs); },
+    },
+    {
+      key: 'belanjakontraktual',
+      title: 'Belanja Kontraktual',
+      weightLabel: '10%',
+      formula(pk) {
+        return 'Nilai = MIN(20% × Distribusi Akselerasi Kontrak + 40% × Kontrak Dini Pra DIPA + 40% × Akselerasi Belanja Modal, 100). Data non-kumulatif periode Januari–' + periodEndMonthName(pk) + '. Satker BLU dan Full Blokir dikeluarkan.';
+      },
+      sources: [
+        { id: 'src', label: 'File Detail Kontrak per Periode', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+          hint: 'Kolom header: KDKPPN, KDSATKER, AKUN, MAX_CHECK_DATE, PERIODE, AKSELERASI53, NILAI_RAW_DIST_KONTRAK, AVG_PRADIPA.' },
+      ],
+      resultColumns: [
+        { key: 'nSatker', label: 'Jumlah Satker', kind: 'int' },
+        { key: 'comp1', label: 'Distribusi Akselerasi Kontrak', kind: 'num2' },
+        { key: 'comp2', label: 'Kontrak Dini Pra DIPA', kind: 'num2' },
+        { key: 'comp3', label: 'Akselerasi Belanja Modal', kind: 'num2' },
+        { key: 'nilai', label: 'Nilai Indikator Belanja Kontraktual', kind: 'num2', highlight: true },
+      ],
+      compute(src, ref, pk) { return IkpaCore.computeBelanjaKontraktual(src[0], ref, pk); },
+    },
+  ];
+
+  function getResultColumns(def, pk) {
+    return typeof def.resultColumns === 'function' ? def.resultColumns(pk) : def.resultColumns;
+  }
+
+  const IKPA_KEY_TO_DEF_KEY = {
+    revisiDipa: 'revisidipa', deviasi: 'deviasi', penyerapan: 'penyerapan',
+    belanjaKontraktual: 'belanjakontraktual', tagihan: 'tagihan', upTup: 'uptup', capaianOutput: 'capaianoutput',
+  };
+  const IKPA_LABELS = {
+    revisiDipa: 'Revisi DIPA (10%)', deviasi: 'Deviasi Halaman III DIPA (15%)',
+    penyerapan: 'Penyerapan Anggaran (20%)', belanjaKontraktual: 'Belanja Kontraktual (10%)',
+    tagihan: 'Penyelesaian Tagihan (10%)', upTup: 'Pengelolaan UP dan TUP (10%)',
+    capaianOutput: 'Capaian Output (25%)',
+  };
+  const IKPA_ORDER = ['revisiDipa', 'deviasi', 'penyerapan', 'belanjaKontraktual', 'tagihan', 'upTup', 'capaianOutput'];
+
+  const sessionResults = {}; // defKey -> { k4pa: {...}, k3pa: {...}, k4kanwil: {...} }
+  const fileState = {}; // defKey -> { [sourceId]: File, ref: File }
+  INDICATOR_DEFS.forEach((d) => { fileState[d.key] = {}; });
+
+  // ---- SheetJS helpers -------------------------------------------------
+
+  async function readWorkbook(file) {
+    const buf = await file.arrayBuffer();
+    try {
+      // dense: true stores each worksheet as an array-of-arrays internally
+      // instead of one JS object entry per cell. For very large sheets
+      // (hundreds of thousands of rows, as some of the source exports here
+      // can be) this uses substantially less memory and parses faster,
+      // which matters for files whose XML is inflated by inline strings.
+      return XLSX.read(buf, { type: 'array', cellDates: true, dense: true });
+    } catch (err) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      throw new Error('Gagal membaca file "' + file.name + '" (' + mb + ' MB): ' +
+        (err && err.message ? err.message : String(err)) +
+        '. Jika file berukuran besar, coba tutup tab/aplikasi lain untuk membebaskan memori peramban, lalu unggah ulang.');
+    }
+  }
+
+  function pickSheet(wb, candidates) {
+    const names = wb.SheetNames;
+    for (const c of candidates) {
+      const found = names.find((n) => n.trim().toLowerCase() === c.trim().toLowerCase());
+      if (found) return found;
+    }
+    const fallback = names.find((n) => {
+      const t = n.trim().toLowerCase();
+      return t !== 'sql' && !t.startsWith('ref ');
+    });
+    return fallback || names[0];
+  }
+
+  function sheetToAOA(wb, sheetName) {
+    const ws = wb.Sheets[sheetName];
+    return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  }
+
+  function readRefSheets(wb) {
+    function pick(name) {
+      const found = wb.SheetNames.find((n) => n.trim().toLowerCase() === name.toLowerCase());
+      if (!found) {
+        throw new Error('Sheet "' + name + '" tidak ditemukan pada file referensi. Sheet tersedia: ' + wb.SheetNames.join(', '));
+      }
+      return sheetToAOA(wb, found);
+    }
+    return {
+      'ref satker': pick('ref satker'),
+      'ref blokir seribu': pick('ref blokir seribu'),
+      'ref BLU': pick('ref BLU'),
+    };
+  }
+
+  // ---- generic file-input widget ---------------------------------------
+
+  function buildFileField(defKey, source) {
+    const wrap = document.createElement('div');
+    wrap.className = 'field';
+    const inputId = 'file-' + defKey + '-' + source.id;
+
+    const label = document.createElement('label');
+    label.className = 'field-label';
+    label.setAttribute('for', inputId);
+    label.textContent = source.label;
+    wrap.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'file-row';
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx';
+    input.id = inputId;
+    input.className = 'file-input-hidden';
+
+    const btn = document.createElement('label');
+    btn.className = 'file-btn';
+    btn.setAttribute('for', inputId);
+    btn.textContent = 'Pilih File';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'file-name';
+    nameSpan.dataset.empty = 'true';
+    nameSpan.textContent = 'Belum ada file dipilih';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'file-clear';
+    clearBtn.setAttribute('aria-label', 'Hapus file');
+    clearBtn.textContent = '×';
+
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      fileState[defKey][source.id] = f || null;
+      if (f) {
+        nameSpan.textContent = f.name;
+        nameSpan.dataset.empty = 'false';
+        clearBtn.classList.add('show');
+      } else {
+        nameSpan.textContent = 'Belum ada file dipilih';
+        nameSpan.dataset.empty = 'true';
+        clearBtn.classList.remove('show');
+      }
+    });
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      fileState[defKey][source.id] = null;
+      nameSpan.textContent = 'Belum ada file dipilih';
+      nameSpan.dataset.empty = 'true';
+      clearBtn.classList.remove('show');
+    });
+
+    row.appendChild(input);
+    row.appendChild(btn);
+    row.appendChild(nameSpan);
+    row.appendChild(clearBtn);
+    wrap.appendChild(row);
+
+    const hint = document.createElement('p');
+    hint.className = 'field-hint';
+    hint.textContent = source.hint;
+    wrap.appendChild(hint);
+
+    return wrap;
+  }
+
+  // ---- results table (level-switchable) ----------------------------------
+
+  function renderResultsTable(tableScrollEl, columns, rekapAtLevel, order) {
+    const table = document.createElement('table');
+    table.className = 'rekap';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const thFirst = document.createElement('th');
+    thFirst.textContent = 'Kelompok';
+    trh.appendChild(thFirst);
+    columns.forEach((c) => {
+      const th = document.createElement('th');
+      th.textContent = c.label;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    order.forEach((groupKey) => {
+      const tr = document.createElement('tr');
+      if (groupKey === 'TOTAL') tr.className = 'total-row';
+      const tdFirst = document.createElement('td');
+      tdFirst.textContent = groupKey;
+      tr.appendChild(tdFirst);
+      const row = rekapAtLevel[groupKey] || {};
+      columns.forEach((c) => {
+        const td = document.createElement('td');
+        td.className = 'num' + (c.highlight ? ' highlight' : '');
+        td.textContent = fmt(c.kind, row[c.key]);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    tableScrollEl.innerHTML = '';
+    tableScrollEl.appendChild(table);
+  }
+
+  // Builds a level-switcher (K3 PA / K4 PA / K4 Kanwil pills) + table +
+  // download button inside `resultsCard`, wired to re-render from
+  // `getRekap()` (a function returning the current full {k4pa,k3pa,k4kanwil}
+  // rekap, so it always reflects the latest computed result).
+  function buildResultsSection(resultsCard, titlePrefix, getColumns, getRekap, downloadBaseName) {
+    const state = { level: DEFAULT_LEVEL };
+
+    const head = document.createElement('div');
+    head.className = 'results-head';
+    const h3 = document.createElement('h3');
+    h3.textContent = titlePrefix;
+    head.appendChild(h3);
+
+    const switcher = document.createElement('div');
+    switcher.className = 'level-switch';
+    const levelBtns = {};
+    LEVEL_DEFS.forEach((lvl) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'level-btn';
+      b.textContent = lvl.label;
+      b.setAttribute('aria-pressed', lvl.key === state.level ? 'true' : 'false');
+      b.addEventListener('click', () => {
+        state.level = lvl.key;
+        Object.values(levelBtns).forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
+        rerender();
+      });
+      levelBtns[lvl.key] = b;
+      switcher.appendChild(b);
+    });
+    head.appendChild(switcher);
+    resultsCard.appendChild(head);
+
+    const tableScroll = document.createElement('div');
+    tableScroll.className = 'table-scroll';
+    resultsCard.appendChild(tableScroll);
+
+    const foot = document.createElement('div');
+    foot.className = 'results-foot';
+    const downloadBtn = document.createElement('button');
+    downloadBtn.type = 'button';
+    downloadBtn.className = 'btn btn-secondary';
+    downloadBtn.innerHTML = '<span class="spinner"></span><span>Unduh Excel (3 sheet)</span>';
+    const note = document.createElement('span');
+    note.className = 'results-note';
+    note.textContent = 'Berisi sheet Rekap K3 PA, Rekap K4 PA, dan Rekap K4 Kanwil sekaligus.';
+    foot.appendChild(downloadBtn);
+    foot.appendChild(note);
+    resultsCard.appendChild(foot);
+
+    const statusEl = document.createElement('div');
+    statusEl.className = 'status';
+    resultsCard.appendChild(statusEl);
+
+    function rerender() {
+      const rekap = getRekap();
+      if (!rekap) return;
+      const lvl = LEVEL_DEFS.find((l) => l.key === state.level);
+      renderResultsTable(tableScroll, getColumns(), rekap[lvl.key], lvl.order);
+    }
+
+    downloadBtn.addEventListener('click', async () => {
+      const rekap = getRekap();
+      if (!rekap) return;
+      setBusy(downloadBtn, true);
+      await downloadRekapAllLevels(downloadBaseName, getColumns(), rekap, (res) => {
+        setBusy(downloadBtn, false);
+        if (!res.ok && !res.silent) setStatus(statusEl, 'error', res.message);
+      });
+    });
+
+    return { rerender };
+  }
+
+  async function downloadRekapAllLevels(filenameBase, columns, rekapAllLevels, onDone) {
+    const wb = XLSX.utils.book_new();
+    LEVEL_DEFS.forEach((lvl) => {
+      const aoa = [['Kelompok'].concat(columns.map((c) => c.label))];
+      lvl.order.forEach((groupKey) => {
+        const row = rekapAllLevels[lvl.key][groupKey] || {};
+        aoa.push([groupKey].concat(columns.map((c) => (row[c.key] === null || row[c.key] === undefined ? '' : row[c.key]))));
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{ wch: 24 }].concat(columns.map(() => ({ wch: 20 })));
+      XLSX.utils.book_append_sheet(wb, ws, lvl.sheetName);
+    });
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([out], { type: 'application/octet-stream' });
+
+    const downloads = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+    if (!downloads) {
+      onDone({ ok: false, message: 'Unduhan tidak tersedia pada tampilan ini.' });
+      return;
+    }
+    try {
+      await downloads.save({ filename: filenameBase + '.xlsx', data: blob });
+      onDone({ ok: true });
+    } catch (err) {
+      if (err && err.code === 'declined') {
+        onDone({ ok: false, silent: true });
+      } else {
+        onDone({ ok: false, message: 'Gagal mengunduh: ' + (err && err.message ? err.message : String(err)) });
+      }
+    }
+  }
+
+  // ---- flat (code+nama) results table, for direct Nilai IKPA uploads -------
+  //
+  // Used by the "Nilai IKPA KPPN" and "Nilai IKPA Kanwil" tabs, whose data is
+  // a single flat map of code -> {nama, nilaiAkhir} (no K3PA/K4PA/K4Kanwil
+  // level-switching, since the value was uploaded directly rather than
+  // computed from the 7 indicators).
+  function renderFlatResultsTable(tableScrollEl, columns, byCode, order) {
+    const table = document.createElement('table');
+    table.className = 'rekap';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const thCode = document.createElement('th');
+    thCode.textContent = 'Kode';
+    trh.appendChild(thCode);
+    const thName = document.createElement('th');
+    thName.textContent = 'Nama';
+    trh.appendChild(thName);
+    columns.forEach((c) => {
+      const th = document.createElement('th');
+      th.textContent = c.label;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    order.forEach((code) => {
+      const tr = document.createElement('tr');
+      const row = byCode[code] || {};
+      const tdCode = document.createElement('td');
+      tdCode.textContent = code;
+      tr.appendChild(tdCode);
+      const tdName = document.createElement('td');
+      tdName.textContent = row.nama || '–';
+      tr.appendChild(tdName);
+      columns.forEach((c) => {
+        const td = document.createElement('td');
+        td.className = 'num' + (c.highlight ? ' highlight' : '');
+        td.textContent = fmt(c.kind, row[c.key]);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    tableScrollEl.innerHTML = '';
+    tableScrollEl.appendChild(table);
+  }
+
+  // Codes actually observed among INCLUDED satker for the KPPN level of
+  // Nilai IKU have no fixed official order (unlike Kanwil/K3PA/K4PA/K4
+  // Kanwil, which always list every official group). Sort them, with
+  // 'TOTAL' forced last.
+  function kppnOrder(obj) {
+    const keys = Object.keys(obj || {}).filter((k) => k !== 'TOTAL').sort();
+    if (obj && Object.prototype.hasOwnProperty.call(obj, 'TOTAL')) keys.push('TOTAL');
+    return keys;
+  }
+
+  // Reduces a computeIkpaLevelUpload() result ({byCode, codesSeen}) down to
+  // a plain {code: nilaiAkhir} map, the shape IkpaCore.combineIku() expects
+  // for its Kanwil/KPPN Nilai IKPA source argument.
+  function ikpaByCodeToPlain(res) {
+    const out = {};
+    if (!res || !res.byCode) return out;
+    Object.keys(res.byCode).forEach((code) => { out[code] = res.byCode[code].nilaiAkhir; });
+    return out;
+  }
+
+  // ---- period (Triwulan) switch --------------------------------------------
+
+  const periodSwitchEl = document.getElementById('period-switch');
+  {
+    const periodBtns = {};
+    PERIOD_UI.forEach((p) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'level-btn';
+      b.textContent = p.label;
+      b.title = p.hint;
+      b.setAttribute('aria-pressed', p.key === currentPeriodKey ? 'true' : 'false');
+      b.addEventListener('click', () => {
+        if (p.key === currentPeriodKey) return;
+        const hadResults = sessionHasAnyResult();
+        Object.values(periodBtns).forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
+        setPeriod(p.key);
+        if (hadResults) showPeriodClearedNotice(p.label);
+      });
+      periodBtns[p.key] = b;
+      periodSwitchEl.appendChild(b);
+    });
+  }
+  function sessionHasAnyResult() {
+    return Object.keys(sessionResults).length > 0;
+  }
+
+  const periodHintEl = document.querySelector('.period-bar-hint');
+  const periodHintDefaultText = periodHintEl ? periodHintEl.textContent : '';
+  let periodNoticeTimer = null;
+  function showPeriodClearedNotice(label) {
+    if (!periodHintEl) return;
+    clearTimeout(periodNoticeTimer);
+    periodHintEl.textContent = 'Periode diganti ke ' + label + ' — seluruh hasil perhitungan sebelumnya di sesi ini telah dikosongkan. Unggah dan hitung ulang tiap indikator untuk periode ini.';
+    periodHintEl.style.color = 'var(--accent)';
+    periodHintEl.style.fontWeight = '600';
+    periodNoticeTimer = setTimeout(() => {
+      periodHintEl.textContent = periodHintDefaultText;
+      periodHintEl.style.color = '';
+      periodHintEl.style.fontWeight = '';
+    }, 6000);
+  }
+
+  // ---- tabs shell ---------------------------------------------------------
+
+  const tabsEl = document.getElementById('tabs');
+  const panelsEl = document.getElementById('panels');
+  const allKeys = INDICATOR_DEFS.map((d) => d.key).concat(['ikpa', 'ikpakppn', 'ikpakanwil', 'iku']);
+
+  function makeTabButton(key, ix, label) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tab';
+    btn.id = 'tabbtn-' + key;
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', 'false');
+    btn.innerHTML = '<span class="tab-ix">' + ix + '</span>' + esc(label);
+    btn.addEventListener('click', () => selectTab(key));
+    return btn;
+  }
+
+  INDICATOR_DEFS.forEach((d, i) => tabsEl.appendChild(makeTabButton(d.key, i + 1, d.title)));
+  tabsEl.appendChild(makeTabButton('ikpa', 'Σ', 'Nilai IKPA'));
+  tabsEl.appendChild(makeTabButton('ikpakppn', 'K', 'Nilai IKPA KPPN'));
+  tabsEl.appendChild(makeTabButton('ikpakanwil', 'W', 'Nilai IKPA Kanwil'));
+  tabsEl.appendChild(makeTabButton('iku', '★', 'Nilai IKU'));
+
+  function selectTab(key) {
+    allKeys.forEach((k) => {
+      const btn = document.getElementById('tabbtn-' + k);
+      const panel = document.getElementById('panel-' + k);
+      const active = k === key;
+      if (btn) btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      if (panel) panel.style.display = active ? '' : 'none';
+    });
+    if (location.hash.slice(1) !== key) {
+      history.replaceState(null, '', '#' + key);
+    }
+  }
+
+  function setStatus(el, kind, msg) {
+    el.className = 'status show status-' + kind;
+    el.textContent = msg;
+  }
+  function clearStatus(el) {
+    el.className = 'status';
+    el.textContent = '';
+  }
+
+  function setBusy(btn, busy) {
+    btn.disabled = busy;
+    btn.classList.toggle('busy', busy);
+  }
+
+  // ---- build one indicator panel ------------------------------------------
+
+  function buildIndicatorPanel(def) {
+    const panel = document.createElement('section');
+    panel.id = 'panel-' + def.key;
+    panel.className = 'panel';
+    panel.style.display = 'none';
+    panel.setAttribute('role', 'tabpanel');
+
+    const infoCard = document.createElement('div');
+    infoCard.className = 'card';
+    const h2 = document.createElement('h2');
+    h2.innerHTML = esc(def.title) + ' <span style="color:var(--ink-faint);font-weight:600;font-size:.8rem;">(bobot ' + esc(def.weightLabel) + ' pada Nilai IKPA)</span>';
+    infoCard.appendChild(h2);
+    const formulaBox = document.createElement('div');
+    formulaBox.className = 'formula-box';
+    infoCard.appendChild(formulaBox);
+    const levelNote = document.createElement('p');
+    levelNote.className = 'level-note';
+    levelNote.textContent = 'Dihitung otomatis di tiga level: K3 PA (4 Subdit), K4 PA (4 Subdit × 4 Seksi = 16), dan K4 Kanwil (34 Kanwil × 4 Seksi = 136).';
+    infoCard.appendChild(levelNote);
+    panel.appendChild(infoCard);
+
+    let deadlineInput = null;
+    let deadlineNote = null;
+    function currentDeadlineMs() {
+      if (!deadlineInput || !deadlineInput.value) return undefined;
+      const [y, m, d] = deadlineInput.value.split('-').map((n) => parseInt(n, 10));
+      return Date.UTC(y, m - 1, d);
+    }
+    function deadlineLabelText() {
+      if (!deadlineInput || !deadlineInput.value) return null;
+      const [y, m, d] = deadlineInput.value.split('-').map((n) => parseInt(n, 10));
+      return d + ' ' + IkpaCore.monthLabel(String(m).padStart(2, '0')) + ' ' + y;
+    }
+    function refreshFormula() {
+      formulaBox.textContent = def.formula(currentPeriodKey, deadlineLabelText());
+    }
+    refreshFormula();
+
+    const uploadCard = document.createElement('div');
+    uploadCard.className = 'card';
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Unggah File';
+    uploadCard.appendChild(h3);
+
+    def.sources.forEach((s) => uploadCard.appendChild(buildFileField(def.key, s)));
+    const refField = buildFileField(def.key, { id: 'ref', label: 'File Referensi Satker', hint: REF_HINT });
+    uploadCard.appendChild(refField);
+
+    if (def.key === 'capaianoutput') {
+      const dwrap = document.createElement('div');
+      dwrap.className = 'field';
+      const dlabel = document.createElement('label');
+      dlabel.className = 'field-label';
+      dlabel.textContent = 'Tanggal Batas Ketepatan Waktu';
+      dwrap.appendChild(dlabel);
+      deadlineInput = document.createElement('input');
+      deadlineInput.type = 'date';
+      deadlineInput.className = 'date-input';
+      dwrap.appendChild(deadlineInput);
+      deadlineNote = document.createElement('p');
+      deadlineNote.className = 'field-hint';
+      dwrap.appendChild(deadlineNote);
+      uploadCard.appendChild(dwrap);
+
+      function applySuggestedDeadline() {
+        const sug = CO_DEADLINE_SUGGEST[currentPeriodKey];
+        deadlineInput.value = sug.date;
+        renderDeadlineNote();
+      }
+      function renderDeadlineNote() {
+        const sug = CO_DEADLINE_SUGGEST[currentPeriodKey];
+        deadlineNote.textContent = sug.confirmed
+          ? 'Data dianggap tepat waktu jika dikirim SEBELUM tanggal ini. Nilai default sudah dikonfirmasi untuk periode ini.'
+          : 'Data dianggap tepat waktu jika dikirim SEBELUM tanggal ini. Perkiraan otomatis (H+10 kalender) — belum dikonfirmasi terhadap kalender hari kerja resmi, mohon sesuaikan jika perlu.';
+      }
+      applySuggestedDeadline();
+      deadlineInput.addEventListener('change', refreshFormula);
+      deadlineInput.addEventListener('input', refreshFormula);
+      onPeriodChange(() => { applySuggestedDeadline(); refreshFormula(); });
+    }
+
+    const actionRow = document.createElement('div');
+    actionRow.className = 'action-row';
+    const hitungBtn = document.createElement('button');
+    hitungBtn.type = 'button';
+    hitungBtn.className = 'btn btn-primary';
+    hitungBtn.innerHTML = '<span class="spinner"></span><span>Hitung ' + esc(def.title) + '</span>';
+    actionRow.appendChild(hitungBtn);
+    uploadCard.appendChild(actionRow);
+
+    const statusEl = document.createElement('div');
+    statusEl.className = 'status';
+    uploadCard.appendChild(statusEl);
+    panel.appendChild(uploadCard);
+
+    const resultsCard = document.createElement('div');
+    resultsCard.className = 'card results-card';
+    panel.appendChild(resultsCard);
+    const results = buildResultsSection(
+      resultsCard, 'Rekap Hasil', () => getResultColumns(def, currentPeriodKey),
+      () => sessionResults[def.key],
+      'Rekap_IKPA_' + def.key
+    );
+
+    onPeriodChange(() => {
+      refreshFormula();
+      delete sessionResults[def.key];
+      resultsCard.classList.remove('show');
+      clearStatus(statusEl);
+      updateCompositeStatus();
+    });
+
+    hitungBtn.addEventListener('click', async () => {
+      clearStatus(statusEl);
+      const missing = [];
+      const srcFiles = def.sources.map((s) => {
+        const f = fileState[def.key][s.id];
+        if (!f) missing.push(s.label);
+        return f;
+      });
+      const refFile = fileState[def.key].ref;
+      if (!refFile) missing.push('File Referensi Satker');
+      if (def.key === 'capaianoutput' && !deadlineInput.value) missing.push('Tanggal Batas Ketepatan Waktu');
+      if (missing.length) {
+        setStatus(statusEl, 'error', 'Lengkapi berikut terlebih dahulu: ' + missing.join(', ') + '.');
+        return;
+      }
+      setBusy(hitungBtn, true);
+      try {
+        const sourceAOAs = [];
+        for (let i = 0; i < def.sources.length; i++) {
+          const wb = await readWorkbook(srcFiles[i]);
+          const sheetName = pickSheet(wb, def.sources[i].sheetCandidates);
+          const aoa = sheetToAOA(wb, sheetName);
+          if (!aoa.length || !aoa[0] || !aoa[0].length) {
+            const mb = (srcFiles[i].size / (1024 * 1024)).toFixed(1);
+            throw new Error('File "' + srcFiles[i].name + '" (' + mb + ' MB, sheet "' + sheetName +
+              '") terbaca tapi tidak ada baris/header yang terdeteksi. Ini biasanya menandakan file gagal terbaca sepenuhnya oleh peramban (sering terjadi pada file berukuran besar) — coba unggah ulang, gunakan peramban lain, atau bebaskan memori peramban terlebih dahulu.');
+          }
+          sourceAOAs.push(aoa);
+        }
+        const refWb = await readWorkbook(refFile);
+        const refSheets = readRefSheets(refWb);
+        const ref = IkpaCore.buildReferenceMaps(refSheets);
+        const { rekap, unmapped, extraGroups } = def.compute(sourceAOAs, ref, currentPeriodKey, currentDeadlineMs());
+        sessionResults[def.key] = rekap;
+        results.rerender();
+        resultsCard.classList.add('show');
+        let msg = 'Perhitungan selesai untuk ' + periodLabel(currentPeriodKey) + ' — K3 PA (4), K4 PA (16), dan K4 Kanwil (136).';
+        if (unmapped.length) msg += ' ' + unmapped.length + ' kode satker tidak ditemukan pada file referensi dan diabaikan.';
+        if (extraGroups && (extraGroups.k4kanwil || []).length) {
+          msg += ' ' + extraGroups.k4kanwil.length + ' kombinasi Kanwil/Seksi di luar daftar 136 resmi ditemukan dan tidak ditampilkan pada rekap K4 Kanwil.';
+        }
+        setStatus(statusEl, 'success', msg);
+        updateCompositeStatus();
+      } catch (err) {
+        setStatus(statusEl, 'error', err && err.message ? err.message : String(err));
+      } finally {
+        setBusy(hitungBtn, false);
+      }
+    });
+
+    return panel;
+  }
+
+  INDICATOR_DEFS.forEach((d) => panelsEl.appendChild(buildIndicatorPanel(d)));
+
+  // ---- composite (Nilai IKPA) panel ---------------------------------------
+
+  const ikpaPanel = document.createElement('section');
+  ikpaPanel.id = 'panel-ikpa';
+  ikpaPanel.className = 'panel';
+  ikpaPanel.style.display = 'none';
+  ikpaPanel.setAttribute('role', 'tabpanel');
+
+  const ikpaInfo = document.createElement('div');
+  ikpaInfo.className = 'card';
+  ikpaInfo.innerHTML = '<h2>Nilai IKPA (Komposit)</h2>' +
+    '<div class="formula-box">Nilai IKPA = 10% × Revisi DIPA + 15% × Deviasi Halaman III DIPA + 20% × Penyerapan Anggaran + 10% × Belanja Kontraktual + 10% × Penyelesaian Tagihan + 10% × Pengelolaan UP dan TUP + 25% × Capaian Output.</div>' +
+    '<p class="level-note">Dihitung di level yang sama dengan ketujuh indikator komponennya: K3 PA, K4 PA, dan K4 Kanwil.</p>';
+  ikpaPanel.appendChild(ikpaInfo);
+
+  const ikpaStatusCard = document.createElement('div');
+  ikpaStatusCard.className = 'card';
+  const ikpaStatusIntro = document.createElement('h3');
+  ikpaStatusIntro.textContent = 'Status 7 Indikator (sesi ini)';
+  const ikpaStatusHint = document.createElement('p');
+  ikpaStatusHint.className = 'results-note';
+  function refreshIkpaStatusHint() {
+    ikpaStatusHint.textContent = 'Nilai IKPA dihitung dari hasil ketujuh indikator untuk ' + periodLabel(currentPeriodKey) + ' yang sudah Anda jalankan pada tab masing-masing di sesi ini — tidak perlu mengunggah file lagi di sini.';
+  }
+  refreshIkpaStatusHint();
+  ikpaStatusCard.appendChild(ikpaStatusIntro);
+  ikpaStatusCard.appendChild(ikpaStatusHint);
+  onPeriodChange(refreshIkpaStatusHint);
+  const grid = document.createElement('div');
+  grid.className = 'status-grid';
+  IKPA_ORDER.forEach((ikey) => {
+    const chip = document.createElement('div');
+    chip.className = 'status-chip';
+    chip.id = 'chip-' + ikey;
+    chip.innerHTML = '<span>' + esc(IKPA_LABELS[ikey]) + '</span><span class="status-pill pending" id="pill-' + ikey + '">Belum</span>';
+    grid.appendChild(chip);
+  });
+  ikpaStatusCard.appendChild(grid);
+
+  const ikpaActionRow = document.createElement('div');
+  ikpaActionRow.className = 'action-row';
+  ikpaActionRow.style.marginTop = '16px';
+  const ikpaBtn = document.createElement('button');
+  ikpaBtn.type = 'button';
+  ikpaBtn.className = 'btn btn-primary';
+  ikpaBtn.disabled = true;
+  ikpaBtn.innerHTML = '<span class="spinner"></span><span>Hitung Nilai IKPA</span>';
+  ikpaActionRow.appendChild(ikpaBtn);
+  ikpaStatusCard.appendChild(ikpaActionRow);
+  const ikpaStatusEl = document.createElement('div');
+  ikpaStatusEl.className = 'status';
+  ikpaStatusCard.appendChild(ikpaStatusEl);
+  ikpaPanel.appendChild(ikpaStatusCard);
+
+  const ikpaResultsCard = document.createElement('div');
+  ikpaResultsCard.className = 'card results-card';
+  ikpaPanel.appendChild(ikpaResultsCard);
+  panelsEl.appendChild(ikpaPanel);
+
+  const IKPA_RESULT_COLUMNS = IKPA_ORDER.map((ikey) => ({ key: ikey, label: IKPA_LABELS[ikey], kind: 'num2' }))
+    .concat([{ key: 'nilai', label: 'Nilai IKPA', kind: 'num2', highlight: true }]);
+
+  const ikpaResults = buildResultsSection(
+    ikpaResultsCard, 'Rekap Nilai IKPA', () => IKPA_RESULT_COLUMNS,
+    () => sessionResults.ikpa,
+    'Rekap_IKPA_Komposit'
+  );
+
+  function updateCompositeStatus() {
+    let allDone = true;
+    IKPA_ORDER.forEach((ikey) => {
+      const defKey = IKPA_KEY_TO_DEF_KEY[ikey];
+      const done = !!sessionResults[defKey];
+      const pill = document.getElementById('pill-' + ikey);
+      pill.textContent = done ? 'Selesai' : 'Belum';
+      pill.className = 'status-pill ' + (done ? 'done' : 'pending');
+      if (!done) allDone = false;
+    });
+    ikpaBtn.disabled = !allDone;
+  }
+
+  onPeriodChange(() => {
+    delete sessionResults.ikpa;
+    ikpaResultsCard.classList.remove('show');
+    clearStatus(ikpaStatusEl);
+    updateCompositeStatus();
+    updateIkuGateChips();
+  });
+
+  ikpaBtn.addEventListener('click', () => {
+    clearStatus(ikpaStatusEl);
+    try {
+      const componentsByLevel = {};
+      IkpaCore.LEVELS.forEach((lvl) => {
+        const comps = {};
+        IKPA_ORDER.forEach((ikey) => {
+          comps[ikey] = sessionResults[IKPA_KEY_TO_DEF_KEY[ikey]][lvl.key];
+        });
+        componentsByLevel[lvl.key] = comps;
+      });
+      sessionResults.ikpa = IkpaCore.computeIkpa(componentsByLevel);
+      ikpaResults.rerender();
+      ikpaResultsCard.classList.add('show');
+      setStatus(ikpaStatusEl, 'success', 'Nilai IKPA berhasil dihitung untuk ' + periodLabel(currentPeriodKey) + ' — K3 PA (4), K4 PA (16), dan K4 Kanwil (136).');
+      updateIkuGateChips();
+    } catch (err) {
+      setStatus(ikpaStatusEl, 'error', err && err.message ? err.message : String(err));
+    }
+  });
+
+  // ---- Nilai IKPA KPPN / Nilai IKPA Kanwil panels (direct upload) --------
+  //
+  // Unlike the 7 indicators + composite Nilai IKPA above (computed from raw
+  // indicator source files), these two tabs let the user upload an
+  // already-computed Nilai Akhir IKPA per KPPN or per Kanwil directly, for
+  // use as the Nilai IKPA component of the Nilai IKU calculation at those
+  // two levels. No reference-satker file is needed here.
+
+  const LEVEL_UPLOAD_RESULT_COLUMNS = [
+    { key: 'nilaiAkhir', label: 'Nilai Akhir IKPA', kind: 'num2', highlight: true },
+  ];
+
+  const LEVEL_UPLOAD_DEFS = [
+    {
+      key: 'ikpakppn',
+      resultKey: 'ikpaKppn',
+      title: 'Nilai IKPA KPPN',
+      levelLabel: 'KPPN',
+      colNames: { code: 'KDKPPN', name: 'NMKPPN', codeWidth: 3, fileLabel: 'Nilai IKPA KPPN' },
+      fileHint: 'Kolom header: KDKPPN, NMKPPN, PERIODE, NILAI_AKHIR (Nilai Akhir IKPA komposit level KPPN, sudah dihitung di luar kalkulator ini).',
+      order(res) { return res.codesSeen.slice(); },
+    },
+    {
+      key: 'ikpakanwil',
+      resultKey: 'ikpaKanwil',
+      title: 'Nilai IKPA Kanwil',
+      levelLabel: 'Kanwil',
+      colNames: { code: 'KDKANWIL', name: 'NMKANWIL', codeWidth: 2, fileLabel: 'Nilai IKPA Kanwil' },
+      fileHint: 'Kolom header: KDKANWIL, NMKANWIL, PERIODE, NILAI_AKHIR (Nilai Akhir IKPA komposit level Kanwil, sudah dihitung di luar kalkulator ini).',
+      order() { return IkpaCore.KANWIL_CODE_ORDER.slice(); },
+    },
+  ];
+
+  function buildLevelUploadPanel(def) {
+    fileState[def.key] = {};
+
+    const panel = document.createElement('section');
+    panel.id = 'panel-' + def.key;
+    panel.className = 'panel';
+    panel.style.display = 'none';
+    panel.setAttribute('role', 'tabpanel');
+
+    const infoCard = document.createElement('div');
+    infoCard.className = 'card';
+    infoCard.innerHTML = '<h2>' + esc(def.title) + '</h2>' +
+      '<div class="formula-box">Unggah langsung Nilai Akhir IKPA level ' + esc(def.levelLabel) + ' (hasil perhitungan komposit yang sudah tersedia di luar kalkulator ini) untuk periode terpilih — tanpa perlu menghitung ulang dari ketujuh indikator.</div>' +
+      '<p class="level-note">Hasil pada tab ini dipakai sebagai komponen Nilai IKPA level ' + esc(def.levelLabel) + ' pada perhitungan Nilai IKU (tab "Nilai IKU").</p>';
+    panel.appendChild(infoCard);
+
+    const uploadCard = document.createElement('div');
+    uploadCard.className = 'card';
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Unggah File';
+    uploadCard.appendChild(h3);
+
+    const srcField = { id: 'src', label: 'File ' + def.title, sheetCandidates: ['Export Worksheet', 'Sheet1'], hint: def.fileHint };
+    uploadCard.appendChild(buildFileField(def.key, srcField));
+
+    const actionRow = document.createElement('div');
+    actionRow.className = 'action-row';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary';
+    btn.innerHTML = '<span class="spinner"></span><span>Proses ' + esc(def.title) + '</span>';
+    actionRow.appendChild(btn);
+    uploadCard.appendChild(actionRow);
+
+    const statusEl = document.createElement('div');
+    statusEl.className = 'status';
+    uploadCard.appendChild(statusEl);
+    panel.appendChild(uploadCard);
+
+    const resultsCard = document.createElement('div');
+    resultsCard.className = 'card results-card';
+    const head = document.createElement('div');
+    head.className = 'results-head';
+    const h3r = document.createElement('h3');
+    h3r.textContent = 'Rekap ' + def.title;
+    head.appendChild(h3r);
+    resultsCard.appendChild(head);
+    const tableScroll = document.createElement('div');
+    tableScroll.className = 'table-scroll';
+    resultsCard.appendChild(tableScroll);
+    panel.appendChild(resultsCard);
+
+    function rerender() {
+      const res = sessionResults[def.resultKey];
+      if (!res) return;
+      renderFlatResultsTable(tableScroll, LEVEL_UPLOAD_RESULT_COLUMNS, res.byCode, def.order(res));
+    }
+
+    onPeriodChange(() => {
+      delete sessionResults[def.resultKey];
+      resultsCard.classList.remove('show');
+      clearStatus(statusEl);
+      updateIkuGateChips();
+    });
+
+    btn.addEventListener('click', async () => {
+      clearStatus(statusEl);
+      const f = fileState[def.key].src;
+      if (!f) {
+        setStatus(statusEl, 'error', 'Pilih ' + srcField.label + ' terlebih dahulu.');
+        return;
+      }
+      setBusy(btn, true);
+      try {
+        const wb = await readWorkbook(f);
+        const sheetName = pickSheet(wb, srcField.sheetCandidates);
+        const aoa = sheetToAOA(wb, sheetName);
+        if (!aoa.length || !aoa[0] || !aoa[0].length) {
+          throw new Error('File "' + f.name + '" terbaca tapi tidak ada baris/header yang terdeteksi.');
+        }
+        const res = IkpaCore.computeIkpaLevelUpload(aoa, def.colNames, currentPeriodKey);
+        sessionResults[def.resultKey] = res;
+        rerender();
+        resultsCard.classList.add('show');
+        setStatus(statusEl, 'success', 'Berhasil memuat Nilai Akhir IKPA ' + def.levelLabel + ' untuk ' + periodLabel(currentPeriodKey) + ' — ' + res.codesSeen.length + ' kode ditemukan.');
+        updateIkuGateChips();
+      } catch (err) {
+        setStatus(statusEl, 'error', err && err.message ? err.message : String(err));
+      } finally {
+        setBusy(btn, false);
+      }
+    });
+
+    panelsEl.appendChild(panel);
+  }
+
+  LEVEL_UPLOAD_DEFS.forEach((d) => buildLevelUploadPanel(d));
+
+  // ---- Nilai IKU panel (5 level) --------------------------------------------
+  //
+  // Nilai IKU = 70% x Nilai IKPA (level) + 30% x persentase satker dengan
+  // Nilai Akhir IKPA per-Satker >= ambang (89), dihitung terpisah untuk 5
+  // level: K3 PA, K4 PA, K4 Kanwil, Kanwil, dan KPPN.
+  //
+  // The persentase component comes from THIS tab's own two uploads (Nilai
+  // Akhir IKPA per Satker + Referensi Satker), independent of the 7
+  // indicator tabs. The Nilai IKPA component for K3 PA/K4 PA/K4 Kanwil comes
+  // from the "Nilai IKPA" (composite) tab; for Kanwil/KPPN it comes from the
+  // "Nilai IKPA Kanwil"/"Nilai IKPA KPPN" upload tabs. Each of the 5 levels
+  // is combined independently (IkpaCore.combineIku), so a level whose Nilai
+  // IKPA source isn't ready yet still shows its persentase, with Nilai IKU
+  // and Indeks left blank (null) rather than a misleading value.
+  const IKU_THRESHOLD = 89;
+  fileState['iku'] = {};
+
+  const ikuPanel = document.createElement('section');
+  ikuPanel.id = 'panel-iku';
+  ikuPanel.className = 'panel';
+  ikuPanel.style.display = 'none';
+  ikuPanel.setAttribute('role', 'tabpanel');
+
+  const ikuInfo = document.createElement('div');
+  ikuInfo.className = 'card';
+  ikuInfo.innerHTML = '<h2>Nilai IKU</h2>' +
+    '<div class="formula-box">Nilai IKU = 70% × Nilai IKPA + 30% × Persentase Satker dengan Nilai Akhir IKPA ≥ ' + IKU_THRESHOLD + ', dihitung terpisah untuk 5 level: K3 PA, K4 PA, K4 Kanwil, Kanwil, dan KPPN.</div>' +
+    '<p class="level-note">Persentase dihitung dari file Nilai Akhir IKPA per Satker yang diunggah di tab ini, dengan Satker BLU, Full Blokir, Pagu Seribu, dan Dekonsentrasi/Tugas Pembantuan dikecualikan (menggunakan file Referensi Satker). Nilai IKPA tiap level diambil dari tab lain: K3 PA / K4 PA / K4 Kanwil dari tab "Nilai IKPA", Kanwil dari tab "Nilai IKPA Kanwil", dan KPPN dari tab "Nilai IKPA KPPN". Jika Nilai IKPA suatu level belum tersedia, Persentase tetap tampil namun Nilai IKU dan Indeks level tersebut ditampilkan "–" sampai sumbernya diunggah/dihitung.</p>';
+  ikuPanel.appendChild(ikuInfo);
+
+  const ikuUploadCard = document.createElement('div');
+  ikuUploadCard.className = 'card';
+  const ikuUploadH3 = document.createElement('h3');
+  ikuUploadH3.textContent = 'Unggah File (untuk Persentase Satker ≥ ' + IKU_THRESHOLD + ')';
+  ikuUploadCard.appendChild(ikuUploadH3);
+
+  const ikuSrcField = {
+    id: 'src', label: 'File Nilai Akhir IKPA per Satker', sheetCandidates: ['Export Worksheet', 'Sheet1'],
+    hint: 'Kolom header: KDSATKER, KDKPPN, PERIODE, NILAI_AKHIR (Nilai Akhir IKPA per Satker).',
+  };
+  ikuUploadCard.appendChild(buildFileField('iku', ikuSrcField));
+  const ikuRefField = { id: 'ref', label: 'File Referensi Satker', hint: REF_HINT };
+  ikuUploadCard.appendChild(buildFileField('iku', ikuRefField));
+
+  const ikuProcessRow = document.createElement('div');
+  ikuProcessRow.className = 'action-row';
+  const ikuProcessBtn = document.createElement('button');
+  ikuProcessBtn.type = 'button';
+  ikuProcessBtn.className = 'btn btn-primary';
+  ikuProcessBtn.innerHTML = '<span class="spinner"></span><span>Proses Data Satker</span>';
+  ikuProcessRow.appendChild(ikuProcessBtn);
+  ikuUploadCard.appendChild(ikuProcessRow);
+
+  const ikuUploadStatusEl = document.createElement('div');
+  ikuUploadStatusEl.className = 'status';
+  ikuUploadCard.appendChild(ikuUploadStatusEl);
+  ikuPanel.appendChild(ikuUploadCard);
+
+  const ikuGateCard = document.createElement('div');
+  ikuGateCard.className = 'card';
+  const ikuGateH3 = document.createElement('h3');
+  ikuGateH3.textContent = 'Status Sumber Nilai IKPA per Level';
+  ikuGateCard.appendChild(ikuGateH3);
+  const ikuGateHint = document.createElement('p');
+  ikuGateHint.className = 'results-note';
+  ikuGateHint.textContent = 'Level dengan status "Belum" tetap tampil di rekap dengan Persentase terisi; Nilai IKU dan Indeks-nya kosong sampai sumber Nilai IKPA-nya tersedia.';
+  ikuGateCard.appendChild(ikuGateHint);
+
+  const ikuGateGrid = document.createElement('div');
+  ikuGateGrid.className = 'status-grid';
+  const IKU_GATE_CHIPS = [
+    { key: 'satker', label: 'Data Satker & Referensi (Persentase)' },
+    { key: 'ikpa', label: 'Nilai IKPA — K3 PA / K4 PA / K4 Kanwil' },
+    { key: 'ikpakanwil', label: 'Nilai IKPA — Kanwil' },
+    { key: 'ikpakppn', label: 'Nilai IKPA — KPPN' },
+  ];
+  IKU_GATE_CHIPS.forEach((g) => {
+    const chip = document.createElement('div');
+    chip.className = 'status-chip';
+    chip.innerHTML = '<span>' + esc(g.label) + '</span><span class="status-pill pending" id="pill-ikugate-' + g.key + '">Belum</span>';
+    ikuGateGrid.appendChild(chip);
+  });
+  ikuGateCard.appendChild(ikuGateGrid);
+
+  const ikuActionRow = document.createElement('div');
+  ikuActionRow.className = 'action-row';
+  ikuActionRow.style.marginTop = '16px';
+  const ikuBtn = document.createElement('button');
+  ikuBtn.type = 'button';
+  ikuBtn.className = 'btn btn-primary';
+  ikuBtn.disabled = true;
+  ikuBtn.innerHTML = '<span class="spinner"></span><span>Hitung Nilai IKU</span>';
+  ikuActionRow.appendChild(ikuBtn);
+  ikuGateCard.appendChild(ikuActionRow);
+  const ikuStatusEl = document.createElement('div');
+  ikuStatusEl.className = 'status';
+  ikuGateCard.appendChild(ikuStatusEl);
+  ikuPanel.appendChild(ikuGateCard);
+
+  const ikuResultsCard = document.createElement('div');
+  ikuResultsCard.className = 'card results-card';
+  ikuPanel.appendChild(ikuResultsCard);
+  panelsEl.appendChild(ikuPanel);
+
+  const IKU_RESULT_COLUMNS = [
+    { key: 'jumlahSatker', label: 'Jumlah Satker (memenuhi kriteria)', kind: 'int' },
+    { key: 'jumlahDiatasAmbang', label: 'Jumlah Satker Nilai IKPA ≥ ' + IKU_THRESHOLD, kind: 'int' },
+    { key: 'persentase', label: 'Persentase (%)', kind: 'num2' },
+    { key: 'nilaiIkpa', label: 'Nilai IKPA', kind: 'num2' },
+    { key: 'nilaiIku', label: 'Nilai IKU', kind: 'num2', highlight: true },
+    { key: 'indeks', label: 'Indeks', kind: 'num2', highlight: true },
+  ];
+
+  const IKU_LEVEL_UI = [
+    { key: 'k3pa', label: 'K3 PA', sheetName: 'Rekap K3 PA', order: () => IkpaCore.K3PA_ORDER.concat(['TOTAL']) },
+    { key: 'k4pa', label: 'K4 PA', sheetName: 'Rekap K4 PA', order: () => IkpaCore.K4PA_ORDER.concat(['TOTAL']) },
+    { key: 'k4kanwil', label: 'K4 Kanwil', sheetName: 'Rekap K4 Kanwil', order: () => IkpaCore.K4KANWIL_ORDER.concat(['TOTAL']) },
+    { key: 'kanwil', label: 'Kanwil', sheetName: 'Rekap Kanwil', showName: true, order: () => IkpaCore.KANWIL_CODE_ORDER.concat(['TOTAL']) },
+    { key: 'kppn', label: 'KPPN', sheetName: 'Rekap KPPN', showName: true, order: null },
+  ];
+
+  // Kelompok pada level Kanwil/KPPN cuma berupa kode ("01", "019"), jadi
+  // tabel & unduhannya butuh kolom Nama terpisah. Kanwil punya daftar nama
+  // resmi tetap (KANWIL_CODE_TO_NAME), jadi selalu bisa ditampilkan. KPPN
+  // TIDAK punya daftar nama resmi di aplikasi ini -- computeIkuPersentaseByLevels
+  // hanya mengisi `nama` KPPN dari nama Kanwil salah satu Satker anggotanya
+  // (bukan nama KPPN sesungguhnya, dan bisa menyesatkan), jadi untuk KPPN
+  // nama diambil dari tab "Nilai IKPA KPPN" (kolom NMKPPN yang diunggah user)
+  // bila tersedia; kalau belum diunggah, ditampilkan '-' alih-alih memakai
+  // nama Kanwil yang salah.
+  function ikuGroupName(levelKey, code) {
+    if (levelKey === 'kanwil') return IkpaCore.KANWIL_CODE_TO_NAME[code] || null;
+    if (levelKey === 'kppn') {
+      const src = sessionResults.ikpaKppn;
+      return (src && src.byCode && src.byCode[code]) ? src.byCode[code].nama : null;
+    }
+    return null;
+  }
+
+  // Like renderResultsTable(), but for levels flagged showName: true (Kanwil,
+  // KPPN) it inserts a 'Nama' column next to the code, sourced via
+  // ikuGroupName() (never from the rekap row's own `nama` field -- that
+  // field is unreliable for KPPN, see ikuGroupName's comment above).
+  function renderIkuResultsTable(tableScrollEl, levelDef, columns, rekapAtLevel, order) {
+    if (!levelDef.showName) {
+      renderResultsTable(tableScrollEl, columns, rekapAtLevel, order);
+      return;
+    }
+    const table = document.createElement('table');
+    table.className = 'rekap';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const thCode = document.createElement('th');
+    thCode.textContent = 'Kode';
+    trh.appendChild(thCode);
+    const thName = document.createElement('th');
+    thName.textContent = 'Nama';
+    trh.appendChild(thName);
+    columns.forEach((c) => {
+      const th = document.createElement('th');
+      th.textContent = c.label;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    order.forEach((groupKey) => {
+      const tr = document.createElement('tr');
+      if (groupKey === 'TOTAL') tr.className = 'total-row';
+      const row = rekapAtLevel[groupKey] || {};
+      const tdCode = document.createElement('td');
+      tdCode.textContent = groupKey;
+      tr.appendChild(tdCode);
+      const tdName = document.createElement('td');
+      tdName.textContent = groupKey === 'TOTAL' ? '' : (ikuGroupName(levelDef.key, groupKey) || '–');
+      tr.appendChild(tdName);
+      columns.forEach((c) => {
+        const td = document.createElement('td');
+        td.className = 'num' + (c.highlight ? ' highlight' : '');
+        td.textContent = fmt(c.kind, row[c.key]);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    tableScrollEl.innerHTML = '';
+    tableScrollEl.appendChild(table);
+  }
+
+  // Like downloadRekapAllLevels(), but for the 5-level Nilai IKU rekap: uses
+  // IKU_LEVEL_UI (which includes Kanwil/KPPN alongside K3PA/K4PA/K4Kanwil)
+  // and falls back to kppnOrder() for the one level with no fixed canonical
+  // order.
+  async function downloadIkuAllLevels(filenameBase, columns, combinedAllLevels, onDone) {
+    const wb = XLSX.utils.book_new();
+    IKU_LEVEL_UI.forEach((lvl) => {
+      const data = combinedAllLevels[lvl.key] || {};
+      const order = lvl.order ? lvl.order() : kppnOrder(data);
+      const header = lvl.showName ? ['Kode', 'Nama'] : ['Kelompok'];
+      const aoa = [header.concat(columns.map((c) => c.label))];
+      order.forEach((groupKey) => {
+        const row = data[groupKey] || {};
+        const lead = lvl.showName ? [groupKey, groupKey === 'TOTAL' ? '' : (ikuGroupName(lvl.key, groupKey) || '')] : [groupKey];
+        aoa.push(lead.concat(columns.map((c) => (row[c.key] === null || row[c.key] === undefined ? '' : row[c.key]))));
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = header.map(() => ({ wch: 24 })).concat(columns.map(() => ({ wch: 20 })));
+      XLSX.utils.book_append_sheet(wb, ws, lvl.sheetName);
+    });
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([out], { type: 'application/octet-stream' });
+
+    const downloads = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+    if (!downloads) {
+      onDone({ ok: false, message: 'Unduhan tidak tersedia pada tampilan ini.' });
+      return;
+    }
+    try {
+      await downloads.save({ filename: filenameBase + '.xlsx', data: blob });
+      onDone({ ok: true });
+    } catch (err) {
+      if (err && err.code === 'declined') {
+        onDone({ ok: false, silent: true });
+      } else {
+        onDone({ ok: false, message: 'Gagal mengunduh: ' + (err && err.message ? err.message : String(err)) });
+      }
+    }
+  }
+
+  function buildIkuResultsSection(resultsCard) {
+    const state = { level: 'k3pa' };
+    const head = document.createElement('div');
+    head.className = 'results-head';
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Rekap Nilai IKU';
+    head.appendChild(h3);
+
+    const switcher = document.createElement('div');
+    switcher.className = 'level-switch';
+    const levelBtns = {};
+    IKU_LEVEL_UI.forEach((lvl) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'level-btn';
+      b.textContent = lvl.label;
+      b.setAttribute('aria-pressed', lvl.key === state.level ? 'true' : 'false');
+      b.addEventListener('click', () => {
+        state.level = lvl.key;
+        Object.values(levelBtns).forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
+        rerender();
+      });
+      levelBtns[lvl.key] = b;
+      switcher.appendChild(b);
+    });
+    head.appendChild(switcher);
+    resultsCard.appendChild(head);
+
+    const tableScroll = document.createElement('div');
+    tableScroll.className = 'table-scroll';
+    resultsCard.appendChild(tableScroll);
+
+    const foot = document.createElement('div');
+    foot.className = 'results-foot';
+    const downloadBtn = document.createElement('button');
+    downloadBtn.type = 'button';
+    downloadBtn.className = 'btn btn-secondary';
+    downloadBtn.innerHTML = '<span class="spinner"></span><span>Unduh Excel (5 sheet)</span>';
+    const note = document.createElement('span');
+    note.className = 'results-note';
+    note.textContent = 'Berisi sheet Rekap K3 PA, K4 PA, K4 Kanwil, Kanwil, dan KPPN sekaligus.';
+    foot.appendChild(downloadBtn);
+    foot.appendChild(note);
+    resultsCard.appendChild(foot);
+
+    const downloadStatusEl = document.createElement('div');
+    downloadStatusEl.className = 'status';
+    resultsCard.appendChild(downloadStatusEl);
+
+    function rerender() {
+      const combined = sessionResults.iku;
+      if (!combined) return;
+      const lvl = IKU_LEVEL_UI.find((l) => l.key === state.level);
+      const data = combined[lvl.key] || {};
+      const order = lvl.order ? lvl.order() : kppnOrder(data);
+      renderIkuResultsTable(tableScroll, lvl, IKU_RESULT_COLUMNS, data, order);
+    }
+
+    downloadBtn.addEventListener('click', async () => {
+      const combined = sessionResults.iku;
+      if (!combined) return;
+      clearStatus(downloadStatusEl);
+      setBusy(downloadBtn, true);
+      await downloadIkuAllLevels('Rekap_Nilai_IKU', IKU_RESULT_COLUMNS, combined, (res) => {
+        setBusy(downloadBtn, false);
+        if (!res.ok && !res.silent) setStatus(downloadStatusEl, 'error', res.message);
+      });
+    });
+
+    return { rerender };
+  }
+
+  const ikuResults = buildIkuResultsSection(ikuResultsCard);
+
+  function updateIkuGateChips() {
+    const map = {
+      satker: !!sessionResults.satkerNilaiAkhir,
+      ikpa: !!sessionResults.ikpa,
+      ikpakanwil: !!sessionResults.ikpaKanwil,
+      ikpakppn: !!sessionResults.ikpaKppn,
+    };
+    Object.keys(map).forEach((k) => {
+      const pill = document.getElementById('pill-ikugate-' + k);
+      if (!pill) return;
+      pill.textContent = map[k] ? 'Selesai' : 'Belum';
+      pill.className = 'status-pill ' + (map[k] ? 'done' : 'pending');
+    });
+    ikuBtn.disabled = !map.satker;
+  }
+  updateIkuGateChips();
+
+  function recomputeIkuPersentase() {
+    if (!sessionResults.satkerNilaiAkhir) {
+      delete sessionResults.ikuPersentase;
+      return;
+    }
+    sessionResults.ikuPersentase = IkpaCore.computeIkuPersentaseByLevels(sessionResults.satkerNilaiAkhir.satkerRows, IKU_THRESHOLD);
+  }
+
+  onPeriodChange(() => {
+    delete sessionResults.satkerNilaiAkhir;
+    delete sessionResults.ikuPersentase;
+    delete sessionResults.iku;
+    ikuResultsCard.classList.remove('show');
+    clearStatus(ikuUploadStatusEl);
+    clearStatus(ikuStatusEl);
+    updateIkuGateChips();
+  });
+
+  ikuProcessBtn.addEventListener('click', async () => {
+    clearStatus(ikuUploadStatusEl);
+    const srcFile = fileState['iku'].src;
+    const refFile = fileState['iku'].ref;
+    const missing = [];
+    if (!srcFile) missing.push(ikuSrcField.label);
+    if (!refFile) missing.push('File Referensi Satker');
+    if (missing.length) {
+      setStatus(ikuUploadStatusEl, 'error', 'Lengkapi berikut terlebih dahulu: ' + missing.join(', ') + '.');
+      return;
+    }
+    setBusy(ikuProcessBtn, true);
+    try {
+      const wb = await readWorkbook(srcFile);
+      const sheetName = pickSheet(wb, ikuSrcField.sheetCandidates);
+      const aoa = sheetToAOA(wb, sheetName);
+      if (!aoa.length || !aoa[0] || !aoa[0].length) {
+        throw new Error('File "' + srcFile.name + '" terbaca tapi tidak ada baris/header yang terdeteksi.');
+      }
+      const refWb = await readWorkbook(refFile);
+      const refSheets = readRefSheets(refWb);
+      const ref = IkpaCore.buildReferenceMaps(refSheets);
+      const { satkerRows, unmapped } = IkpaCore.computeSatkerNilaiAkhir(aoa, ref, currentPeriodKey);
+      sessionResults.satkerNilaiAkhir = { satkerRows, unmapped };
+      recomputeIkuPersentase();
+      const included = satkerRows.filter((r) => r.included).length;
+      let msg = 'Data Satker berhasil diproses untuk ' + periodLabel(currentPeriodKey) + ' — ' + satkerRows.length + ' satker terbaca, ' + included + ' satker diikutsertakan dalam perhitungan persentase (setelah dikecualikan BLU/Full Blokir/Pagu Seribu/Dekonsentrasi-TP).';
+      if (unmapped.length) msg += ' ' + unmapped.length + ' kode satker tidak ditemukan pada file referensi dan diabaikan.';
+      setStatus(ikuUploadStatusEl, 'success', msg);
+      updateIkuGateChips();
+    } catch (err) {
+      setStatus(ikuUploadStatusEl, 'error', err && err.message ? err.message : String(err));
+    } finally {
+      setBusy(ikuProcessBtn, false);
+    }
+  });
+
+  ikuBtn.addEventListener('click', () => {
+    clearStatus(ikuStatusEl);
+    try {
+      if (!sessionResults.ikuPersentase) {
+        throw new Error('Proses File Nilai Akhir IKPA per Satker dan Referensi Satker terlebih dahulu.');
+      }
+      const p = sessionResults.ikuPersentase;
+      sessionResults.iku = {
+        k3pa: IkpaCore.combineIku(p.k3pa, sessionResults.ikpa ? sessionResults.ikpa.k3pa : null),
+        k4pa: IkpaCore.combineIku(p.k4pa, sessionResults.ikpa ? sessionResults.ikpa.k4pa : null),
+        k4kanwil: IkpaCore.combineIku(p.k4kanwil, sessionResults.ikpa ? sessionResults.ikpa.k4kanwil : null),
+        kanwil: IkpaCore.combineIku(p.kanwil, ikpaByCodeToPlain(sessionResults.ikpaKanwil)),
+        kppn: IkpaCore.combineIku(p.kppn, ikpaByCodeToPlain(sessionResults.ikpaKppn)),
+      };
+      ikuResults.rerender();
+      ikuResultsCard.classList.add('show');
+      let msg = 'Nilai IKU berhasil dihitung untuk ' + periodLabel(currentPeriodKey) + ' pada 5 level (K3 PA, K4 PA, K4 Kanwil, Kanwil, KPPN).';
+      const missingSrc = [];
+      if (!sessionResults.ikpa) missingSrc.push('K3 PA/K4 PA/K4 Kanwil');
+      if (!sessionResults.ikpaKanwil) missingSrc.push('Kanwil');
+      if (!sessionResults.ikpaKppn) missingSrc.push('KPPN');
+      if (missingSrc.length) {
+        msg += ' Nilai IKPA level ' + missingSrc.join(', ') + ' belum tersedia — Nilai IKU dan Indeks level tersebut ditampilkan "–".';
+      }
+      setStatus(ikuStatusEl, 'success', msg);
+    } catch (err) {
+      setStatus(ikuStatusEl, 'error', err && err.message ? err.message : String(err));
+    }
+  });
+
+  // ---- init ---------------------------------------------------------------
+
+  const startKey = allKeys.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'tagihan';
+  selectTab(startKey);
+  window.addEventListener('hashchange', () => {
+    const k = location.hash.slice(1);
+    if (allKeys.includes(k)) selectTab(k);
+  });
+})();
+</script>
+
+</body></html>
