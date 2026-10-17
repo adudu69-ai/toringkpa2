@@ -6,51 +6,51 @@ Menu TORING → **Monitoring Penyesuaian IKPA** (`monitoring-ikpa.html`, kode di
 
 | Aturan | Cara ditegakkan |
 |---|---|
-| Database utama bukan `localStorage` | Semua data di Firebase Realtime Database, simpul `ikpa_adj/` (`store.js` → `RtdbAdapter`). Tidak ada `localStorage` yang dipakai. |
+| Database utama bukan `localStorage` | Semua data di **Google Spreadsheet "Lo.ditpa"** lewat Apps Script (`apps-script/Code.gs`, `sheets-adapter.js`). Pengajuan = baris `Sheet1` / sheet Eselon I; data teknis di `_DATA`; audit di `_AUDIT`. Tidak ada `localStorage`. Firebase hanya untuk login Google. |
 | Tidak ada data contoh/dummy | Dashboard dan tabel hanya menghitung dari database. Fixture hanya ada di folder `tests/` dan tidak pernah dimuat aplikasi. Mode memori hanya aktif di `localhost` dengan `?adapter=memory` dan menampilkan banner “MODE UJI”. |
 | Mapping kolom tidak dikarang | `core.js` → `TYPES` diturunkan dari header & isi file referensi; diuji terhadap file riil (tes A4, A7, A8; LibreOffice). |
-| Tanpa secret di frontend | Hanya konfigurasi web Firebase publik (sama dengan `index.html`). Tidak ada service-account key. Otorisasi: Firebase Auth (Google) + aturan database. |
+| Tanpa secret di frontend | Hanya konfigurasi web Firebase publik (sama dengan `index.html`) dan URL web app. Tidak ada service-account key. Otorisasi: token Firebase diverifikasi **server** (Apps Script) pada tiap permintaan + peran di sheet `_Pengguna`. |
 | Tidak mengklaim terhubung ke MyIntress | Modul hanya menghasilkan berkas Excel; tidak ada integrasi API. Kolom SQL INSERT hanya rumus Excel. |
 | Tidak menghapus “duplikat” otomatis | Identik → hanya **ditautkan** (referensi pengajuan ditambah). Potensi duplikat → kasus yang harus diputuskan pengguna. Pengajuan administratif tidak pernah dihapus (hanya `dibatalkan`). |
 | Triwulan/jalur tidak ditebak | `tw` kosong dan `jalur = BELUM_DIVERIFIKASI` saat impor; saran hanya ditampilkan, diterapkan hanya atas keputusan pengguna (dengan alasan, tercatat audit). |
-| Struktur tabel teknis tidak diubah | Modul hanya menulis ke simpul `ikpa_adj/`; simpul modul lain tidak disentuh. |
+| Struktur tabel teknis tidak diubah | Kolom A–S `Sheet1` tidak diubah; modul hanya **menambah** kolom T dst dan sheet `_Pengguna/_DATA/_AUDIT` (dan sheet Eselon I). Simpul Firebase modul lain tidak disentuh. |
 | Modul lain tetap jalan | `index.html` hanya ditambah satu tombol menu, satu entri judul, satu entri pencarian. |
 
 ## 2. Arsitektur
 
 ```
 index.html ── iframe ──> monitoring-ikpa.html
-                           ├─ ikpa-adj/core.js    logika murni (tanpa I/O): normalisasi, kunci dedup, validasi, kandidat, ekspor, parser
-                           ├─ ikpa-adj/store.js   akses data (RtdbAdapter | MemoryAdapter), hak akses, audit, transaksi multi-path
-                           ├─ ikpa-adj/ui-*.js    Dashboard, Database, Monitoring Satker, Master Exception, Admin
-                           └─ ikpa-adj/app.css    tema terang TORING
+                           ├─ ikpa-adj/core.js           logika murni (normalisasi, kunci dedup, validasi, kandidat, ekspor, parser, pemetaan baris<->pengajuan, impor banyak satker)
+                           ├─ ikpa-adj/store.js          hak akses, audit, transaksi multi-path (adapter: SheetsAdapter | MemoryAdapter [uji lokal])
+                           ├─ ikpa-adj/sheets-adapter.js klien web app; menurunkan indeks (per TA, per satker) dari baris
+                           ├─ ikpa-adj/config.js         WEBAPP_URL (alamat web app), SHEET_URL
+                           ├─ ikpa-adj/ui-*.js           Dashboard, Database, Monitoring Satker, Master Exception, Admin
+                           └─ ikpa-adj/app.css
+Login: Firebase Auth (Google) ──ID token──> Apps Script (apps-script/Code.gs) ──> Google Spreadsheet
 ```
-`core.js` dan `store.js` berjalan di browser dan Node (dipakai oleh tes).
+`core.js` dan `store.js` berjalan di browser dan Node (dipakai oleh tes). Pemasangan backend: [`apps-script/README.md`](../apps-script/README.md).
 
-## 3. Skema database (`ikpa_adj/`)
+## 3. Penyimpanan di spreadsheet
 
-| Simpul | Isi |
+| Lokasi | Isi |
 |---|---|
-| `users/{uid}` | `{role: admin|pengelola|pembaca, name, email}` |
-| `config/bootstrapped`, `config/settings` | penanda admin pertama; kriteria kelayakan ekspor |
-| `pengajuan/{pid}` | pengajuan administratif lengkap (ID stabil `P…`; `version` untuk deteksi konflik) |
-| `pengajuan_idx/{ta}/{pid}` | proyeksi ringkas untuk daftar/dashboard |
-| `by_satker/{kdsatker}/{pid}` | indeks riwayat satker lintas TA |
-| `detail/{pid}/{did}` | detail exception (banyak per pengajuan): `jenis`, `params`, `satkerList` |
-| `exception/{thang}/{kdsatker}/{excId}` | exception teknis = satu baris Master Exception; `idKey`, `slotKey`, `row`, `refs` (banyak pengajuan), `st`, `exportedIn` |
-| `exc_open/…`, `exc_by_pengajuan/{pid}/{excId}` | indeks kandidat belum diekspor; penelusuran pengajuan → exception |
-| `dedup_case/{id}`, `dedup_open/{id}` | kasus potensi duplikat, keputusan pengguna |
-| `export/{id}` | ledger ekspor final (berkas, pengguna, jumlah, checksum, ID exception) |
-| `import_log/*`, `audit/{tipe}/{id}/*`, `audit_global/*` | log impor; audit (append-only oleh aturan) |
+| `Sheet1` | pengajuan jalur Satker / Belum diverifikasi, satu baris per pengajuan. Kolom A–S = format DB berjalan; T dst = `ID Pengajuan, Jalur, TA, TW, Nama Satker, Mekanisme Penyesuaian, Uraian Mekanisme, Detail Mekanisme (JSON), Meta (JSON), Diperbarui Oleh, Diperbarui Pada, Versi, Dipindahkan Ke` |
+| sheet bernama Eselon I | pengajuan jalur Eselon I (kolom sama; sheet dibuat otomatis) |
+| `_DATA` (tersembunyi) | dokumen JSON teknis: `exception`, `exc_open`, `exc_by_pengajuan`, `dedup_case`, `dedup_open`, `export`, `import_log`, `config` |
+| `_AUDIT` | log hanya-tambah (identitas = email dari token terverifikasi), plus audit per baris yang ditulis |
+| `_Pengguna` | email / `@domain` / `*` → peran |
+
+**Mekanisme penyesuaian** (mis. *Deviasi Kegiatan — Kegiatan 7717, Jenis belanja 52, TW 2*) = "detail exception" milik pengajuan: jenis + parameter terstruktur, disimpan sebagai JSON (`Detail Mekanisme (JSON)`) dan sebagai teks terbaca (`Mekanisme Penyesuaian`); teks bebas di `Uraian Mekanisme`. Riwayat satker lintas TW/tahun menampilkan mekanisme tiap pengajuan.
 
 ### Hak akses
-| Aksi | admin | pengelola | pembaca |
-|---|:-:|:-:|:-:|
-| Lihat | ✔ | ✔ | ✔ |
-| Tambah/ubah/batalkan pengajuan, impor, bangun kandidat, putuskan duplikasi, ekspor final | ✔ | ✔ | – |
-| Pulihkan pengajuan, ekspor ulang, kelola pengguna, ubah pengaturan | ✔ | – | – |
+| Aksi | admin | pengelola | perekam | pembaca |
+|---|:-:|:-:|:-:|:-:|
+| Lihat | ✔ | ✔ | ✔ | ✔ |
+| Tambah/ubah pengajuan, impor (DB, daftar satker) | ✔ | ✔ | ✔ | – |
+| Batalkan/pulihkan pengajuan, bangun kandidat, putuskan duplikasi, ekspor final | ✔ | ✔ | – (UI) | – |
+| Ekspor ulang, kelola pengguna, ubah pengaturan | ✔ | – | – | – |
 
-Penegakan berlapis: (1) aturan database (`database.rules.ikpa_adj.json`) — role kasar, audit append-only, hanya admin untuk `users`/`config/settings`; (2) `store.js` — aturan halus (ekspor ulang hanya admin + alasan, validasi, versi). **Aturan database belum diuji di emulator** (lihat §7).
+Penegakan berlapis: (1) **server** (Apps Script) memverifikasi token, menentukan peran, menolak tulis oleh pembaca/tak terdaftar, membatasi tulis data teknis & pengguna per peran, dan menulis identitas audit; (2) `store.js` — aturan halus (ekspor ulang hanya admin + alasan, validasi, versi). Pembatasan batal/pulihkan untuk *perekam* hanya di UI/`store.js` (server memperlakukannya sebagai tulis baris biasa).
 
 ## 4. Kunci deduplikasi per jenis exception
 
@@ -75,7 +75,7 @@ Alur: `Detail pengajuan → expandDetail → classify(IDENTIK | POTENSI_DUPLIKAT
 
 ## 5. Alur kerja pengguna
 
-1. **Database Pengajuan → Impor Excel** (DB Penyesuaian IKPA). Pratinjau, pemetaan kolom, idempoten.
+1. **Merekam**: *Tambah pengajuan* (bagian 4 = mekanisme penyesuaian: jenis, kegiatan, jenis belanja, TW, dst.), atau **Impor daftar satker (Excel)** — satu berkas berisi banyak satker; data pengajuan & mekanisme diisi sekali, kolom Excel menimpa per satker; templat kosong dapat diunduh. Atau **Impor Excel format DB**. Semua dengan pratinjau, pemetaan kolom, dan idempoten.
 2. Lengkapi TW / jalur (massal atau per pengajuan) dan **detail exception** (bagian 4 pada form).
 3. **Master Exception → Pratinjau kandidat → Terapkan**. Hasil: baru / identik (ditautkan) / potensi duplikat / perlu dilengkapi, plus daftar “tidak memenuhi kriteria” dan “mapping belum tersedia”.
 4. Putuskan setiap potensi duplikat (hubungkan / baru / perlu pemeriksaan) dengan alasan.
@@ -85,24 +85,23 @@ Alur: `Detail pengajuan → expandDetail → classify(IDENTIK | POTENSI_DUPLIKAT
 ## 6. Menjalankan & menguji
 
 ```bash
-# statis; cukup buka lewat server web (jangan file://) 
-python3 -m http.server 8765        # di root repo
+python3 -m http.server 8765        # di root repo (jangan file://)
 # mode uji lokal (memori, bukan produksi):
-http://localhost:8765/monitoring-ikpa.html?adapter=memory&role=admin   # role=pengelola|pembaca
+http://localhost:8765/monitoring-ikpa.html?adapter=memory&role=admin   # role=admin|pengelola|perekam|pembaca
 
-# tes logika + penyimpanan + file riil
-cd ikpa-adj/tests && npm install && IKPA_REF_DIR=/folder/berkas/referensi npm test
-
-# tes UI (Chromium/Playwright Python)
-IKPA_REF_DIR=/folder/berkas/referensi python3 ui_test.py
+cd ikpa-adj/tests && npm install
+IKPA_REF_DIR=/folder/berkas/referensi npm test      # core/store (ikpa-adj.test.js) + backend Sheets pada tiruan (sheets.test.js)
+IKPA_REF_DIR=/folder/berkas/referensi python3 ui_test.py   # UI, mode memori (Playwright)
+python3 ui_sheets_test.py                                   # UI -> web app tiruan (mock_server.js menjalankan Code.gs)
 ```
-Tes yang memakai berkas riil **dilewati (skip)** bila `IKPA_REF_DIR` tidak berisi berkasnya; skip bukan lulus.
+Tes berkas riil **dilewati (skip)** bila `IKPA_REF_DIR` tidak berisi berkasnya; skip bukan lulus.
 
-## 7. Aktivasi Firebase (wajib dilakukan pemilik project)
+**Yang dibuktikan tes:** logika `Code.gs` (pembacaan baris lama, penulisan kolom, nama sheet Eselon I, pemindahan baris, konflik versi, peran, audit, nol di depan, tanggal) dijalankan apa adanya di atas tiruan SpreadsheetApp, serta UI end-to-end ke tiruan itu.
+**Yang BELUM terbukti:** perilaku Google sungguhan (penguraian sel, kuota, latensi, CORS web app), verifikasi token Firebase sungguhan (`identitytoolkit`), dan login Google. Uji asap pada spreadsheet salinan sebelum dipakai rekan.
 
-1. Firebase Console → Authentication → Sign-in method → **Google = Enabled**; Authorized domains memuat `adudu69-ai.github.io`.
-2. Realtime Database → Rules: gabungkan isi `ikpa-adj/database.rules.ikpa_adj.json` (simpul `ikpa_adj`) ke aturan yang ada. Uji dengan Rules Playground terlebih dulu.
-3. Buka modul, masuk dengan Google, tekan **Jadikan saya admin pertama** (hanya muncul bila belum ada admin). Tambahkan pengguna lain di tab *Admin & Audit* memakai UID yang ditampilkan pada layar “Akun belum terdaftar”.
+## 7. Aktivasi (wajib dilakukan pemilik spreadsheet)
+
+Ikuti [`apps-script/README.md`](../apps-script/README.md): pasang `Code.gs`, **Siapkan database**, tetapkan admin, deploy web app, isi `WEBAPP_URL` di `ikpa-adj/config.js`, aktifkan Google sign-in di Firebase Authentication. Tanpa `WEBAPP_URL`, modul hanya menampilkan petunjuk pemasangan (tidak ada data).
 
 ## 8. Temuan teknis yang perlu diketahui
 

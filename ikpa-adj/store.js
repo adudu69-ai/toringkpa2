@@ -1,16 +1,17 @@
 /*!
  * TORING — Monitoring Penyesuaian IKPA & Master Exception
- * store.js : lapisan data. Adapter Firebase Realtime Database (produksi) dan adapter memori (HANYA untuk uji).
- * Tidak ada secret/service account di sini; autentikasi memakai Firebase Auth milik pengguna, otorisasi ditegakkan
- * oleh aturan database (lihat database.rules.ikpa_adj.json). Pemeriksaan role di sini hanya lapisan tambahan.
+ * store.js : lapisan data. Logika tetap; penyimpanan lewat adapter:
+ *   - SheetsAdapter (sheets-adapter.js)  : produksi — Google Sheets via web app Apps Script
+ *   - MemoryAdapter (di bawah)           : HANYA untuk uji lokal/otomatis
+ * Tidak ada secret/service account di sini. Hak akses ditegakkan di server (Code.gs) dan diulang di sini sebagai lapisan tambahan.
  *
- * Tata letak (semua di bawah node `ikpa_adj/`):
- *   users/{uid}                          {role,name,email}
- *   config/bootstrapped, config/settings
- *   pengajuan/{pid}                      rekam administratif lengkap
- *   pengajuan_idx/{ta}/{pid}             proyeksi ringkas (daftar/dashboard)
- *   by_satker/{kd}/{pid} = ta            indeks riwayat satker
- *   detail/{pid}/{did}                   detail exception (banyak per pengajuan)
+ * Tata letak pohon logis (diterjemahkan adapter):
+ *   users/{email}                        {role,name,email}
+ *   config/settings
+ *   pengajuan/{pid}                      rekam administratif (BARIS sheet pada produksi)
+ *   pengajuan_idx/{ta}/{pid}             proyeksi ringkas (diturunkan)
+ *   by_satker/{kd}/{pid} = ta            indeks riwayat satker (diturunkan)
+ *   detail/{pid}/{did}                   detail exception = mekanisme penyesuaian (banyak per pengajuan)
  *   exception/{thang}/{kd}/{excId}       exception teknis (1 baris Master Exception) + refs ke pengajuan
  *   exc_open/{thang}/{kd}/{excId}        {st,jenis} selama belum diekspor
  *   exc_by_pengajuan/{pid}/{excId}       {thang,kd}
@@ -26,7 +27,7 @@
   'use strict';
 
   /* ---------------------------------------------------------------- util */
-  function clean(v) { // buang undefined; Date -> ISO ; RTDB tidak menerima undefined
+  function clean(v) { // buang undefined; Date -> ISO
     if (v === undefined) return null;
     if (v instanceof Date) return v.toISOString();
     if (Array.isArray(v)) return v.map(clean);
@@ -78,24 +79,6 @@
     return a;
   }
 
-  /* ----------------------------------------------- adapter: Firebase RTDB */
-  function RtdbAdapter(firebase, rootName) {
-    rootName = rootName || 'ikpa_adj';
-    var db = firebase.database();
-    var ref = function (p) { return db.ref(rootName + '/' + p); };
-    return {
-      kind: 'rtdb',
-      get: function (p) { return ref(p).once('value').then(function (s) { return s.val(); }); },
-      update: function (multi) {
-        var o = {}; Object.keys(multi).forEach(function (k) { var v = multi[k]; o[rootName + '/' + k] = v === undefined ? null : clean(v); });
-        return db.ref().update(o);
-      },
-      newKey: function () { return db.ref(rootName + '/_k').push().key; },
-      now: function () { return new Date().toISOString(); },
-      getLastKeys: function (p, n) { return ref(p).orderByKey().limitToLast(n).once('value').then(function (s) { var out = []; s.forEach(function (c) { out.push([c.key, c.val()]); }); return out; }); }
-    };
-  }
-
   /* ------------------------------------------------------------- store */
   function createStore(adapter, user, C) {
     user = user || {}; var role = user.role || 'pembaca';
@@ -123,17 +106,9 @@
     var s = {
       adapter: adapter, user: user, role: role,
 
-      getUserRecord: function (uid) { return adapter.get('users/' + uid); },
-      bootstrapped: function () { return adapter.get('config/bootstrapped').then(function (v) { return !!v; }); },
-      claimFirstAdmin: function () { // hanya berhasil bila aturan database mengizinkan (belum ada admin)
-        var m = {}; m['users/' + user.uid] = { role: 'admin', name: user.name || '', email: user.email || '', createdAt: adapter.now() }; m['config/bootstrapped'] = true;
-        return commit(m).then(function () { // audit ditulis SETELAH peran ada (aturan audit memeriksa peran yang sudah tersimpan)
-          var a = {}; audit(a, 'user', user.uid, 'bootstrap_admin', null, { role: 'admin' }, 'Pengguna pertama menjadi admin'); return commit(a);
-        });
-      },
-      setUserRole: function (uid, rec, reason) {
-        need('kelolaPengguna'); var m = {}; m['users/' + uid] = clean(rec);
-        audit(m, 'user', uid, 'ubah_role', null, rec, reason); return commit(m);
+      setUserRole: function (uid, rec, reason) { // uid = email; rec null = hapus
+        need('kelolaPengguna'); var m = {}; m['users/' + uid] = rec ? clean(rec) : null;
+        audit(m, 'user', uid, rec ? 'ubah_role' : 'hapus_pengguna', null, rec, reason); return commit(m);
       },
       listUsers: function () { need('kelolaPengguna'); return adapter.get('users').then(function (o) { return entries(o).map(function (e) { return Object.assign({ uid: e[0] }, e[1]); }); }); },
       getSettings: function () { return adapter.get('config/settings').then(function (v) { return Object.assign({}, C.DEFAULT_CONFIG, v || {}); }); },
@@ -173,9 +148,9 @@
         return E;
       },
 
-      /** Tambah/ubah pengajuan. expectVersion = versi yang dibaca pengguna (deteksi konflik). */
-      savePengajuan: function (p, o) {
-        o = o || {}; need('tulisPengajuan');
+      /** Siapkan penulisan pengajuan (tanpa menulis). -> {rec, cur, isNew, m, needInvalidate} */
+      _prepSave: function (p, o) {
+        o = o || {};
         var isNew = !p.id; if (isNew) p.id = 'P' + adapter.newKey().replace(/[^A-Za-z0-9]/g, '');
         var errs = s.validatePengajuan(p); if (errs.length) { var e = new Error(errs.join('; ')); e.code = 'INVALID'; e.errors = errs; return Promise.reject(e); }
         return adapter.get('pengajuan/' + p.id).then(function (cur) {
@@ -191,7 +166,42 @@
           var d = isNew ? { before: null, after: rec } : diff(cur, rec);
           audit(m, 'pengajuan', rec.id, isNew ? 'tambah' : 'ubah', d.before, d.after, o.reason);
           var needInvalidate = !isNew && (cur.status !== rec.status || cur.dibatalkan !== rec.dibatalkan || cur.keterangan !== rec.keterangan || cur.kdsatker !== rec.kdsatker);
-          return commit(m).then(function () { return needInvalidate ? s._invalidateDerived(rec.id, null, 'Perubahan status/keterangan pengajuan') : null; }).then(function () { return rec; });
+          return { rec: rec, cur: cur, isNew: isNew, m: m, needInvalidate: needInvalidate };
+        });
+      },
+      /** Tambah/ubah pengajuan. expectVersion = versi yang dibaca pengguna (deteksi konflik). */
+      savePengajuan: function (p, o) {
+        o = o || {}; need('tulisPengajuan');
+        return s._prepSave(p, o).then(function (x) {
+          return commit(x.m).then(function () { return x.needInvalidate ? s._invalidateDerived(x.rec.id, null, 'Perubahan status/keterangan pengajuan') : null; }).then(function () { return x.rec; });
+        });
+      },
+      /** Simpan pengajuan + seluruh mekanisme (detail) dalam SATU penulisan (satu baris sheet, satu permintaan). */
+      saveBundle: function (p, details, removedIds, o) {
+        o = o || {}; need('tulisPengajuan'); details = details || []; removedIds = removedIds || [];
+        for (var i = 0; i < details.length; i++) if (!C.TYPES[details[i].jenis]) return Promise.reject(Object.assign(new Error('Jenis exception belum memiliki template: ' + details[i].jenis), { code: 'NO_TEMPLATE' }));
+        return s._prepSave(p, o).then(function (x) {
+          var pid = x.rec.id;
+          return (x.isNew ? Promise.resolve(null) : adapter.get('detail/' + pid)).then(function (curD) {
+            curD = curD || {}; var next = {}, changed = false; Object.keys(curD).forEach(function (k) { next[k] = curD[k]; });
+            details.forEach(function (d) {
+              var did = d.id || ('D' + adapter.newKey().replace(/[^A-Za-z0-9]/g, '')), cur = curD[did];
+              var same = cur && JSON.stringify({ j: cur.jenis, p: cur.params, s: cur.satkerList || [] }) === JSON.stringify({ j: d.jenis, p: d.params, s: d.satkerList || [] });
+              if (same) return;
+              var rec = Object.assign({}, cur || {}, { jenis: d.jenis, params: d.params, satkerList: d.satkerList || [] }); stamp(rec, !cur); next[did] = rec; changed = true;
+              x.m['detail/' + pid + '/' + did] = clean(rec); var dd = cur ? diff(cur, rec) : { before: null, after: rec };
+              audit(x.m, 'pengajuan', pid, cur ? 'ubah_detail' : 'tambah_detail', dd.before, dd.after, o.reason, { detailId: did });
+            });
+            removedIds.forEach(function (did) {
+              if (!next[did]) return; audit(x.m, 'pengajuan', pid, 'hapus_detail', next[did], null, o.reason, { detailId: did });
+              x.m['detail/' + pid + '/' + did] = null; delete next[did]; changed = true;
+            });
+            var arr = Object.keys(next).map(function (k) { return Object.assign({ id: k }, next[k]); }), dc = C.deriveCounts(x.rec, arr);
+            x.rec.detailCount = dc.detailCount; x.rec.detailLengkap = dc.detailLengkap; x.rec.mekanisme = C.describeDetails(arr);
+            if (arr.length && !x.rec.jenis) x.rec.jenis = arr[0].jenis;
+            x.m['pengajuan/' + pid] = clean(x.rec); x.m['pengajuan_idx/' + x.rec.ta + '/' + pid] = clean(C.compactOf(x.rec));
+            return commit(x.m).then(function () { return (changed || x.needInvalidate) && !x.isNew ? s._invalidateDerived(pid, null, 'Pengajuan/mekanisme diubah') : null; }).then(function () { return x.rec; });
+          });
         });
       },
       cancelPengajuan: function (id, reason) {
@@ -223,19 +233,20 @@
       /* ---------------- detail ---------------- */
       _recount: function (pid) {
         return Promise.all([s.listDetails(pid), s.getPengajuan(pid)]).then(function (r) {
-          var p = r[1]; if (!p) return null;
-          var lengkap = r[0].filter(function (d) { var ex = C.expandDetail(d, p); return ex.rows.length && !ex.errors.length && ex.rows.every(function (x) { return !x.errors.length; }); }).length;
-          return { detailCount: r[0].length, detailLengkap: lengkap, p: p };
+          var p = r[1]; if (!p) return null; var dc = C.deriveCounts(p, r[0]);
+          return { detailCount: dc.detailCount, detailLengkap: dc.detailLengkap, mekanisme: C.describeDetails(r[0]), p: p };
         });
       },
       saveDetail: function (pid, d, o) {
         o = o || {}; need('tulisPengajuan');
         var isNew = !d.id; if (isNew) d.id = 'D' + adapter.newKey().replace(/[^A-Za-z0-9]/g, '');
-        return Promise.all([s.getPengajuan(pid), adapter.get('detail/' + pid + '/' + d.id)]).then(function (r) {
-          var p = r[0], cur = r[1]; if (!p) throw new Error('Pengajuan tidak ditemukan');
+        return Promise.all([s.getPengajuan(pid), adapter.get('detail/' + pid), adapter.get('detail/' + pid + '/' + d.id)]).then(function (r) {
+          var p = r[0], all = r[1] || {}, cur = r[2]; if (!p) throw new Error('Pengajuan tidak ditemukan');
           if (!C.TYPES[d.jenis]) { var e = new Error('Jenis exception belum memiliki template'); e.code = 'NO_TEMPLATE'; throw e; }
           var rec = Object.assign({}, cur || {}, d); delete rec.id; stamp(rec, !cur);
           var m = {}; m['detail/' + pid + '/' + d.id] = clean(rec);
+          var next = Object.assign({}, all); next[d.id] = rec; var txt = C.describeDetails(Object.keys(next).map(function (k) { return Object.assign({ id: k }, next[k]); }));
+          m['pengajuan/' + pid + '/mekanisme'] = txt || null; m['pengajuan_idx/' + p.ta + '/' + pid + '/mekanisme'] = txt || null;
           var dd = cur ? diff(cur, rec) : { before: null, after: rec };
           audit(m, 'pengajuan', pid, cur ? 'ubah_detail' : 'tambah_detail', dd.before, dd.after, o.reason, { detailId: d.id });
           return commit(m).then(function () { return s._invalidateDerived(pid, d.id, 'Detail diubah'); }).then(function () { return s._refreshCounts(pid); }).then(function () { return Object.assign({ id: d.id }, rec); });
@@ -243,8 +254,11 @@
       },
       deleteDetail: function (pid, did, reason) {
         need('tulisPengajuan'); if (!C.S(reason)) return Promise.reject(Object.assign(new Error('Alasan wajib'), { code: 'INVALID' }));
-        return adapter.get('detail/' + pid + '/' + did).then(function (cur) {
+        return Promise.all([adapter.get('detail/' + pid), s.getPengajuan(pid)]).then(function (r) {
+          var all = r[0] || {}, cur = all[did], p = r[1];
           if (!cur) return null; var m = {}; m['detail/' + pid + '/' + did] = null; audit(m, 'pengajuan', pid, 'hapus_detail', cur, null, reason, { detailId: did });
+          var next = Object.assign({}, all); delete next[did]; var txt = C.describeDetails(Object.keys(next).map(function (k) { return Object.assign({ id: k }, next[k]); }));
+          if (p) { m['pengajuan/' + pid + '/mekanisme'] = txt || null; m['pengajuan_idx/' + p.ta + '/' + pid + '/mekanisme'] = txt || null; }
           return commit(m).then(function () { return s._invalidateDerived(pid, did, 'Detail dihapus'); }).then(function () { return s._refreshCounts(pid); });
         });
       },
@@ -290,7 +304,7 @@
         need('impor'); meta = meta || {};
         var byTa = {}; records.forEach(function (r) { (byTa[r.ta] = byTa[r.ta] || []).push(r); });
         return Promise.all(Object.keys(byTa).map(function (ta) { return s.listIndex(ta).then(function (l) { return [ta, l]; }); })).then(function (all) {
-          var exist = {}; all.forEach(function (x) { x[1].forEach(function (c) { exist[c.id] = c; }); });
+          var exist = {}; all.forEach(function (x) { x[1].forEach(function (c) { exist[c.id] = c; if (c.contentId) exist[c.contentId] = c; }); });
           var m = {}, created = 0, skipped = 0, ts = adapter.now(), who = user.name || user.email || '';
           records.forEach(function (r) {
             if (exist[r.id]) { skipped++; return; }
@@ -303,6 +317,31 @@
           var logId = C.hash([meta.fileHash || meta.file || '', records.map(function (r) { return r.id; }).join(',')].join('|'));
           m['import_log/' + logId + '_' + ts.replace(/[^0-9]/g, '')] = clean({ ts: ts, by: who, file: meta.file || '', fileHash: meta.fileHash || '', ta: meta.ta || '', total: records.length, created: created, skipped: skipped });
           audit(m, 'import', logId, 'impor_pengajuan', null, { file: meta.file, created: created, skipped: skipped }, meta.reason || 'Impor DB Penyesuaian IKPA');
+          return commit(m).then(function (c) { return { created: created, skipped: skipped, chunks: c.chunks }; });
+        });
+      },
+
+      /** Impor massal satu berkas berisi banyak satker. items: [{pengajuan, detail|null}] dari C.buildSatkerBatch (baris berstatus BARU). Idempoten (ID dari isi). */
+      importSatkerBatch: function (items, meta) {
+        need('impor'); meta = meta || {};
+        var tas = {}; items.forEach(function (it) { tas[it.pengajuan.ta] = 1; });
+        return Promise.all(Object.keys(tas).map(function (ta) { return s.listIndex(ta); })).then(function (all) {
+          var exist = {}; all.forEach(function (l) { l.forEach(function (c) { exist[c.id] = 1; }); });
+          var m = {}, created = 0, skipped = 0, ts = adapter.now(), who = user.name || user.email || '';
+          items.forEach(function (it) {
+            var p = it.pengajuan; if (exist[p.id]) { skipped++; return; }
+            var details = it.detail ? [it.detail] : [];
+            var rec = Object.assign({}, p, { createdAt: ts, createdBy: who, updatedAt: ts, updatedBy: who, version: 1, sumber: { type: 'IMPOR', file: meta.file || '', fileHash: meta.fileHash || '', baris: it.row || '' } });
+            var dc = C.deriveCounts(rec, details); rec.detailCount = dc.detailCount; rec.detailLengkap = dc.detailLengkap; rec.mekanisme = C.describeDetails(details);
+            if (details.length) rec.jenis = details[0].jenis;
+            m['pengajuan/' + rec.id] = clean(rec); m['pengajuan_idx/' + rec.ta + '/' + rec.id] = clean(C.compactOf(rec));
+            if (rec.kdsatker) m['by_satker/' + rec.kdsatker + '/' + rec.id] = rec.ta;
+            details.forEach(function (d) { m['detail/' + rec.id + '/' + d.id] = clean({ jenis: d.jenis, params: d.params, satkerList: d.satkerList || [], version: 1, createdAt: ts, createdBy: who, updatedAt: ts, updatedBy: who }); });
+            created++;
+          });
+          var logId = C.hash([meta.fileHash || meta.file || '', items.map(function (it) { return it.pengajuan.id; }).join(',')].join('|'));
+          m['import_log/' + logId + '_' + ts.replace(/[^0-9]/g, '')] = clean({ ts: ts, by: who, file: meta.file || '', fileHash: meta.fileHash || '', tipe: 'satker_massal', ta: meta.ta || '', total: items.length, created: created, skipped: skipped, mekanisme: meta.jenis || '' });
+          audit(m, 'import', logId, 'impor_satker_massal', null, { file: meta.file, created: created, skipped: skipped, jenis: meta.jenis }, meta.reason || 'Impor daftar satker (Excel)');
           return commit(m).then(function (c) { return { created: created, skipped: skipped, chunks: c.chunks }; });
         });
       },
@@ -479,5 +518,5 @@
     return s;
   }
 
-  return { createStore: createStore, MemoryAdapter: MemoryAdapter, RtdbAdapter: RtdbAdapter, pmap: pmap, clean: clean };
+  return { createStore: createStore, MemoryAdapter: MemoryAdapter, pmap: pmap, clean: clean };
 });

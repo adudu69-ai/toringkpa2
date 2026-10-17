@@ -31,7 +31,15 @@
     var box = U.$('#toast') || (function () { var d = document.createElement('div'); d.id = 'toast'; d.className = 'toast'; document.body.appendChild(d); return d; })();
     var el = document.createElement('div'); if (kind) el.className = kind; el.textContent = msg; box.appendChild(el); setTimeout(function () { el.remove(); }, kind === 'e' ? 9000 : 4500);
   };
-  U.errMsg = function (e) { if (!e) return 'Terjadi kesalahan'; if (e.code === 'PERMISSION_DENIED' || /permission_denied/i.test(e.message || '')) return 'Ditolak oleh aturan keamanan database (periksa peran Anda / aturan Firebase sudah dipublikasikan).'; return e.message || String(e); };
+  U.errMsg = function (e) {
+    if (!e) return 'Terjadi kesalahan';
+    if (e.code === 'FORBIDDEN') return e.message || 'Hak akses tidak mencukupi.';
+    if (e.code === 'UNAUTHENTICATED') return 'Sesi masuk berakhir atau token tidak valid. Muat ulang halaman dan masuk kembali.';
+    if (e.code === 'CONFLICT') return (e.message || 'Data telah diubah pengguna lain.') + ' Data sudah dimuat ulang; periksa lalu ulangi.';
+    return e.message || String(e);
+  };
+  /** teks mekanisme penyesuaian suatu pengajuan (ringkas atau dari uraian bebas) */
+  U.mekText = function (p) { return S(p && p.mekanisme).trim(); };
   U.run = function (promise, okMsg) { return promise.then(function (r) { if (okMsg) U.toast(okMsg, 's'); return r; }, function (e) { U.toast(U.errMsg(e), 'e'); throw e; }); };
 
   /* ----------------------------------------------------------- modal */
@@ -71,10 +79,21 @@
     U.$$('.pane').forEach(function (p) { p.classList.toggle('on', p.id === 'pane-' + id); });
     U.render();
   };
-  U.reload = function () {
-    U.state.loaded = false; return U.state.store.listIndex(U.state.ta).then(function (l) {
+  U.reload = function (rescan) {
+    U.state.loaded = false; var ad = U.state.store.adapter;
+    var pre = ad.refresh ? ad.refresh(rescan).then(function (r) {
+      U.state.sheetInfo = r; var b = U.$('#dbBanner');
+      if (b) b.innerHTML = r.unreadable ? '<div class="banner warn">' + r.unreadable + ' baris spreadsheet tidak terbaca sebagai pengajuan (mis. ID ganda atau kolom wajib kosong). Baris itu tidak diubah dan tidak dihitung. <a href="#" id="lnkUnread">Lihat</a></div>' : '';
+      var l = U.$('#lnkUnread'); if (l) l.onclick = function (ev) { ev.preventDefault(); U.showUnreadable(); };
+      return r;
+    }) : Promise.resolve();
+    return pre.then(function () { return U.state.store.listIndex(U.state.ta); }).then(function (l) {
       U.state.list = l; U.state.loaded = true; U.render(); return l;
-    }, function (e) { U.toast(U.errMsg(e), 'e'); throw e; });
+    }, function (e) { U.state.loaded = true; U.toast(U.errMsg(e), 'e'); throw e; });
+  };
+  U.showUnreadable = function () {
+    var ad = U.state.store.adapter, list = ad.unreadable ? ad.unreadable() : [];
+    U.modal({ title: 'Baris yang tidak terbaca', wide: true, body: '<div class="alert i small">Baris ini dibiarkan apa adanya di spreadsheet. Perbaiki di spreadsheet lalu tekan “Muat ulang dari spreadsheet”.</div><div class="tw"><table><thead><tr><th>Sheet</th><th>Baris</th><th>Masalah</th></tr></thead><tbody>' + list.map(function (r) { return '<tr><td>' + esc(r.sheet) + '</td><td>' + esc(r.row) + '</td><td class="small">' + esc(r.error) + '</td></tr>'; }).join('') + '</tbody></table></div>', footer: '<button class="btn" data-x="close">Tutup</button>' });
   };
 
   /* ------------------------------------------------- filter bar bersama */
@@ -114,7 +133,7 @@
   function shell() {
     document.getElementById('app').innerHTML =
       '<div class="hd"><div><h1>Monitoring Penyesuaian IKPA &amp; Master Exception</h1><div class="sub">TORING · Direktorat Pelaksanaan Anggaran</div></div><span class="sp"></span><span id="who"></span></div>' +
-      '<div id="banner"></div><div class="tabs" role="tablist" id="tabs"></div><main id="main"></main>';
+      '<div id="banner"></div><div id="dbBanner"></div><div class="tabs" role="tablist" id="tabs"></div><main id="main"></main>';
   }
   function showTabs() {
     var t = U.$('#tabs'), main = U.$('#main'); t.innerHTML = ''; main.innerHTML = '';
@@ -127,8 +146,12 @@
   }
   function whoChip() {
     var s = U.state, el = U.$('#who'); if (!s.user) { el.innerHTML = ''; return; }
-    el.innerHTML = '<span class="chip ' + esc(s.role || '') + '">' + esc(s.user.name || s.user.email || s.user.uid) + ' · ' + esc(s.role || 'belum terdaftar') + '</span> ' + (s.mode === 'firebase' ? '<button class="btn sm" id="btnOut">Keluar</button>' : '');
+    var cfg = window.IKPA_CONFIG || {};
+    el.innerHTML = (s.store && s.store.adapter.refresh ? '<button class="btn sm" id="btnSync" title="Baca ulang seluruh sheet (termasuk perubahan manual di spreadsheet)">↻ Muat ulang dari spreadsheet</button> ' : '') +
+      (cfg.SHEET_URL && s.store ? '<a class="btn sm" id="btnSheet" target="_blank" rel="noopener" href="' + esc(cfg.SHEET_URL) + '">Buka spreadsheet</a> ' : '') +
+      '<span class="chip ' + esc(s.role || '') + '">' + esc(s.user.name || s.user.email) + ' · ' + esc(s.role || 'belum terdaftar') + '</span> ' + (s.mode === 'firebase' ? '<button class="btn sm" id="btnOut">Keluar</button>' : '');
     var o = U.$('#btnOut'); if (o) o.onclick = function () { firebase.auth().signOut(); };
+    var y = U.$('#btnSync'); if (y) y.onclick = function () { y.disabled = true; U.reload(true).then(function () { U.toast('Data dimuat ulang dari spreadsheet', 's'); }, function () { }).then(function () { y.disabled = false; }); };
   }
   function gate(html) { U.$('#main').innerHTML = '<div class="gate card">' + html + '</div>'; U.$('#tabs').innerHTML = ''; }
 
@@ -139,33 +162,40 @@
     U.reload().then(function () { var l = U.$('#loading'); if (l) l.remove(); }, function () { var l = U.$('#loading'); if (l) l.remove(); });
   }
 
+  function setupGate() {
+    gate('<h2>Penyimpanan belum disambungkan</h2><p class="muted" style="margin:6px 0 10px">Data modul ini disimpan di Google Spreadsheet melalui Google Apps Script. Alamat web app (<span class="mono">WEBAPP_URL</span>) belum diisi pada <span class="mono">ikpa-adj/config.js</span>, sehingga modul tidak menampilkan atau menyimpan data apa pun.</p><p class="small muted">Langkah pemasangan: <span class="mono">apps-script/README.md</span>.</p>');
+  }
+
+  function openSession(adapter, who, mode) {
+    // who: {email, name}; peran ditentukan SERVER (sheet _Pengguna / ADMIN_EMAILS), bukan klien.
+    return adapter.whoami().then(function (w) {
+      var user = { uid: w.email, email: w.email, name: w.name || who.name || w.email };
+      if (!w.role || w.role === 'nonaktif') {
+        U.state.user = user; U.state.role = null; whoChip();
+        gate('<h2>Akun belum terdaftar</h2><p class="muted" style="margin:6px 0 10px">Akun <b>' + esc(w.email) + '</b> ' + (w.role === 'nonaktif' ? 'dinonaktifkan' : 'belum memiliki akses') + '. Minta admin mendaftarkan email ini (sheet <span class="mono">_Pengguna</span> atau menu Admin).</p>');
+        return;
+      }
+      user.role = w.role; start(ST.createStore(adapter, user, C), user, w.role, mode);
+    });
+  }
+
   function bootFirebase() {
-    var cfg = { apiKey: 'AIzaSyC_ZKnUwPv40f_GytMTHb1MTaPO_p5lPHY', authDomain: 'toring-ikpa-apps.firebaseapp.com', databaseURL: 'https://toring-ikpa-apps-default-rtdb.asia-southeast1.firebasedatabase.app', projectId: 'toring-ikpa-apps', appId: '1:59538058227:web:97d6ace98673d232bf0086' };
+    var cfgW = window.IKPA_CONFIG || {}; if (!cfgW.WEBAPP_URL) { setupGate(); return; }
+    // Konfigurasi web Firebase bersifat publik (sama dengan index.html); hanya dipakai untuk login Google & token. Tidak ada rahasia.
+    var cfg = { apiKey: 'AIzaSyC_ZKnUwPv40f_GytMTHb1MTaPO_p5lPHY', authDomain: 'toring-ikpa-apps.firebaseapp.com', projectId: 'toring-ikpa-apps', appId: '1:59538058227:web:97d6ace98673d232bf0086' };
     if (typeof firebase === 'undefined' || !firebase.auth) { gate('<h2>Firebase tidak termuat</h2><p class="muted">Periksa koneksi internet / pemblokir skrip, lalu muat ulang.</p>'); return; }
     if (!firebase.apps.length) firebase.initializeApp(cfg);
-    var adapter = new ST.RtdbAdapter(firebase, 'ikpa_adj');
-    var provider = new firebase.auth.GoogleAuthProvider();
+    var provider = new firebase.auth.GoogleAuthProvider(), started = false;
     firebase.auth().onAuthStateChanged(function (fu) {
       if (!fu) {
-        U.state.user = null; whoChip();
+        started = false; U.state.user = null; whoChip();
         gate('<h2>Masuk diperlukan</h2><p class="muted" style="margin:6px 0 14px">Data pengajuan penyesuaian IKPA hanya dapat diakses oleh pengguna terdaftar. Masuk dengan akun Google Anda.</p><button class="btn p" id="btnIn">Masuk dengan Google</button><div id="gerr" class="alert e hide"></div>');
         U.$('#btnIn').onclick = function () { firebase.auth().signInWithPopup(provider).catch(function (e) { var g = U.$('#gerr'); g.classList.remove('hide'); g.textContent = 'Gagal masuk: ' + (e.code || '') + ' ' + (e.message || '') + (e.code === 'auth/operation-not-allowed' ? ' — penyedia Google belum diaktifkan di Firebase Authentication.' : ''); }); };
         return;
       }
-      var user = { uid: fu.uid, name: fu.displayName || '', email: fu.email || '' };
-      var store0 = ST.createStore(adapter, user, C);
-      store0.getUserRecord(fu.uid).then(function (rec) {
-        if (rec && rec.role) { user.name = rec.name || user.name; var store = ST.createStore(adapter, Object.assign(user, { role: rec.role }), C); start(store, user, rec.role, 'firebase'); return; }
-        return store0.bootstrapped().then(function (b) {
-          U.state.user = user; whoChip();
-          if (!b) {
-            gate('<h2>Pengaturan awal</h2><p class="muted" style="margin:6px 0 14px">Belum ada admin untuk modul ini. Akun yang pertama mengaktifkan akan menjadi <b>admin</b>. Pastikan ini akun yang tepat: <b>' + esc(user.email) + '</b>.</p><button class="btn p" id="btnBoot">Jadikan saya admin pertama</button>');
-            U.$('#btnBoot').onclick = function () { store0.claimFirstAdmin().then(function () { location.reload(); }, function (e) { U.toast(U.errMsg(e), 'e'); }); };
-          } else {
-            gate('<h2>Akun belum terdaftar</h2><p class="muted" style="margin:6px 0 10px">Minta admin menambahkan akun Anda dengan UID berikut:</p><p class="mono" style="user-select:all">' + esc(user.uid) + '</p><p class="small muted">' + esc(user.email) + '</p>');
-          }
-        });
-      }).catch(function (e) { gate('<h2>Gagal membaca peran</h2><p class="muted">' + esc(U.errMsg(e)) + '</p>'); });
+      if (started) return; started = true;
+      var adapter = new window.IkpaSheets.SheetsAdapter({ url: cfgW.WEBAPP_URL, getToken: function () { return fu.getIdToken(); }, C: C, satkerLookup: U.satkerInfo });
+      openSession(adapter, { name: fu.displayName || '', email: fu.email || '' }, 'firebase').catch(function (e) { started = false; gate('<h2>Gagal menghubungi penyimpanan</h2><p class="muted">' + esc(U.errMsg(e)) + '</p><button class="btn" id="btnRetry">Coba lagi</button>'); U.$('#btnRetry').onclick = function () { started = true; openSession(adapter, { name: fu.displayName || '' }, 'firebase').catch(function (e2) { started = false; U.toast(U.errMsg(e2), 'e'); }); }; });
     });
   }
 
@@ -177,6 +207,12 @@
       window.__ikpaTest = { adapter: ad };
       U.$('#banner').innerHTML = '<div class="banner test">MODE UJI LOKAL — data disimpan di memori peramban dan hilang saat halaman ditutup. Bukan data resmi.</div>';
       start(ST.createStore(ad, user, C), user, role, 'memory'); return;
+    }
+    if (local && q.get('webapp') && q.get('testtoken')) { // HANYA localhost: menguji ke web app tiruan tanpa login Google
+      U.$('#banner').innerHTML = '<div class="banner test">MODE UJI LOKAL — terhubung ke web app uji, bukan spreadsheet produksi.</div>';
+      var tk = q.get('testtoken'), ad2 = new window.IkpaSheets.SheetsAdapter({ url: q.get('webapp'), getToken: function () { return tk; }, C: C, satkerLookup: U.satkerInfo });
+      window.__ikpaTest = { adapter: ad2 };
+      openSession(ad2, {}, 'sheets-test').catch(function (e) { gate('<h2>Gagal</h2><p>' + esc(U.errMsg(e)) + '</p>'); }); return;
     }
     bootFirebase();
   };

@@ -139,3 +139,4 @@ td.num,th.num{text-align:right}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media(max-width:700px){.kv{grid-template-columns:1fr}.bars .br{grid-template-columns:100px 1fr 40px}main{padding:12px 10px 40px}}
 @media print{.tabs,.hd,.btn{display:none!important}}
+a.btn{text-decoration:none;color:inherit;display:inline-block}

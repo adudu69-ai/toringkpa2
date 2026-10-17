@@ -11,6 +11,7 @@
     ['jalur', 'Jalur', function (p) { return U.jalurBadge(p.jalur); }],
     ['nomorND', 'Nomor ND', function (p) { return esc(p.nomorND); }],
     ['indikator', 'Indikator', function (p) { return esc(p.indikator); }],
+    ['mekanisme', 'Mekanisme penyesuaian', function (p) { var t = U.mekText(p); return t ? '<span class="small">' + esc(t.length > 130 ? t.slice(0, 130) + '…' : t) + '</span>' : '<span class="muted">—</span>'; }],
     ['kdsatker', 'Satker', function (p) { return p.kdsatker ? '<b>' + esc(p.kdsatker) + '</b><br><span class="muted small">' + esc(p.namaSatker) + '</span>' : '<span class="badge b-gray" title="Satker belum dirinci">Eselon I</span><br><span class="small muted">' + esc(S(p.satkerRingkasan).slice(0, 60)) + '</span>'; }],
     ['status', 'Status', function (p) { return U.statusBadge(p); }],
     ['keterangan', 'Keterangan', function (p) { return '<span class="small">' + esc(S(p.keterangan).slice(0, 50)) + '</span>'; }],
@@ -24,14 +25,14 @@
     var rows = L.slice(page * PAGE, page * PAGE + PAGE), nSel = Object.keys(sel).length, w = U.can('tulisPengajuan');
     pane.innerHTML = U.filterBar('db', { jalur: true, search: true }) +
       '<div class="row sb" style="margin-bottom:8px"><div class="row">' +
-      (w ? '<button class="btn p" id="dbAdd">+ Tambah pengajuan</button>' : '') + (U.can('impor') ? '<button class="btn" id="dbImp">Impor Excel</button>' : '') + '<button class="btn" id="dbExp">Unduh tabel (.xlsx)</button></div>' +
+      (w ? '<button class="btn p" id="dbAdd">+ Tambah pengajuan</button>' : '') + (U.can('impor') ? '<button class="btn" id="dbBulk">Impor daftar satker (Excel)</button><button class="btn" id="dbImp">Impor Excel format DB</button>' : '') + '<button class="btn" id="dbExp">Unduh tabel (.xlsx)</button></div>' +
       '<div class="row">' + (w ? '<span class="small muted">Terpilih: <b id="nSel">' + nSel + '</b></span><button class="btn sm" id="bkTw" ' + (nSel ? '' : 'disabled') + '>Set TW…</button><button class="btn sm" id="bkJal" ' + (nSel ? '' : 'disabled') + '>Set jalur…</button><button class="btn sm" id="bkSaran" ' + (nSel ? '' : 'disabled') + '>Terapkan saran jalur</button>' : '') + '</div></div>' +
       '<div class="tw"><table><thead><tr>' + (w ? '<th><input type="checkbox" id="selAll" aria-label="Pilih semua di halaman"></th>' : '') +
       COLS.map(function (c) { return '<th class="s" data-sort="' + c[0] + '">' + c[1] + (sort.key === c[0] ? (sort.dir > 0 ? ' ▲' : ' ▼') : '') + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
       (rows.length ? rows.map(function (p) {
         return '<tr class="cl" data-id="' + esc(p.id) + '">' + (w ? '<td><input type="checkbox" data-sel="' + esc(p.id) + '"' + (sel[p.id] ? ' checked' : '') + '></td>' : '') +
           COLS.map(function (c) { return '<td>' + c[2](p) + '</td>'; }).join('') + '<td><button class="btn sm" data-open="' + esc(p.id) + '">Buka</button></td></tr>';
-      }).join('') : '<tr><td colspan="13" class="empty">' + (U.state.loaded ? (U.state.list.length ? 'Tidak ada pengajuan yang cocok dengan filter.' : 'Belum ada pengajuan untuk TA ' + esc(U.state.ta) + '.') : 'Memuat…') + '</td></tr>') +
+      }).join('') : '<tr><td colspan="14" class="empty">' + (U.state.loaded ? (U.state.list.length ? 'Tidak ada pengajuan yang cocok dengan filter.' : 'Belum ada pengajuan untuk TA ' + esc(U.state.ta) + '.') : 'Memuat…') + '</td></tr>') +
       '</tbody></table></div><div class="pg"><button class="btn sm" id="pgP" ' + (page ? '' : 'disabled') + '>‹</button><span>Hal. ' + (page + 1) + ' / ' + pages + ' · ' + cnt + ' pengajuan</span><button class="btn sm" id="pgN" ' + (page < pages - 1 ? '' : 'disabled') + '>›</button></div>';
     U.bindFilters(pane, 'db', function (o2) { page = 0; render(pane); if (o2 && o2.keepFocus) { var el = U.$('[data-f="' + o2.keepFocus + '"]', pane); if (el) { el.focus(); var v = el.value; el.value = ''; el.value = v; } } });
     U.$$('[data-sort]', pane).forEach(function (th) { th.onclick = function () { var k = th.dataset.sort; sort = { key: k, dir: sort.key === k ? -sort.dir : 1 }; render(pane); }; });
@@ -41,9 +42,10 @@
     U.$('#pgP', pane).onclick = function () { page--; render(pane); }; U.$('#pgN', pane).onclick = function () { page++; render(pane); };
     var a = U.$('#dbAdd', pane); if (a) a.onclick = function () { openForm(null); };
     var im = U.$('#dbImp', pane); if (im) im.onclick = openImport;
+    var bk = U.$('#dbBulk', pane); if (bk) bk.onclick = function () { U.openBulk(); };
     U.$('#dbExp', pane).onclick = function () {
-      var head = COLS.map(function (c) { return c[1]; }).concat(['Nama satker', 'Kode KPPN', 'K/L', 'Nomor dokumen']);
-      var aoa = [head].concat(L.map(function (p) { return [U.fmtDate(p.tanggalInput), p.tw ? 'TW' + p.tw : '', p.submitter, p.jalur, p.nomorND, p.indikator, p.kdsatker || p.satkerRingkasan, p.status + (p.pooling ? ' (Pooling)' : ''), p.keterangan, p.detailLengkap + '/' + p.detailCount, p.namaSatker, p.kdkppn, p.namaKL, '']; }));
+      var head = COLS.map(function (c) { return c[1]; }).concat(['Nama satker', 'Kode KPPN', 'K/L', 'Nomor dokumen', 'Sheet']);
+      var aoa = [head].concat(L.map(function (p) { return [U.fmtDate(p.tanggalInput), p.tw ? 'TW' + p.tw : '', p.submitter, p.jalur, p.nomorND, p.indikator, U.mekText(p), p.kdsatker || p.satkerRingkasan, p.status + (p.pooling ? ' (Pooling)' : ''), p.keterangan, p.detailLengkap + '/' + p.detailCount, p.namaSatker, p.kdkppn, p.namaKL, '', p.sheet || '']; }));
       U.downloadAoa('Database_Pengajuan_IKPA_' + U.state.ta + '_' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '.xlsx', [{ name: 'Pengajuan', aoa: aoa }]); U.toast('Tabel diunduh (' + L.length + ' baris).', 's');
     };
     var ids = function () { return Object.keys(sel); };
@@ -80,14 +82,14 @@
         '<div class="row" style="margin-bottom:8px">' + U.statusBadge(p) + ' ' + U.jalurBadge(p.jalur) + ' <span class="badge b-gray">' + U.twLabel(p.tw) + '</span> <span class="small muted">versi ' + esc(p.version) + ' · diperbarui ' + esc(U.fmtTs(p.updatedAt)) + ' oleh ' + esc(p.updatedBy) + '</span></div>' +
         '<div class="grid2"><div class="card"><h3>Pengajuan</h3><dl class="kv">' +
         kv('TA / Triwulan', esc(p.ta) + ' / ' + U.twLabel(p.tw) + (p.twSumber === 'SARAN' ? ' <span class="badge b-gray">dari saran teks</span>' : '')) + kv('Tanggal input', esc(U.fmtDate(p.tanggalInput))) + kv('Pengaju', esc(p.submitter)) + kv('Nomor / tanggal ND', esc(p.nomorND) + ' · ' + esc(U.fmtDate(p.tanggalND))) +
-        kv('Nomor dokumen', esc(p.nomorDokumen)) + kv('Indikator', esc(p.indikator)) + kv('Satker', p.kdsatker ? esc(p.kdsatker + ' — ' + p.namaSatker) : 'Belum dirinci: ' + esc(p.satkerRingkasan)) + kv('KPPN / K/L', esc(p.kdkppn) + ' · ' + esc(p.namaKL || p.kl)) +
+        kv('Nomor dokumen', esc(p.nomorDokumen)) + kv('Disimpan di', p.sheet ? 'Sheet “' + esc(p.sheet) + '”, baris ' + esc(p.row) : '') + kv('Uraian mekanisme', esc(p.mekanismeUraian)) + kv('Indikator', esc(p.indikator)) + kv('Satker', p.kdsatker ? esc(p.kdsatker + ' — ' + p.namaSatker) : 'Belum dirinci: ' + esc(p.satkerRingkasan)) + kv('KPPN / K/L', esc(p.kdkppn) + ' · ' + esc(p.namaKL || p.kl)) +
         kv('Keterangan', esc(p.keterangan)) + kv('Alasan penolakan', esc(p.alasanPenolakan)) + kv('Komponen', esc(p.komponen)) + kv('Exception (sumber)', esc(p.exceptionRaw) + (p.jenis ? ' → <span class="badge b-info">' + esc(p.jenis) + '</span>' : '')) + '</dl></div>' +
         '<div class="card"><h3>Kronologis &amp; catatan</h3><p style="white-space:pre-wrap">' + esc(p.kronologis) + '</p><hr style="border:0;border-top:1px solid var(--b);margin:10px 0"><p style="white-space:pre-wrap">' + esc(p.perbaikan) + '</p>' + (p.sumber && p.sumber.type === 'IMPOR' ? '<p class="small muted" style="margin-top:8px">Sumber impor: ' + esc(p.sumber.file) + ' baris ' + esc(p.sumber.baris) + '</p>' : '') + '</div></div>' +
         (p.warnings && p.warnings.length ? '<div class="alert w"><b>Catatan saat impor:</b><ul>' + p.warnings.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>' : '') +
-        '<div class="card"><h3>Detail exception <small>(' + details.length + ')</small></h3>' + (details.length ? '<table><thead><tr><th>Jenis</th><th>Parameter</th><th>Baris dihasilkan</th><th>Status</th></tr></thead><tbody>' + details.map(function (d) {
+        '<div class="card"><h3>Mekanisme penyesuaian <small>(' + details.length + ')</small></h3>' + (details.length ? '<table><thead><tr><th>Mekanisme</th><th>Parameter teknis</th><th>Baris dihasilkan</th><th>Status</th></tr></thead><tbody>' + details.map(function (d) {
           var ex = C.expandDetail(d, p), bad = ex.errors.length || ex.rows.some(function (x) { return x.errors.length; });
-          return '<tr><td>' + esc(d.jenis) + '</td><td class="small">' + esc(Object.keys(d.params || {}).map(function (k) { return k + '=' + d.params[k]; }).join('; ')) + (d.satkerList && d.satkerList.length ? '<br>Satker: ' + esc(d.satkerList.join(', ')) : '') + '</td><td>' + ex.rows.length + '</td><td>' + (bad ? '<span class="badge b-pend">Perlu dilengkapi</span>' : '<span class="badge b-ok">Lengkap</span>') + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div class="empty">Belum ada detail exception. ' + (p.status === 'Disetujui' ? '<b>Tanpa detail, pengajuan ini belum dapat menjadi kandidat Master Exception.</b>' : '') + '</div>') + '</div>' +
+          return '<tr><td><b>' + esc(C.describeDetail(d)) + '</b></td><td class="small">' + esc(Object.keys(d.params || {}).map(function (k) { return k + '=' + d.params[k]; }).join('; ')) + (d.satkerList && d.satkerList.length ? '<br>Satker: ' + esc(d.satkerList.join(', ')) : '') + '</td><td>' + ex.rows.length + '</td><td>' + (bad ? '<span class="badge b-pend">Perlu dilengkapi</span>' : '<span class="badge b-ok">Lengkap</span>') + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<div class="empty">Belum ada mekanisme terstruktur. ' + (p.jenis ? 'Jenis pada sumber: <b>' + esc(C.JENIS_LABEL[p.jenis] || p.jenis) + '</b>. ' : '') + (p.status === 'Disetujui' ? '<b>Tanpa mekanisme terstruktur, pengajuan ini belum dapat menjadi kandidat Master Exception.</b>' : '') + '</div>') + '</div>' +
         '<div class="card"><h3>Exception teknis terkait <small>(' + excs.length + ')</small></h3>' + (excs.length ? '<table><thead><tr><th>Jenis</th><th>Identitas</th><th>Status</th><th>Pengajuan sumber</th><th></th></tr></thead><tbody>' + excs.map(function (e) {
           var refs = Object.keys(e.refs || {}).map(function (k) { return e.refs[k]; });
           return '<tr><td>' + esc(e.jenis) + '</td><td class="mono">' + esc(e.slotKey.split(C.SEP).slice(1).join(' | ')) + '</td><td>' + excBadge(e) + '</td><td>' + refs.map(function (r) { return '<span class="badge b-info" title="' + esc(r.nomorND) + '">' + esc(r.jalur === 'SATKER' ? 'Satker' : r.jalur === 'ESELON_I' ? 'Eselon I' : 'Belum diverifikasi') + ' · ' + esc(U.fmtDate(r.tanggalInput)) + '</span>'; }).join(' ') + '</td><td><button class="btn sm" data-exc="' + esc(e.thang + '|' + e.kdsatker + '|' + e.id) + '">Buka</button></td></tr>';
@@ -152,7 +154,7 @@
         inp('tanggalInput', 'Tanggal input', p.tanggalInput, { req: 1, type: 'date' }) +
         inp('jalur', 'Jalur pengajuan', p.jalur, { req: 1, tag: 'select', options: [['SATKER', 'Satker'], ['ESELON_I', 'Eselon I / K/L'], ['BELUM_DIVERIFIKASI', 'Belum diverifikasi']] }) +
         inp('submitter', 'Nama Kanwil DJPb / Eselon I K/L', p.submitter, { req: 1, list: 'dlSub' }) +
-        inp('nomorND', 'Nomor ND', p.nomorND, { req: 1 }) + inp('tanggalND', 'Tanggal ND', p.tanggalND, { type: 'date' }) + inp('nomorDokumen', 'Nomor dokumen (mis. DIPA Revisi ke-5)', p.nomorDokumen) + '</div></div>' +
+        inp('nomorND', 'Nomor ND', p.nomorND, { req: 1 }) + inp('tanggalND', 'Tanggal ND', p.tanggalND, { type: 'date' }) + inp('nomorDokumen', 'Nomor dokumen (mis. DIPA Revisi ke-5)', p.nomorDokumen) + '</div><div class="alert i small" id="sheetHint" style="margin-top:8px"></div></div>' +
         '<div class="sec"><h4>2 · Satker &amp; indikator</h4><div class="fg">' +
         '<div class="fld ac full" id="w_satker"><label for="f_satkerQ">Cari satker (kode 6 digit atau nama)</label><input id="f_satkerQ" autocomplete="off" value="' + esc(p.kdsatker ? p.kdsatker + ' — ' + (p.namaSatker || '') : '') + '" placeholder="mis. 691455 atau nama satker"><div class="ac-l hide" id="acl"></div><span class="hint">Sumber daftar: satker_db.js. Kosongkan bila pengajuan tingkat Eselon I belum merinci satker.</span><span class="em" id="e_satker"></span></div>' +
         inp('kdsatker', 'Kode satker', p.kdsatker || '', { hint: 'Harus 6 digit.' }) + inp('namaSatker', 'Nama satker', p.namaSatker || '') + inp('kdkppn', 'Kode KPPN', p.kdkppn || '') + inp('namaKL', 'Nama K/L', p.namaKL || '') + inp('kl', 'Kode K/L', p.kl || '') +
@@ -165,12 +167,17 @@
         inp('alasanPenolakan', 'Alasan penolakan', p.alasanPenolakan || '', { full: 1 }) +
         inp('kronologis', 'Kronologis', p.kronologis || '', { tag: 'textarea', rows: 4, full: 1 }) + inp('perbaikan', 'Perbaikan / catatan', p.perbaikan || '', { tag: 'textarea', rows: 3, full: 1 }) +
         (isEdit ? inp('alasanUbah', 'Alasan perubahan (untuk riwayat audit)', '', { req: 1, full: 1 }) : '') + '</div></div>' +
-        '<div class="sec"><h4>4 · Detail exception <small class="muted" style="text-transform:none">(satu pengajuan dapat memiliki banyak detail)</small></h4><div id="dets"></div>' +
-        '<div class="row"><select id="newJenis"><option value="">+ Tambah detail: pilih jenis…</option>' + JENIS_ORDER.map(function (j) { return '<option value="' + esc(j) + '">' + esc(j) + '</option>'; }).join('') + '<option value="" disabled>Deviasi PPR Terpusat — mapping belum tersedia</option></select><button class="btn" id="addDet">Tambah</button></div>' +
+        '<div class="sec"><h4>4 · Mekanisme penyesuaian <small class="muted" style="text-transform:none">(boleh lebih dari satu; mis. Deviasi Kegiatan — Kegiatan 7717, jenis belanja 52, TW II)</small></h4><div class="fg">' +
+        inp('mekanismeUraian', 'Uraian mekanisme (teks bebas, opsional)', p.mekanismeUraian || '', { tag: 'textarea', rows: 2, full: 1, hint: 'Penjelasan singkat cara penyesuaian. Mekanisme terstruktur di bawah-lah yang dipakai untuk membangun Master Exception.' }) + '</div><div id="dets"></div>' +
+        '<div class="row"><select id="newJenis"><option value="">+ Tambah mekanisme: pilih jenis…</option>' + JENIS_ORDER.map(function (j) { return '<option value="' + esc(j) + '">' + esc(C.JENIS_LABEL[j] || j) + (C.JENIS_LABEL[j] && C.JENIS_LABEL[j] !== j ? ' (' + esc(j) + ')' : '') + '</option>'; }).join('') + '<option value="" disabled>Deviasi PPR Terpusat — mapping belum tersedia</option></select><button class="btn" id="addDet">Tambah</button></div>' +
         '<div id="dupOut"></div></div><div id="formErr" class="alert e hide"></div>';
-      bind(); drawDetails(); toggleReject(); if (p.kdsatker) loadHist(p.kdsatker);
+      bind(); drawDetails(); toggleReject(); updateSheetHint(); if (p.kdsatker) loadHist(p.kdsatker);
     }
     function g(idn) { var e = U.$('#f_' + idn, m.el); return e ? e.value : ''; }
+    function updateSheetHint() {
+      var h = U.$('#sheetHint', m.el); if (!h) return; var j = g('jalur'), nm = C.eselonSheetName(g('submitter'));
+      h.innerHTML = j === 'ESELON_I' ? (nm ? 'Jalur Eselon I: pengajuan ini disimpan di sheet bernama <b>' + esc(nm) + '</b> (dibuat otomatis bila belum ada).' : 'Jalur Eselon I: isi nama Eselon I pada “Nama Kanwil DJPb / Eselon I K/L” — nama itu menjadi nama sheet.') : 'Pengajuan ini disimpan di sheet <b>Sheet1</b>' + (j === 'BELUM_DIVERIFIKASI' ? ' (jalur belum diverifikasi)' : ' (jalur Satker)') + '.';
+    }
     function toggleReject() { var w = U.$('#w_alasanPenolakan', m.el); if (w) w.classList.toggle('hide', g('status') !== 'Ditolak'); }
     var histCache = {};
     function loadHist(kd) {
@@ -178,7 +185,7 @@
       box.innerHTML = '<div class="empty small"><span class="spin"></span></div>';
       st.satkerHistory(kd).then(function (h) {
         histCache[kd] = h; if (g('kdsatker') !== kd) return; var cur = isEdit ? fs.p.id : null; h = h.filter(function (x) { return x.id !== cur; });
-        box.innerHTML = h.length ? '<table><thead><tr><th>TA</th><th>TW</th><th>Tgl input</th><th>Indikator</th><th>Jalur</th><th>Status</th><th>ND</th><th>Detail</th></tr></thead><tbody>' + h.map(function (x) { return '<tr' + (x.dibatalkan ? ' style="opacity:.5"' : '') + '><td>' + esc(x.ta) + '</td><td>' + (x.tw ? 'TW' + x.tw : '—') + '</td><td>' + esc(U.fmtDate(x.tanggalInput)) + '</td><td>' + esc(x.indikator) + '</td><td>' + U.jalurBadge(x.jalur) + '</td><td>' + U.statusBadge(x) + '</td><td class="small">' + esc(x.nomorND) + '</td><td class="small">' + x.details.map(function (d) { return esc(d.jenis); }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty small">Belum ada pengajuan tercatat untuk satker ' + esc(kd) + '.</div>';
+        box.innerHTML = h.length ? '<table><thead><tr><th>TA</th><th>TW</th><th>Tgl input</th><th>Indikator</th><th>Jalur</th><th>Status</th><th>ND</th><th>Mekanisme penyesuaian</th></tr></thead><tbody>' + h.map(function (x) { return '<tr' + (x.dibatalkan ? ' style="opacity:.5"' : '') + '><td>' + esc(x.ta) + '</td><td>' + (x.tw ? 'TW' + x.tw : '—') + '</td><td>' + esc(U.fmtDate(x.tanggalInput)) + '</td><td>' + esc(x.indikator) + '</td><td>' + U.jalurBadge(x.jalur) + '</td><td>' + U.statusBadge(x) + '</td><td class="small">' + esc(x.nomorND) + '</td><td class="small">' + (x.details.length ? x.details.map(function (d) { return esc(C.describeDetail(d)); }).join('<br>') : esc(U.mekText(x))) + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty small">Belum ada pengajuan tercatat untuk satker ' + esc(kd) + '.</div>';
       }, function (e) { box.innerHTML = '<div class="alert e">' + esc(U.errMsg(e)) + '</div>'; });
     }
     function setSatker(r) {
@@ -196,6 +203,7 @@
       acl.addEventListener('mousedown', function (e) { var d = e.target.closest('[data-k]'); if (d) setSatker(U.satkerInfo(d.dataset.k)); });
       U.$('#f_kdsatker', m.el).addEventListener('input', function () { var v = this.value.trim(); if (/^\d{6}$/.test(v)) { var r = U.satkerInfo(v); if (r) setSatker(r); else loadHist(v); } });
       U.$('#f_status', m.el).addEventListener('change', toggleReject);
+      ['f_jalur', 'f_submitter'].forEach(function (i) { var e = U.$('#' + i, m.el); if (e) { e.addEventListener('input', updateSheetHint); e.addEventListener('change', updateSheetHint); } });
       U.$('#addDet', m.el).onclick = function () { var j = U.$('#newJenis', m.el).value; if (!j) return; var d = { _k: ++dseq, jenis: j, params: {}, satkerList: [] }; (C.DETAIL_FIELDS[j] || []).forEach(function (f) { if (f.def) d.params[f.key] = f.def; }); fs.details.push(d); U.$('#newJenis', m.el).value = ''; drawDetails(); };
     }
     function readDetails() { // sinkronkan DOM -> fs.details
@@ -209,15 +217,15 @@
       var box = U.$('#dets', m.el), noSatker = !g('kdsatker').trim();
       box.innerHTML = fs.details.length ? fs.details.map(function (d) {
         var fields = C.DETAIL_FIELDS[d.jenis] || [];
-        return '<div class="dt" data-dk="' + d._k + '"><div class="dt-h"><b>' + esc(d.jenis) + '</b><span class="row"><span class="small muted" data-info></span><button class="btn sm d" data-del="' + d._k + '">Hapus detail</button></span></div><div class="fg">' + fields.map(function (f) { return fieldHtml(f, d.params[f.key], 'd' + d._k); }).join('') +
-          (noSatker ? '<div class="fld full"><label class="req">Daftar kode satker (satu per baris)</label><textarea data-sl rows="3">' + esc((d.satkerList || []).join('\n')) + '</textarea><span class="hint">Pengajuan tanpa kode satker harus merinci satker pada tiap detail.</span></div>' : '') + '</div></div>';
-      }).join('') : '<div class="empty small">Belum ada detail. Pengajuan boleh disimpan tanpa detail, tetapi baru dapat menjadi kandidat Master Exception setelah detail dilengkapi.</div>';
+        return '<div class="dt" data-dk="' + d._k + '"><div class="dt-h"><b>' + esc(C.JENIS_LABEL[d.jenis] || d.jenis) + '</b><span class="row"><span class="small muted" data-info></span><button class="btn sm d" data-del="' + d._k + '">Hapus mekanisme</button></span></div><div class="small mekline" data-mek style="margin:2px 0 8px"></div><div class="fg">' + fields.map(function (f) { return fieldHtml(f, d.params[f.key], 'd' + d._k); }).join('') +
+          (noSatker ? '<div class="fld full"><label class="req">Daftar kode satker untuk mekanisme ini (satu per baris)</label><textarea data-sl rows="3">' + esc((d.satkerList || []).join('\n')) + '</textarea><span class="hint">Pengajuan tanpa kode satker harus merinci satker pada tiap detail.</span></div>' : '') + '</div></div>';
+      }).join('') : '<div class="empty small">Belum ada mekanisme. Pengajuan boleh disimpan tanpa mekanisme, tetapi baru dapat menjadi kandidat Master Exception setelah mekanismenya dilengkapi.</div>';
       U.$$('[data-del]', box).forEach(function (b) { b.onclick = function () { readDetails(); var k = +b.dataset.del, d = fs.details.filter(function (x) { return x._k === k; })[0]; if (d.id) fs.removed.push(d.id); fs.details = fs.details.filter(function (x) { return x._k !== k; }); drawDetails(); }; });
       U.$$('[data-dk]', box).forEach(function (b) { b.addEventListener('input', refreshInfo); b.addEventListener('change', refreshInfo); });
       refreshInfo();
     }
     function pseudoP() {
-      var o = {}; ['ta', 'tw', 'tanggalInput', 'jalur', 'submitter', 'nomorND', 'tanggalND', 'nomorDokumen', 'kdsatker', 'namaSatker', 'kdkppn', 'namaKL', 'kl', 'satkerRingkasan', 'indikator', 'komponen', 'status', 'keterangan', 'alasanPenolakan', 'kronologis', 'perbaikan'].forEach(function (k) { o[k] = S(g(k)).trim(); });
+      var o = {}; ['ta', 'tw', 'tanggalInput', 'jalur', 'mekanismeUraian', 'submitter', 'nomorND', 'tanggalND', 'nomorDokumen', 'kdsatker', 'namaSatker', 'kdkppn', 'namaKL', 'kl', 'satkerRingkasan', 'indikator', 'komponen', 'status', 'keterangan', 'alasanPenolakan', 'kronologis', 'perbaikan'].forEach(function (k) { o[k] = S(g(k)).trim(); });
       o.tw = o.tw ? +o.tw : null; o.pooling = C.isPooling(o.keterangan); o.kdsatker = o.kdsatker || null; return o;
     }
     function refreshInfo() {
@@ -225,6 +233,7 @@
       fs.details.forEach(function (d) {
         var box = U.$('[data-dk="' + d._k + '"] [data-info]', m.el); if (!box) return; var ex = C.expandDetail({ id: d.id || 'x' + d._k, jenis: d.jenis, params: d.params, satkerList: d.satkerList }, p);
         var bad = ex.errors.length + ex.rows.filter(function (r) { return r.errors.length; }).length;
+        var mk = U.$('[data-dk="' + d._k + '"] [data-mek]', m.el); if (mk) mk.innerHTML = '<b>Ringkasan:</b> ' + esc(C.describeDetail({ jenis: d.jenis, params: d.params, satkerList: d.satkerList }));
         box.innerHTML = ex.rows.length + ' baris Master Exception · ' + (bad ? '<span style="color:var(--w);font-weight:600">' + bad + ' perlu dilengkapi</span>' : '<span style="color:var(--g);font-weight:600">lengkap</span>');
       });
     }
@@ -264,16 +273,12 @@
       return { list: list, p: p };
     }
     function doSave(p) {
-      var btn = U.$('#fSave', m.el); btn.disabled = true; readDetails();
+      var btn = U.$('#fSave', m.el); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Menyimpan…'; readDetails();
       var base = Object.assign({}, fs.p, p, { twSumber: p.tw ? (fs.p.tw === p.tw ? (fs.p.twSumber || 'MANUAL') : 'MANUAL') : 'BELUM' });
-      if (!base.jenis && fs.details.length) base.jenis = fs.details[0].jenis;
       var reason = isEdit ? S(g('alasanUbah')).trim() : 'Pengajuan baru';
-      U.run(st.savePengajuan(base, { expectVersion: fs.p.version, reason: reason })).then(function (saved) {
-        var chain = Promise.resolve();
-        fs.details.forEach(function (d) { var now = JSON.stringify({ j: d.jenis, p: d.params, s: d.satkerList || [] }); if (d.id && fs.orig[d.id] === now) return; chain = chain.then(function () { return st.saveDetail(saved.id, { id: d.id, jenis: d.jenis, params: d.params, satkerList: d.satkerList }, { reason: reason }); }); });
-        fs.removed.forEach(function (did) { chain = chain.then(function () { return st.deleteDetail(saved.id, did, reason); }); });
-        return chain.then(function () { m.close(); U.toast('Pengajuan disimpan.', 's'); U.reload(); });
-      }).catch(function (e) { btn.disabled = false; var er = U.$('#formErr', m.el); er.textContent = U.errMsg(e); er.classList.remove('hide'); });
+      var dets = fs.details.map(function (d) { return { id: d.id, jenis: d.jenis, params: d.params, satkerList: d.satkerList || [] }; });
+      U.run(st.saveBundle(base, dets, fs.removed, { expectVersion: fs.p.version, reason: reason })).then(function () { m.close(); U.toast('Pengajuan disimpan' + (U.state.mode === 'sheets' ? ' ke spreadsheet.' : '.'), 's'); U.reload(); })
+        .catch(function (e) { btn.disabled = false; btn.textContent = 'Simpan'; var er = U.$('#formErr', m.el); er.textContent = U.errMsg(e); er.classList.remove('hide'); });
     }
     U.$('#fSave', m.el).onclick = function () {
       var v = validate(); var er = U.$('#formErr', m.el);
@@ -337,5 +342,93 @@
       }, function () { U.$('#iGo', m.el).disabled = false; U.$('#iGo', m.el).textContent = 'Impor ke database'; });
     };
   }
+  /* ----------------------------------------- impor daftar satker (satu berkas, banyak satker) */
+  function openBulk() {
+    var st = U.state.store, wbk = null, aoa = null, fileName = '', fileHash = '', batch = null, colMap = null, fileSize = 0;
+    var subs = U.uniq(U.state.list.map(function (x) { return x.submitter; }).concat(st.adapter.sheetNames ? st.adapter.sheetNames() : []));
+    var sel = function (id, label, opts, val, req) { return '<div class="fld"><label class="' + (req ? 'req' : '') + '" for="' + id + '">' + label + '</label><select id="' + id + '">' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (S(val) === S(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></div>'; };
+    var txt = function (id, label, val, o) { o = o || {}; return '<div class="fld' + (o.full ? ' full' : '') + '"><label class="' + (o.req ? 'req' : '') + '" for="' + id + '">' + label + '</label>' + (o.ta ? '<textarea id="' + id + '" rows="' + (o.rows || 2) + '">' + esc(val) + '</textarea>' : '<input id="' + id + '" type="' + (o.type || 'text') + '" value="' + esc(val) + '"' + (o.list ? ' list="' + o.list + '"' : '') + '>') + (o.hint ? '<span class="hint">' + o.hint + '</span>' : '') + '</div>'; };
+    var m = U.modal({ title: 'Impor daftar satker (Excel)', wide: true, sticky: true, body:
+      '<div class="alert i">Satu berkas Excel berisi <b>banyak satker</b>. Data pengajuan (ND, indikator, status, …) dan <b>mekanisme penyesuaian</b> diisi sekali di bawah; tiap baris Excel menjadi <b>satu pengajuan per satker</b>. Kolom Excel yang diisi (TW, indikator, status, parameter mekanisme) <b>menimpa</b> nilai default untuk satker itu. Impor idempoten: berkas yang sama tidak menggandakan data. Triwulan tidak ditebak.</div>' +
+      '<datalist id="dlSubB">' + subs.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' +
+      '<div class="sec"><h4>1 · Data pengajuan (berlaku untuk semua satker pada berkas)</h4><div class="fg">' +
+      sel('b_ta', 'Tahun anggaran', [2024, 2025, 2026, 2027].map(function (y) { return [String(y), String(y)]; }), U.state.ta, 1) +
+      sel('b_jalur', 'Jalur pengajuan', [['', '— pilih —'], ['SATKER', 'Satker'], ['ESELON_I', 'Eselon I / K/L'], ['BELUM_DIVERIFIKASI', 'Belum diverifikasi']], '', 1) +
+      txt('b_submitter', 'Nama Kanwil DJPb / Eselon I K/L', '', { req: 1, list: 'dlSubB' }) +
+      txt('b_nomorND', 'Nomor ND', '', { req: 1 }) + txt('b_tanggalND', 'Tanggal ND', '', { type: 'date' }) + txt('b_tanggalInput', 'Tanggal input', new Date().toISOString().slice(0, 10), { type: 'date', req: 1 }) +
+      sel('b_indikator', 'Indikator', [['', '— pilih —']].concat(C.INDIKATOR.map(function (i) { return [i, i]; })), '', 1) +
+      sel('b_status', 'Status', [['Disetujui', 'Disetujui'], ['Pending', 'Pending'], ['Ditolak', 'Ditolak']], 'Disetujui', 1) +
+      sel('b_tw', 'Triwulan (default)', [['', '— belum ditentukan —'], ['1', 'TW I'], ['2', 'TW II'], ['3', 'TW III'], ['4', 'TW IV']], '') +
+      txt('b_nomorDokumen', 'Nomor dokumen', '') + txt('b_keterangan', 'Keterangan', '') + txt('b_alasan', 'Alasan penolakan (bila Ditolak)', '') +
+      txt('b_kronologis', 'Kronologis', '', { ta: 1, rows: 3, full: 1 }) +
+      '</div><div class="alert i small" id="bHint" style="margin-top:8px"></div></div>' +
+      '<div class="sec"><h4>2 · Mekanisme penyesuaian (default untuk semua satker)</h4><div class="fg">' +
+      '<div class="fld"><label for="b_jenis">Jenis mekanisme</label><select id="b_jenis"><option value="">— tanpa mekanisme terstruktur —</option>' + JENIS_ORDER.map(function (j) { return '<option value="' + esc(j) + '">' + esc(C.JENIS_LABEL[j] || j) + '</option>'; }).join('') + '</select></div>' +
+      txt('b_uraian', 'Uraian mekanisme (teks bebas, opsional)', '', { ta: 1, rows: 2, full: 1 }) + '</div><div id="bMech" class="fg" style="margin-top:8px"></div></div>' +
+      '<div class="sec"><h4>3 · Berkas Excel daftar satker</h4><div class="fg"><div class="fld"><label class="req">Berkas .xlsx</label><input type="file" id="b_file" accept=".xlsx,.xls,.xlsm"></div><div class="fld"><label>Sheet</label><select id="b_sheet"></select></div>' +
+      '<div class="fld"><label>Belum punya berkas?</label><button class="btn" id="b_tpl" type="button">Unduh templat kosong</button><span class="hint">Berisi judul kolom saja (tanpa data contoh).</span></div></div><div id="bMap"></div><div id="bPrev"></div></div>' +
+      '<div id="bErr" class="alert e hide"></div>', footer: '<button class="btn" data-x="close">Tutup</button><button class="btn p" id="b_go" disabled>Impor ke spreadsheet</button>' });
+    var $ = function (sel0) { return U.$(sel0, m.el); }, val = function (id) { return S($('#' + id).value).trim(); };
+
+    function drawMech() {
+      var j = val('b_jenis'), box = $('#bMech'); box.innerHTML = j ? (C.DETAIL_FIELDS[j] || []).filter(function (f) { return f.key !== 'thang'; }).map(function (f) { return fieldHtml(f, undefined, 'bm'); }).join('') + '<div class="fld full small muted">Isi nilai default; kolom Excel dengan judul yang sama (mis. “Kode kegiatan”) menimpa per satker.</div>' : '';
+      U.$$('[data-k]', box).forEach(function (el) { el.addEventListener('input', reparse); el.addEventListener('change', reparse); });
+      reparse();
+    }
+    function hint() {
+      var j = val('b_jalur'), nm = C.eselonSheetName(val('b_submitter'));
+      $('#bHint').innerHTML = j === 'ESELON_I' ? (nm ? 'Disimpan di sheet <b>' + esc(nm) + '</b> (dibuat otomatis bila belum ada).' : 'Jalur Eselon I: isi nama Eselon I — nama itu menjadi nama sheet.') : (j ? 'Disimpan di sheet <b>Sheet1</b>.' : 'Pilih jalur pengajuan (tidak ditebak).');
+    }
+    function common() {
+      return { ta: val('b_ta'), tw: val('b_tw') || null, tanggalInput: val('b_tanggalInput'), jalur: val('b_jalur'), submitter: val('b_submitter'), nomorND: val('b_nomorND'), tanggalND: val('b_tanggalND'), indikator: val('b_indikator'), status: val('b_status'), keterangan: val('b_keterangan'), nomorDokumen: val('b_nomorDokumen'), alasanPenolakan: val('b_alasan'), kronologis: val('b_kronologis'), mekanismeUraian: val('b_uraian'), komponen: '', perbaikan: '' };
+    }
+    function mech() { var j = val('b_jenis'); if (!j) return null; var params = {}; U.$$('#bMech [data-k]', m.el).forEach(function (el) { if (S(el.value) !== '') params[el.dataset.k] = el.value; }); return { jenis: j, params: params }; }
+    function reparse() {
+      hint(); var err = $('#bErr'); err.classList.add('hide');
+      if (!aoa) { $('#b_go').disabled = true; return; }
+      var com = common(), mc = mech(), existing = st.adapter.existingIds ? st.adapter.existingIds() : {};
+      U.state.list.forEach(function (x) { existing[x.id] = 1; });
+      batch = C.buildSatkerBatch(aoa, { common: com, mech: mc, colMap: colMap, lookup: U.satkerInfo, existingIds: existing });
+      var hdr = aoa[0] || [], fields = C.bulkFields(mc && mc.jenis);
+      $('#bMap').innerHTML = '<details' + (batch.missing.length ? ' open' : '') + '><summary><b>Pemetaan kolom</b> ' + (batch.missing.length ? '<span class="badge b-no">kolom Kode Satker belum terpetakan</span>' : '<span class="badge b-ok">otomatis dari judul kolom</span>') + '</summary><div class="fg" style="margin-top:8px">' +
+        fields.map(function (f) { return '<div class="fld"><label>' + esc(f.label) + (f.req ? ' *' : '') + '</label><select data-bmap="' + esc(f.key) + '"><option value="">— tidak dipakai —</option>' + hdr.map(function (h, i) { return '<option value="' + i + '"' + (batch.map[f.key] === i ? ' selected' : '') + '>' + C.colLetter(i) + ' · ' + esc(S(h)) + '</option>'; }).join('') + '</select></div>'; }).join('') + '</div></details>';
+      U.$$('[data-bmap]', m.el).forEach(function (x) { x.onchange = function () { colMap = Object.assign({}, batch.map); U.$$('[data-bmap]', m.el).forEach(function (y) { if (y.value === '') delete colMap[y.dataset.bmap]; else colMap[y.dataset.bmap] = +y.value; }); reparse(); }; });
+      var sm = batch.summary, rows = batch.rows;
+      var commonErr = st.validatePengajuan(Object.assign({}, com, { id: 'x', kdsatker: '000000' })).filter(function (e) { return !/^Kode satker/.test(e); });
+      $('#bPrev').innerHTML = batch.missing.length ? '' :
+        (commonErr.length ? '<div class="alert w"><b>Lengkapi data pengajuan (bagian 1):</b><ul>' + commonErr.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>' : '') +
+        '<div class="kpis" style="margin-top:10px"><div class="kpi"><div class="n">' + sm.total + '</div><div class="l">Baris terbaca</div></div><div class="kpi g"><div class="n">' + sm.baru + '</div><div class="l">Akan dibuat</div></div><div class="kpi"><div class="n">' + sm.sudahAda + '</div><div class="l">Sudah ada (dilewati)</div></div><div class="kpi w"><div class="n">' + sm.duplikatBerkas + '</div><div class="l">Ganda dalam berkas</div></div><div class="kpi r"><div class="n">' + sm.tidakValid + '</div><div class="l">Tidak valid</div></div><div class="kpi w"><div class="n">' + sm.mekanismeBelumLengkap + '</div><div class="l">Mekanisme belum lengkap</div></div><div class="kpi w"><div class="n">' + sm.tidakAdaDiDb + '</div><div class="l">Tidak ada di satker_db.js</div></div></div>' +
+        '<div class="tw" style="max-height:280px"><table><thead><tr><th>Baris</th><th>Kode satker</th><th>Nama (satker_db.js)</th><th>TW</th><th>Hasil</th><th>Catatan</th></tr></thead><tbody>' + rows.slice(0, 20).map(function (r) {
+          var cls = { BARU: 'b-ok', SUDAH_ADA: 'b-gray', DUPLIKAT_BERKAS: 'b-pend', TIDAK_VALID: 'b-no' }[r.status];
+          return '<tr><td>' + r.row + '</td><td><b>' + esc(r.kode) + '</b></td><td class="small">' + esc(r.pengajuan.namaSatker) + '</td><td>' + (r.pengajuan.tw ? 'TW' + r.pengajuan.tw : '—') + '</td><td><span class="badge ' + cls + '">' + r.status.replace('_', ' ') + '</span></td><td class="small">' + esc(r.errors.concat(r.warnings).join('; ')) + '</td></tr>';
+        }).join('') + '</tbody></table></div><p class="small muted">Menampilkan 20 baris pertama dari ' + rows.length + '.</p>';
+      $('#b_go').disabled = !(sm.baru > 0 && !commonErr.length && !batch.missing.length);
+    }
+    drawMech();
+    ['b_ta', 'b_jalur', 'b_submitter', 'b_nomorND', 'b_tanggalND', 'b_tanggalInput', 'b_indikator', 'b_status', 'b_tw', 'b_nomorDokumen', 'b_keterangan', 'b_alasan', 'b_kronologis', 'b_uraian'].forEach(function (id) { $('#' + id).addEventListener('input', reparse); $('#' + id).addEventListener('change', reparse); });
+    $('#b_jenis').onchange = function () { colMap = null; drawMech(); };
+    $('#b_tpl').onclick = function () { var j = val('b_jenis'); U.downloadAoa('Templat_Impor_Satker' + (j ? '_' + j.replace(/\s+/g, '') : '') + '.xlsx', [{ name: 'Satker', aoa: C.bulkTemplateAoa(j) }, { name: 'Petunjuk', aoa: [['Satu baris per satker. Kolom wajib: Kode Satker (6 digit).'], ['Kolom lain opsional: bila diisi, menimpa nilai default yang diisi pada formulir untuk satker tersebut.'], ['Berkas ini sengaja tidak berisi data contoh.']] }]); };
+    $('#b_file').onchange = function () {
+      var f = this.files[0]; if (!f) return; fileName = f.name; fileSize = f.size; var rd = new FileReader();
+      rd.onload = function () {
+        try {
+          wbk = C.readWorkbookAoa(XLSX, new Uint8Array(rd.result), 'array');
+          var pick = wbk.names.filter(function (n) { var a = wbk.sheets[n]; return a && a[0] && Object.keys(C.detectBulkColumns(a[0], val('b_jenis') || null)).indexOf('kode') > -1; })[0] || wbk.names[0];
+          $('#b_sheet').innerHTML = wbk.names.map(function (n) { return '<option' + (n === pick ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join(''); pickSheet();
+        } catch (e) { U.toast('Gagal membaca berkas: ' + e.message, 'e'); }
+      }; rd.readAsArrayBuffer(f);
+    };
+    function pickSheet() { var n = val('b_sheet'); aoa = wbk.sheets[n] || []; colMap = null; fileHash = C.hash(fileName + '|' + fileSize + '|' + n + '|' + JSON.stringify(aoa.slice(0, 5)) + aoa.length); reparse(); }
+    $('#b_sheet').onchange = pickSheet;
+    $('#b_go').onclick = function () {
+      var items = batch.rows.filter(function (r) { return r.status === 'BARU'; }).map(function (r) { return { pengajuan: r.pengajuan, detail: r.detail, row: r.row }; });
+      var btn = $('#b_go'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Mengirim ' + items.length + ' baris…';
+      U.run(st.importSatkerBatch(items, { file: fileName, fileHash: fileHash, ta: val('b_ta'), jenis: val('b_jenis'), reason: 'Impor daftar satker: ' + fileName })).then(function (r) {
+        m.body().insertAdjacentHTML('afterbegin', '<div class="alert s"><b>Selesai.</b> ' + r.created + ' pengajuan dibuat, ' + r.skipped + ' sudah ada (dilewati).</div>');
+        btn.textContent = 'Selesai'; U.state.ta = val('b_ta'); U.reload();
+      }, function (e) { btn.disabled = false; btn.textContent = 'Impor ke spreadsheet'; var er = $('#bErr'); er.textContent = U.errMsg(e); er.classList.remove('hide'); });
+    };
+  }
+  U.openBulk = openBulk;
   U.openImport = openImport; U.openForm = openForm;
 })();

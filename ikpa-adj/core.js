@@ -44,7 +44,7 @@
   var STATUS = { DISETUJUI: 'Disetujui', PENDING: 'Pending', DITOLAK: 'Ditolak' };
   var JALUR = { SATKER: 'SATKER', ESELON_I: 'ESELON_I', BELUM: 'BELUM_DIVERIFIKASI' };
   var OUTCOME = { IDENTIK: 'IDENTIK', POTENSI: 'POTENSI_DUPLIKAT', BARU: 'EXCEPTION_BARU', LENGKAPI: 'PERLU_DILENGKAPI' };
-  var ROLES = { ADMIN: 'admin', PENGELOLA: 'pengelola', PEMBACA: 'pembaca' };
+  var ROLES = { ADMIN: 'admin', PENGELOLA: 'pengelola', PEREKAM: 'perekam', PEMBACA: 'pembaca' };
 
   // Nilai Indikator yang teramati pada DB Sept/Okt 2026
   var INDIKATOR = [
@@ -835,7 +835,7 @@ var SHEET_ORDER = ['Deviasi', 'Deviasi_Kegiatan', 'Penyerapan', 'Revisi', 'Belan
   }
   function blankTW() { return { n: 0, status: {}, pooling: 0, indikator: [] }; }
   function compactOf(p) { // proyeksi ringkas untuk daftar/dashboard
-    return { id: p.id, ta: p.ta, tw: p.tw || null, kdsatker: p.kdsatker || null, satkerRingkasan: p.satkerRingkasan || '', namaSatker: p.namaSatker || '', kdkppn: p.kdkppn || '', kl: p.kl || '', namaKL: p.namaKL || '', submitter: p.submitter || '', nomorND: p.nomorND || '', tanggalND: p.tanggalND || '', tanggalInput: p.tanggalInput || '', indikator: p.indikator || '', jenis: p.jenis || null, status: p.status || '', keterangan: p.keterangan || '', pooling: !!p.pooling, jalur: p.jalur || JALUR.BELUM, periodeProses: p.periodeProses || '', dibatalkan: !!p.dibatalkan, detailCount: p.detailCount || 0, detailLengkap: p.detailLengkap || 0 };
+    return { id: p.id, ta: p.ta, tw: p.tw || null, kdsatker: p.kdsatker || null, satkerRingkasan: p.satkerRingkasan || '', namaSatker: p.namaSatker || '', kdkppn: p.kdkppn || '', kl: p.kl || '', namaKL: p.namaKL || '', submitter: p.submitter || '', nomorND: p.nomorND || '', tanggalND: p.tanggalND || '', tanggalInput: p.tanggalInput || '', indikator: p.indikator || '', jenis: p.jenis || null, status: p.status || '', keterangan: p.keterangan || '', pooling: !!p.pooling, jalur: p.jalur || JALUR.BELUM, periodeProses: p.periodeProses || '', dibatalkan: !!p.dibatalkan, detailCount: p.detailCount || 0, detailLengkap: p.detailLengkap || 0, mekanisme: p.mekanisme || '', sheet: p.sheet || '' };
   }
   function applyFilters(list, f) {
     f = f || {};
@@ -917,12 +917,201 @@ var SHEET_ORDER = ['Deviasi', 'Deviasi_Kegiatan', 'Penyerapan', 'Revisi', 'Belan
     return { sheets: out, names: names, missing: missing };
   }
 
+  /* ====================================================================
+   * Penyimpanan Google Sheets: kolom, konversi baris <-> pengajuan, mekanisme
+   * Sumber kebenaran pengajuan = BARIS pada spreadsheet (Sheet1 + sheet per Eselon I).
+   * Kolom A–S = format DB yang sudah berjalan (tidak diubah); kolom T dst = tambahan aplikasi.
+   * Salinan daftar kolom ini ada di apps-script/Code.gs; tes memastikan keduanya identik.
+   * ==================================================================== */
+  var SHEET_MAIN = 'Sheet1';
+  var SHEET_LEGACY_COLS = ['No', 'Tanggal Input', 'Nama Kanwil DJPb/Eselon I K/L', 'Nomor ND', 'Tanggal ND', 'Indikator', 'Kode Satker', 'Kode KPPN', 'Nomor Dokumen', 'Status', 'Keterangan', 'Alasan Penolakan', 'Komponen', 'Exception', 'Kronologis', 'Perbaikan/Catatan', 'K/L', 'Nama K/L', 'Satker'];
+  var SHEET_APP_COLS = ['ID Pengajuan', 'Jalur', 'TA', 'TW', 'Nama Satker', 'Mekanisme Penyesuaian', 'Uraian Mekanisme', 'Detail Mekanisme (JSON)', 'Meta (JSON)', 'Diperbarui Oleh', 'Diperbarui Pada', 'Versi', 'Dipindahkan Ke'];
+  var SHEET_COLS = SHEET_LEGACY_COLS.concat(SHEET_APP_COLS);
+
+  function isoToDMY(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(S(iso)); return m ? m[3] + '/' + m[2] + '/' + m[1] : S(iso); }
+  /** Nama sheet untuk jalur Eselon I = nama Eselon I (batas Google Sheets: <=100 karakter, tanpa [ ] * / \ ? :). */
+  function eselonSheetName(name) {
+    var n = S(name).replace(/[\[\]\*\/\\\?:]/g, ' ').replace(/\s+/g, ' ').replace(/^'+|'+$/g, '').trim();
+    if (n.length > 100) n = n.slice(0, 100).trim();
+    return n;
+  }
+  /** Sheet tujuan: jalur Eselon I -> sheet bernama Eselon I; selain itu (Satker / belum diverifikasi) -> Sheet1. */
+  function targetSheetOf(p) {
+    if (p.jalur === JALUR.ESELON_I) { var n = eselonSheetName(p.submitter); if (n && n.charAt(0) !== '_' && n.toLowerCase() !== SHEET_MAIN.toLowerCase()) return n; }
+    return SHEET_MAIN;
+  }
+
+  /* ---- teks mekanisme penyesuaian (untuk tabel, riwayat, dan kolom sheet) ---- */
+  var JENIS_LABEL = {
+    'Deviasi': 'Deviasi Halaman III DIPA', 'Deviasi_Kegiatan': 'Deviasi Kegiatan', 'Penyerapan': 'Penyerapan Anggaran',
+    'Revisi': 'Revisi DIPA', 'Belanja Kontraktual': 'Belanja Kontraktual', 'Tagihan': 'Penyelesaian Tagihan',
+    'UP TUP': 'Pengelolaan UP dan TUP', 'Penyerapan_100': 'Penyerapan = 100', 'Deviasi_tertimbang': 'Deviasi Tertimbang'
+  };
+  function bulanRange(a, b) {
+    var x = normMonth(a), y = normMonth(b);
+    if (!x && !y) return '';
+    if (x && (!y || x === y)) return MONTHS_ID[x - 1];
+    return (x ? MONTHS_ID[x - 1] : '?') + '–' + (y ? MONTHS_ID[y - 1] : '?');
+  }
+  /** Contoh: "Deviasi Kegiatan — Kegiatan 7717 (Program 14506GM), Jenis belanja 52, TW2". Hanya merangkum isian; tidak menambah informasi. */
+  function describeDetail(d) {
+    var p = (d && d.params) || {}, j = d && d.jenis, parts = [], q = '?';
+    var add = function (label, v) { var t = S(v); parts.push(label + ' ' + (t === '' ? q : t)); };
+    switch (j) {
+      case 'Deviasi': parts.push(S(p.periode) || 'TW ?'); if (!isBlank(p.revision_number)) parts.push('revisi ke-' + S(p.revision_number)); break;
+      case 'Deviasi_Kegiatan': {
+        var tws = [1, 2, 3, 4].filter(function (i) { return S(p['tw' + i]).toUpperCase() === 'Y'; }).map(function (i) { return 'TW' + i; });
+        add('Kegiatan', p.kegiatan); if (!isBlank(p.program)) parts[parts.length - 1] += ' (Program ' + S(p.program) + ')';
+        add('Jenis belanja', p.jenis_belanja); parts.push(tws.length ? tws.join(', ') : 'TW ?'); break;
+      }
+      case 'Penyerapan': add('Program', p.program); add('Output', p.output); add('Jenis belanja', p.jenis_belanja); parts.push(bulanRange(p.bulan_awal, p.bulan_akhir) || 'bulan ?'); break;
+      case 'Revisi': add('Revisi ke-', p.revision_no); parts[parts.length - 1] = parts[parts.length - 1].replace('ke- ', 'ke-'); add('Jenis revisi', p.kdjnsrevisi); break;
+      case 'Belanja Kontraktual': add('Kontrak', p.no_kontrak); if (!isBlank(p.tanggal_kontrak)) parts.push('tgl ' + S(p.tanggal_kontrak)); break;
+      case 'Tagihan': add('SPM', p.no_spm); break;
+      case 'UP TUP': add('SP2D', p.no_sp2d); break;
+      case 'Penyerapan_100': parts.push(S(p.periode) || 'TW ?'); break;
+      case 'Deviasi_tertimbang': add('Jenis belanja', p.jenis_belanja); parts.push(bulanRange(p.bulan_awal, p.bulan_akhir) || 'bulan ?'); break;
+      default: parts.push('(jenis belum dikenal)');
+    }
+    var n = d && d.satkerList && d.satkerList.length;
+    return (JENIS_LABEL[j] || S(j)) + ' — ' + parts.join(', ') + (n ? ' (' + n + ' satker)' : '');
+  }
+  function describeDetails(list) { return (list || []).map(describeDetail).join(' | '); }
+
+  function deriveCounts(p, details) {
+    var ok = 0;
+    (details || []).forEach(function (d) { var ex = expandDetail(d, p); if (ex.rows.length && !ex.errors.length && ex.rows.every(function (x) { return !x.errors.length; })) ok++; });
+    return { detailCount: (details || []).length, detailLengkap: ok };
+  }
+
+  /* ---- pengajuan -> sel baris ---- */
+  function detailsToJson(details) {
+    return JSON.stringify((details || []).map(function (d) {
+      var o = { id: d.id, jenis: d.jenis, params: d.params || {}, satkerList: d.satkerList || [] };
+      ['version', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'].forEach(function (k) { if (d[k] !== undefined && d[k] !== null) o[k] = d[k]; });
+      return o;
+    }));
+  }
+  /** -> {header: nilai}. Server menambah/menimpa: No, Diperbarui Oleh/Pada, Versi. Tanggal ditulis dd/mm/yyyy. */
+  function recordToCells(p, details) {
+    details = details || [];
+    var meta = {
+      twSumber: p.twSumber || '', periodeProses: p.periodeProses || '', dibatalkan: !!p.dibatalkan, alasanBatal: p.alasanBatal || '', jenis: p.jenis || '',
+      createdAt: p.createdAt || '', createdBy: p.createdBy || '', sumberImpor: p.sumber && p.sumber.type === 'IMPOR' ? { file: p.sumber.file || '', fileHash: p.sumber.fileHash || '', baris: p.sumber.baris || '' } : null
+    };
+    var c = {};
+    c['Tanggal Input'] = isoToDMY(p.tanggalInput); c['Nama Kanwil DJPb/Eselon I K/L'] = S(p.submitter); c['Nomor ND'] = S(p.nomorND); c['Tanggal ND'] = isoToDMY(p.tanggalND);
+    c['Indikator'] = S(p.indikator); c['Kode Satker'] = S(p.kdsatker) || S(p.satkerRingkasan); c['Kode KPPN'] = S(p.kdkppn); c['Nomor Dokumen'] = S(p.nomorDokumen);
+    c['Status'] = S(p.status); c['Keterangan'] = S(p.keterangan); c['Alasan Penolakan'] = S(p.alasanPenolakan); c['Komponen'] = S(p.komponen);
+    c['Exception'] = S(p.exceptionRaw) || (details[0] ? S(details[0].jenis) : ''); c['Kronologis'] = S(p.kronologis); c['Perbaikan/Catatan'] = S(p.perbaikan);
+    c['K/L'] = S(p.kl); c['Nama K/L'] = S(p.namaKL); c['Satker'] = S(p.kdsatker);
+    c['ID Pengajuan'] = S(p.id); c['Jalur'] = S(p.jalur) || JALUR.BELUM; c['TA'] = S(p.ta); c['TW'] = p.tw ? String(p.tw) : ''; c['Nama Satker'] = S(p.namaSatker);
+    c['Mekanisme Penyesuaian'] = S(p.mekanisme) || describeDetails(details); c['Uraian Mekanisme'] = S(p.mekanismeUraian);
+    c['Detail Mekanisme (JSON)'] = details.length ? detailsToJson(details) : ''; c['Meta (JSON)'] = JSON.stringify(meta);
+    return c;
+  }
+  /** Baris sheet -> {record, details} | {error,row}. vals sejajar dengan headers. */
+  function recordFromRow(sheetName, rowNum, vals, headers, opts) {
+    opts = opts || {};
+    var cell = {}; headers.forEach(function (h, i) { cell[h] = vals[i] === undefined || vals[i] === null ? '' : vals[i]; });
+    var dataCols = SHEET_LEGACY_COLS.slice(1);
+    if (dataCols.every(function (h) { return isBlank(cell[h]); }) && isBlank(cell['ID Pengajuan'])) return null; // baris kosong
+    var tglIn = normDate(cell['Tanggal Input']), ta = S(cell['TA']) || (tglIn ? tglIn.slice(6) : '');
+    var aoaHead = SHEET_LEGACY_COLS.concat(['Nama Satker']), aoaRow = aoaHead.map(function (h) { return cell[h]; });
+    var res = parseDbRows([aoaHead, aoaRow], { ta: ta, fileName: sheetName });
+    if (!res.records.length) return { error: res.rowErrors.length ? res.rowErrors[0].errors.join('; ') : 'Baris tidak terbaca', row: rowNum, sheet: sheetName };
+    var rec = res.records[0];
+    rec.contentId = rec.id; rec.id = S(cell['ID Pengajuan']); if (!rec.id) { rec.id = 'T' + hash(sheetName + '|' + rowNum); rec.idTemp = true; }
+    var jl = S(cell['Jalur']); rec.jalur = [JALUR.SATKER, JALUR.ESELON_I, JALUR.BELUM].indexOf(jl) > -1 ? jl : JALUR.BELUM;
+    var tw = twNum(cell['TW']); var meta = {}; try { meta = cell['Meta (JSON)'] ? JSON.parse(cell['Meta (JSON)']) : {}; } catch (e) { rec.warnings.push('Kolom Meta (JSON) rusak; diabaikan'); }
+    rec.tw = tw || null; rec.twSumber = tw ? (meta.twSumber || 'MANUAL') : 'BELUM';
+    var details = []; try { details = cell['Detail Mekanisme (JSON)'] ? JSON.parse(cell['Detail Mekanisme (JSON)']) : []; } catch (e) { rec.warnings.push('Kolom Detail Mekanisme (JSON) rusak; detail tidak dimuat'); }
+    if (!Array.isArray(details)) details = [];
+    details = details.filter(function (d) { return d && d.id && d.jenis; });
+    if (details.length) rec.jenis = details[0].jenis;
+    rec.mekanisme = S(cell['Mekanisme Penyesuaian']); rec.mekanismeUraian = S(cell['Uraian Mekanisme']);
+    rec.version = Number(cell['Versi']) || 1; rec.updatedBy = S(cell['Diperbarui Oleh']); rec.updatedAt = S(cell['Diperbarui Pada']);
+    ['periodeProses', 'alasanBatal', 'createdAt', 'createdBy'].forEach(function (k) { if (meta[k]) rec[k] = meta[k]; });
+    rec.dibatalkan = !!meta.dibatalkan; if (meta.jenis && !details.length) rec.jenis = rec.jenis || meta.jenis;
+    if (meta.sumberImpor) rec.sumber = { type: 'IMPOR', file: meta.sumberImpor.file || '', fileHash: meta.sumberImpor.fileHash || '', baris: meta.sumberImpor.baris || '' };
+    else rec.sumber = { type: 'SHEET', sheet: sheetName, baris: rowNum };
+    var kd = rec.kdsatker, info = kd && opts.satkerLookup ? opts.satkerLookup(kd) : null;
+    if (info) { if (!rec.namaSatker) rec.namaSatker = info.nama || ''; if (!rec.kdkppn) rec.kdkppn = info.kdkppn || ''; if (!rec.namaKL) rec.namaKL = info.kl || ''; if (!rec.kl) rec.kl = info.klKode || ''; }
+    rec.sheet = sheetName; rec.row = rowNum; rec.pooling = isPooling(rec.keterangan);
+    var dc = deriveCounts(rec, details); rec.detailCount = dc.detailCount; rec.detailLengkap = dc.detailLengkap;
+    return { record: rec, details: details };
+  }
+
+  /* ---- impor massal: satu berkas Excel berisi banyak satker ---- */
+  var BULK_BASE_FIELDS = [
+    ['kode', 'Kode Satker', ['kode satker', 'kdsatker', 'satker', 'kode']], ['namaSatker', 'Nama Satker', ['nama satker', 'nmsatker', 'nama']],
+    ['tw', 'Triwulan', ['triwulan', 'tw']], ['indikator', 'Indikator', ['indikator']], ['status', 'Status', ['status']],
+    ['keterangan', 'Keterangan', ['keterangan', 'ket']], ['nomorDokumen', 'Nomor Dokumen', ['nomor dokumen', 'dokumen']], ['alasanPenolakan', 'Alasan Penolakan', ['alasan penolakan']]
+  ];
+  function paramAliases(f) {
+    var a = [normHeader(f.label), String(f.key).toLowerCase(), String(f.key).toLowerCase().replace(/_/g, ' ')], m = /\(([^)]+)\)/.exec(f.label);
+    if (m) a.push(m[1].toLowerCase()); return a;
+  }
+  /** Daftar kolom yang dikenali untuk satu jenis mekanisme: [{key,label,aliases,req}] */
+  function bulkFields(jenis) {
+    var out = BULK_BASE_FIELDS.map(function (b) { return { key: b[0], label: b[1], aliases: b[2], req: b[0] === 'kode' }; });
+    (DETAIL_FIELDS[jenis] || []).forEach(function (f) { if (f.key === 'thang') return; out.push({ key: 'p.' + f.key, label: f.label, aliases: paramAliases(f), req: false, param: true }); });
+    return out;
+  }
+  function detectBulkColumns(header, jenis) {
+    var map = {}, used = {}, fields = bulkFields(jenis);
+    fields.forEach(function (f) {
+      for (var i = 0; i < header.length; i++) { if (used[i]) continue; if (f.aliases.indexOf(normHeader(header[i])) > -1) { map[f.key] = i; used[i] = 1; break; } }
+    });
+    return map;
+  }
+  /** Berkas kosong (hanya judul kolom) untuk diisi rekan: satu baris per satker. Tidak berisi data contoh. */
+  function bulkTemplateAoa(jenis) { return [bulkFields(jenis).map(function (f) { return f.label; })]; }
+  /** cfg: {common:{ta,tw,tanggalInput,jalur,submitter,nomorND,tanggalND,indikator,status,keterangan,nomorDokumen,alasanPenolakan,komponen,kronologis,perbaikan,mekanismeUraian},
+   *        mech:{jenis,params}|null, colMap?, lookup?(kode)->info, existingIds?:{id:1}}
+   * -> {rows:[{row,kode,errors,warnings,pengajuan,detail,status:'BARU'|'SUDAH_ADA'|'DUPLIKAT_BERKAS'|'TIDAK_VALID'}], map, summary} */
+  function buildSatkerBatch(aoa, cfg) {
+    var header = (aoa && aoa[0]) || [], jenis = cfg.mech && cfg.mech.jenis, map = cfg.colMap || detectBulkColumns(header, jenis), com = cfg.common || {};
+    var res = { rows: [], map: map, missing: map.kode === undefined ? ['Kode Satker'] : [], summary: { total: 0, baru: 0, sudahAda: 0, duplikatBerkas: 0, tidakValid: 0, mekanismeBelumLengkap: 0, tidakAdaDiDb: 0 } };
+    if (res.missing.length) return res;
+    var seen = {}, ex0 = cfg.existingIds || {};
+    for (var i = 1; i < aoa.length; i++) {
+      var row = aoa[i]; if (!row || row.every(function (c) { return isBlank(c); })) continue;
+      res.summary.total++;
+      var g = function (k) { return map[k] === undefined ? '' : row[map[k]]; };
+      var errors = [], warnings = [], ksRaw = S(g('kode')), ks = normSatker(ksRaw), kode = ks.v, info = null;
+      if (!kode) errors.push('Kode satker tidak valid: "' + ksRaw + '"');
+      else { if (ks.padded) warnings.push('Kode satker ' + ksRaw + ' dilengkapi nol di depan menjadi ' + kode + ' (verifikasi)'); info = cfg.lookup ? cfg.lookup(kode) : null; if (!info && cfg.lookup) { warnings.push('Kode satker tidak ditemukan pada satker_db.js (verifikasi)'); res.summary.tidakAdaDiDb++; } }
+      var tw = com.tw ? +com.tw : null; if (!isBlank(g('tw'))) { var tn = twNum(g('tw')); if (!tn) errors.push('Triwulan tidak valid: "' + S(g('tw')) + '"'); else tw = tn; }
+      var st = S(g('status')) || S(com.status), stNorm = st ? st.charAt(0).toUpperCase() + st.slice(1).toLowerCase() : '';
+      if ([STATUS.DISETUJUI, STATUS.PENDING, STATUS.DITOLAK].indexOf(stNorm) < 0) errors.push('Status harus Disetujui / Pending / Ditolak');
+      var ind = S(g('indikator')) || S(com.indikator); if (!ind) errors.push('Indikator kosong');
+      var ket = isBlank(g('keterangan')) ? S(com.keterangan) : S(g('keterangan')), alasan = isBlank(g('alasanPenolakan')) ? S(com.alasanPenolakan) : S(g('alasanPenolakan'));
+      if (stNorm === STATUS.DITOLAK && !alasan) errors.push('Alasan penolakan wajib untuk status Ditolak');
+      var params = Object.assign({}, (cfg.mech && cfg.mech.params) || {});
+      (DETAIL_FIELDS[jenis] || []).forEach(function (f) { var v = g('p.' + f.key); if (!isBlank(v)) params[f.key] = S(v); });
+      var p = Object.assign({}, com, { kdsatker: kode, satkerRingkasan: '', namaSatker: info ? info.nama : '', kdkppn: info ? info.kdkppn : '', namaKL: info ? info.kl : '', kl: info ? info.klKode : '', tw: tw || null, twSumber: tw ? 'IMPOR_DEFAULT' : 'BELUM', indikator: ind, status: stNorm, keterangan: ket, alasanPenolakan: alasan, nomorDokumen: isBlank(g('nomorDokumen')) ? S(com.nomorDokumen) : S(g('nomorDokumen')), pooling: isPooling(ket), jalur: com.jalur || JALUR.BELUM });
+      var key = ['BULK', S(com.ta), S(com.nomorND), S(com.tanggalND), ind, kode || ksRaw, jenis || '', JSON.stringify(params), tw || '', p.nomorDokumen].join(SEP);
+      p.id = 'P' + hash(key);
+      var detail = jenis ? { id: 'D' + hash(p.id + '|' + jenis), jenis: jenis, params: params, satkerList: [] } : null;
+      if (detail && !errors.length) { var ex = expandDetail(detail, p); var bad = ex.errors.length + ex.rows.filter(function (r) { return r.errors.length; }).length; if (bad) { warnings.push('Mekanisme belum lengkap (' + bad + ' isian perlu dilengkapi)'); res.summary.mekanismeBelumLengkap++; } }
+      var status = 'BARU';
+      if (errors.length) { status = 'TIDAK_VALID'; res.summary.tidakValid++; }
+      else if (seen[p.id]) { status = 'DUPLIKAT_BERKAS'; res.summary.duplikatBerkas++; }
+      else if (ex0[p.id]) { status = 'SUDAH_ADA'; res.summary.sudahAda++; }
+      else res.summary.baru++;
+      if (!errors.length) seen[p.id] = 1;
+      res.rows.push({ row: i + 1, kode: kode || ksRaw, errors: errors, warnings: warnings, pengajuan: p, detail: detail, status: status });
+    }
+    return res;
+  }
+
   /* ---------------------------------------------------------- hak akses */
   var PERM = {
-    baca: ['admin', 'pengelola', 'pembaca'],
-    tulisPengajuan: ['admin', 'pengelola'],
+    baca: ['admin', 'pengelola', 'perekam', 'pembaca'],
+    tulisPengajuan: ['admin', 'pengelola', 'perekam'],   // semua rekan yang terdaftar dapat merekam
     batalkanPengajuan: ['admin', 'pengelola'],
-    impor: ['admin', 'pengelola'],
+    impor: ['admin', 'pengelola', 'perekam'],
     selesaikanDuplikat: ['admin', 'pengelola'],
     bangunKandidat: ['admin', 'pengelola'],
     ekspor: ['admin', 'pengelola'],
@@ -945,6 +1134,9 @@ var SHEET_ORDER = ['Deviasi', 'Deviasi_Kegiatan', 'Penyerapan', 'Revisi', 'Belan
     detectColumns: detectColumns, parseDbRows: parseDbRows, parseMasterExceptionSheets: parseMasterExceptionSheets, excFromMeRow: excFromMeRow,
     suggestTW: suggestTW, suggestRevision: suggestRevision, parseDocCode: parseDocCode, suggestJalur: suggestJalur,
     twSummaryForSatker: twSummaryForSatker, compactOf: compactOf, applyFilters: applyFilters, kpi: kpi, groupCount: groupCount,
-    can: can, PERM: PERM, readWorkbookAoa: readWorkbookAoa, buildWorkbook: buildWorkbook, previewAgainst: previewAgainst
+    can: can, PERM: PERM, readWorkbookAoa: readWorkbookAoa, buildWorkbook: buildWorkbook, previewAgainst: previewAgainst,
+    SHEET_MAIN: SHEET_MAIN, SHEET_LEGACY_COLS: SHEET_LEGACY_COLS, SHEET_APP_COLS: SHEET_APP_COLS, SHEET_COLS: SHEET_COLS, isoToDMY: isoToDMY, eselonSheetName: eselonSheetName, targetSheetOf: targetSheetOf,
+    JENIS_LABEL: JENIS_LABEL, describeDetail: describeDetail, describeDetails: describeDetails, deriveCounts: deriveCounts, recordToCells: recordToCells, recordFromRow: recordFromRow,
+    bulkFields: bulkFields, detectBulkColumns: detectBulkColumns, bulkTemplateAoa: bulkTemplateAoa, buildSatkerBatch: buildSatkerBatch
   };
 });
