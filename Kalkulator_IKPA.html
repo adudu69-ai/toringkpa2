@@ -3748,8 +3748,9 @@
   function buildPoldaXlsx(tableRows, sheetName) {
     const COLS = IkpaCore.POLDA_COLUMNS;
     const header = ['POLDA'];
-    COLS.forEach((c) => { if (c.deduction) header.push('Nilai Akhir ' + c.label); else header.push('Nilai ' + c.label, 'Bobot', 'Nilai Akhir ' + c.label); });
-    header.push('Nilai Total', 'Konversi Bobot', 'Nilai Akhir');
+    COLS.forEach((c) => { if (!c.deduction) header.push('Nilai ' + c.label, 'Bobot', 'Nilai Akhir ' + c.label); });
+    // Dispensasi tanpa bobot: satu kolom pengurang tepat di kanan Nilai Total
+    header.push('Nilai Total', 'Nilai Akhir Dispensasi', 'Konversi Bobot', 'Nilai Akhir');
     const nCol = header.length; // 26 -> A..Z
     const lastCol = colLetter(nCol - 1);
     // gaya: 1 header, 2 angka 0.00, 3 persen, 4 angka 0.00 berlatar hijau muda, 5 teks kiri
@@ -3762,17 +3763,10 @@
       let x = cell('A' + r, S_TEXT, '<is><t>' + xmlEsc(row.group) + '</t></is>', 'inlineStr');
       const akhirRefs = [];
       const bobotRefs = [];
-      let dispAkhir = null;
       let ci = 1; // indeks kolom berikutnya (0 = A = POLDA)
       COLS.forEach((c) => {
+        if (c.deduction) return; // ditulis setelah Nilai Total
         const v = row.nilai[c.key];
-        if (c.deduction) {
-          // Dispensasi tidak berbobot: satu kolom "Nilai Akhir Dispensasi" (pengurang langsung)
-          const aL = colLetter(ci++);
-          x += cell(aL + r, S_NUMFILL, '<v>' + v + '</v>');
-          dispAkhir = aL + r;
-          return;
-        }
         const vL = colLetter(ci++), bL = colLetter(ci++), aL = colLetter(ci++);
         x += cell(vL + r, S_NUM, '<v>' + v + '</v>');
         x += cell(bL + r, S_PCT, '<v>' + c.bobot + '</v>');
@@ -3780,8 +3774,9 @@
         bobotRefs.push(bL + r);
         akhirRefs.push(aL + r);
       });
-      const zL = colLetter(ci++), kL = colLetter(ci++), nL = colLetter(ci++);
-      x += cell(zL + r, S_NUM, '<f>' + akhirRefs.join('+') + '-' + dispAkhir + '</f><v>' + row.nilaiTotal + '</v>');
+      const zL = colLetter(ci++), dL = colLetter(ci++), kL = colLetter(ci++), nL = colLetter(ci++);
+      x += cell(zL + r, S_NUM, '<f>' + akhirRefs.join('+') + '-' + dL + r + '</f><v>' + row.nilaiTotal + '</v>');
+      x += cell(dL + r, S_NUMFILL, '<v>' + row.nilai.dispensasi + '</v>');
       x += cell(kL + r, S_PCT, '<f>' + bobotRefs.join('+') + '</f><v>' + row.konversiBobot + '</v>');
       x += cell(nL + r, S_NUM, '<f>' + zL + r + '*' + kL + r + '</f><v>' + row.nilaiAkhir + '</v>');
       rowsXml += '<row r="' + r + '" spans="1:' + nCol + '">' + x + '</row>';
@@ -3884,11 +3879,11 @@
     const COLS = IkpaCore.POLDA_COLUMNS;
     let html = '<div class="results-head"><h3 style="margin:0;">Rekap Nilai IKPA per Polda — ' + esc(periodLabel(res.periodKey)) + '</h3></div>';
     html += '<div class="table-scroll"><table class="rekap"><thead><tr><th>Polda</th>' +
-      COLS.map((c) => '<th>' + esc(c.deduction ? 'Nilai Akhir ' + c.label : 'Nilai ' + c.label) + '</th>').join('') + '<th>Nilai Total</th><th>Nilai Akhir</th></tr></thead><tbody>';
+      COLS.filter((c) => !c.deduction).map((c) => '<th>Nilai ' + esc(c.label) + '</th>').join('') + '<th>Nilai Total</th><th>Nilai Akhir Dispensasi</th><th>Nilai Akhir</th></tr></thead><tbody>';
     res.table.rows.forEach((r) => {
       html += '<tr' + (r.group === 'TOTAL' ? ' class="total-row"' : '') + '><td>' + esc(r.group === 'TOTAL' ? 'TOTAL (seluruh kelompok)' : r.group) + '</td>' +
-        COLS.map((c) => '<td class="num">' + fmt2(r.nilai[c.key]) + '</td>').join('') +
-        '<td class="num">' + fmt2(r.nilaiTotal) + '</td><td class="num highlight">' + fmt2(r.nilaiAkhir) + '</td></tr>';
+        COLS.filter((c) => !c.deduction).map((c) => '<td class="num">' + fmt2(r.nilai[c.key]) + '</td>').join('') +
+        '<td class="num">' + fmt2(r.nilaiTotal) + '</td><td class="num">' + fmt2(r.nilai.dispensasi) + '</td><td class="num highlight">' + fmt2(r.nilaiAkhir) + '</td></tr>';
     });
     html += '</tbody></table></div>';
     if (res.table.kosong.length) {
