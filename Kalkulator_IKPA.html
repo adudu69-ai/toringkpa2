@@ -2707,8 +2707,13 @@
       if (btn) btn.setAttribute('aria-selected', active ? 'true' : 'false');
       if (panel) panel.style.display = active ? '' : 'none';
     });
-    if (location.hash.slice(1) !== key) {
-      history.replaceState(null, '', '#' + key);
+    try {
+      if (location.hash.slice(1) !== key) {
+        history.replaceState(null, '', '#' + key);
+      }
+    } catch (e) {
+      // Di dalam iframe sandbox (mis. pratinjau Claude, about:srcdoc) replaceState
+      // ditolak browser. Tab tetap berfungsi; hanya penanda #tab di URL yang dilewati.
     }
   }
 
