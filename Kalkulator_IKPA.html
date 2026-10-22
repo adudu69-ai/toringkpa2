@@ -1274,8 +1274,9 @@
   //   * kelompok (Polda) memakai level 'k4pa' dengan daftar urutan sendiri
   //     (withGroupOrder) -- level K3 PA / K4 Kanwil diabaikan.
   // Format keluaran mengikuti lampiran "Capaian IKPA ... Per Polda":
-  //   per indikator: Nilai, Bobot, Nilai Akhir (= Nilai x Bobot); lalu
-  //   Nilai Total = SUM(Nilai Akhir) - Nilai Akhir Dispensasi,
+  //   per indikator: Nilai, Bobot, Nilai Akhir (= Nilai x Bobot); Dispensasi
+  //   tidak berbobot sehingga hanya satu kolom "Nilai Akhir Dispensasi"
+  //   (pengurang langsung); lalu Nilai Total = SUM(Nilai Akhir) - Nilai Akhir Dispensasi,
   //   Konversi Bobot = SUM(Bobot), Nilai Akhir = Nilai Total x Konversi Bobot.
   const POLDA_COLUMNS = [
     { key: 'revisiDipa', label: 'Revisi', bobot: 0.10 },
@@ -1284,7 +1285,7 @@
     { key: 'belanjaKontraktual', label: 'Kontraktual', bobot: 0.10 },
     { key: 'tagihan', label: 'Tagihan', bobot: 0.10 },
     { key: 'upTup', label: 'UP TUP', bobot: 0.10 },
-    { key: 'dispensasi', label: 'Dispensasi', bobot: 0, deduction: true },
+    { key: 'dispensasi', label: 'Dispensasi', bobot: 0, deduction: true }, // tanpa bobot: nilainya langsung pengurang (Nilai Akhir Dispensasi)
     { key: 'capaianOutput', label: 'Caput', bobot: 0.25 },
   ];
 
@@ -1405,8 +1406,8 @@
       let total = 0;
       let konversi = 0;
       for (const c of POLDA_COLUMNS) {
-        const akhir = nilai[c.key] * c.bobot;
-        if (c.deduction) total -= akhir; else total += akhir;
+        if (c.deduction) { total -= nilai[c.key]; continue; } // Dispensasi: tanpa bobot
+        total += nilai[c.key] * c.bobot;
         konversi += c.bobot;
       }
       rows.push({ group, nilai, nilaiTotal: total, konversiBobot: konversi, nilaiAkhir: total * konversi });
@@ -3747,9 +3748,9 @@
   function buildPoldaXlsx(tableRows, sheetName) {
     const COLS = IkpaCore.POLDA_COLUMNS;
     const header = ['POLDA'];
-    COLS.forEach((c) => { header.push('Nilai ' + c.label, 'Bobot', 'Nilai Akhir ' + c.label); });
+    COLS.forEach((c) => { if (c.deduction) header.push('Nilai Akhir ' + c.label); else header.push('Nilai ' + c.label, 'Bobot', 'Nilai Akhir ' + c.label); });
     header.push('Nilai Total', 'Konversi Bobot', 'Nilai Akhir');
-    const nCol = header.length; // 28 -> A..AB
+    const nCol = header.length; // 26 -> A..Z
     const lastCol = colLetter(nCol - 1);
     // gaya: 1 header, 2 angka 0.00, 3 persen, 4 angka 0.00 berlatar hijau muda, 5 teks kiri
     const S_HEAD = 1, S_NUM = 2, S_PCT = 3, S_NUMFILL = 4, S_TEXT = 5;
@@ -3762,16 +3763,24 @@
       const akhirRefs = [];
       const bobotRefs = [];
       let dispAkhir = null;
-      COLS.forEach((c, k) => {
-        const vL = colLetter(1 + 3 * k), bL = colLetter(2 + 3 * k), aL = colLetter(3 + 3 * k);
+      let ci = 1; // indeks kolom berikutnya (0 = A = POLDA)
+      COLS.forEach((c) => {
         const v = row.nilai[c.key];
+        if (c.deduction) {
+          // Dispensasi tidak berbobot: satu kolom "Nilai Akhir Dispensasi" (pengurang langsung)
+          const aL = colLetter(ci++);
+          x += cell(aL + r, S_NUMFILL, '<v>' + v + '</v>');
+          dispAkhir = aL + r;
+          return;
+        }
+        const vL = colLetter(ci++), bL = colLetter(ci++), aL = colLetter(ci++);
         x += cell(vL + r, S_NUM, '<v>' + v + '</v>');
         x += cell(bL + r, S_PCT, '<v>' + c.bobot + '</v>');
         x += cell(aL + r, S_NUMFILL, '<f>' + vL + r + '*' + bL + r + '</f><v>' + (v * c.bobot) + '</v>');
         bobotRefs.push(bL + r);
-        if (c.deduction) dispAkhir = aL + r; else akhirRefs.push(aL + r);
+        akhirRefs.push(aL + r);
       });
-      const zL = colLetter(1 + 3 * COLS.length), kL = colLetter(2 + 3 * COLS.length), nL = colLetter(3 + 3 * COLS.length);
+      const zL = colLetter(ci++), kL = colLetter(ci++), nL = colLetter(ci++);
       x += cell(zL + r, S_NUM, '<f>' + akhirRefs.join('+') + '-' + dispAkhir + '</f><v>' + row.nilaiTotal + '</v>');
       x += cell(kL + r, S_PCT, '<f>' + bobotRefs.join('+') + '</f><v>' + row.konversiBobot + '</v>');
       x += cell(nL + r, S_NUM, '<f>' + zL + r + '*' + kL + r + '</f><v>' + row.nilaiAkhir + '</v>');
@@ -3826,8 +3835,8 @@
   poldaInfo.className = 'card';
   poldaInfo.innerHTML = '<h2>Nilai IKPA Polda <span style="color:var(--ink-faint);font-weight:600;font-size:.8rem;">(K/L dengan referensi satker sendiri, mis. BA 060 Polri)</span></h2>' +
     '<div class="formula-box">Ketujuh indikator dihitung dengan metode yang sama seperti tab indikator, tetapi satker dikelompokkan per Polda menurut file referensi K/L yang Anda unggah di sini. ' +
-    'Nilai Total = Σ (Nilai × Bobot) − Nilai Akhir Dispensasi; Nilai Akhir = Nilai Total × Konversi Bobot (Σ bobot). Satker BLU dan Full Blokir mengikuti aturan tiap indikator.</div>' +
-    '<p class="level-note">Hasil diunduh dalam format Excel yang sama dengan lampiran "Capaian IKPA Per Polda" (rumus aktif, Dispensasi dapat diisi langsung di Excel — default 0, hanya relevan di Triwulan IV).</p>';
+    'Nilai Total = Σ (Nilai × Bobot) − Nilai Akhir Dispensasi (Dispensasi tidak berbobot, langsung sebagai pengurang); Nilai Akhir = Nilai Total × Konversi Bobot (Σ bobot). Satker BLU dan Full Blokir mengikuti aturan tiap indikator.</div>' +
+    '<p class="level-note">Hasil diunduh dalam format Excel yang sama dengan lampiran "Capaian IKPA Per Polda" (rumus aktif; kolom Nilai Akhir Dispensasi — tanpa bobot — dapat diisi langsung di Excel, default 0, hanya relevan di Triwulan IV).</p>';
   poldaPanel.appendChild(poldaInfo);
 
   const poldaUpload = document.createElement('div');
@@ -3875,7 +3884,7 @@
     const COLS = IkpaCore.POLDA_COLUMNS;
     let html = '<div class="results-head"><h3 style="margin:0;">Rekap Nilai IKPA per Polda — ' + esc(periodLabel(res.periodKey)) + '</h3></div>';
     html += '<div class="table-scroll"><table class="rekap"><thead><tr><th>Polda</th>' +
-      COLS.map((c) => '<th>Nilai ' + esc(c.label) + '</th>').join('') + '<th>Nilai Total</th><th>Nilai Akhir</th></tr></thead><tbody>';
+      COLS.map((c) => '<th>' + esc(c.deduction ? 'Nilai Akhir ' + c.label : 'Nilai ' + c.label) + '</th>').join('') + '<th>Nilai Total</th><th>Nilai Akhir</th></tr></thead><tbody>';
     res.table.rows.forEach((r) => {
       html += '<tr' + (r.group === 'TOTAL' ? ' class="total-row"' : '') + '><td>' + esc(r.group === 'TOTAL' ? 'TOTAL (seluruh kelompok)' : r.group) + '</td>' +
         COLS.map((c) => '<td class="num">' + fmt2(r.nilai[c.key]) + '</td>').join('') +
