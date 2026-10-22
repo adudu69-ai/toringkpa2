@@ -1265,6 +1265,156 @@
   }
 
   // =====================================================================
+  // 8b. Nilai IKPA per Polda / kelompok satker (K/L dengan referensi sendiri)
+  // =====================================================================
+  // Dipakai untuk K/L yang punya struktur satker sendiri (contoh: BA 060 Polri
+  // dengan 38 kelompok = BIDKEU I/II Mabes Polri + 36 Polda). Ketujuh indikator
+  // dihitung dengan mesin yang SAMA seperti K4 PA, hanya saja:
+  //   * referensi satker diganti file referensi K/L tsb (buildPoldaReference), dan
+  //   * kelompok (Polda) memakai level 'k4pa' dengan daftar urutan sendiri
+  //     (withGroupOrder) -- level K3 PA / K4 Kanwil diabaikan.
+  // Format keluaran mengikuti lampiran "Capaian IKPA ... Per Polda":
+  //   per indikator: Nilai, Bobot, Nilai Akhir (= Nilai x Bobot); lalu
+  //   Nilai Total = SUM(Nilai Akhir) - Nilai Akhir Dispensasi,
+  //   Konversi Bobot = SUM(Bobot), Nilai Akhir = Nilai Total x Konversi Bobot.
+  const POLDA_COLUMNS = [
+    { key: 'revisiDipa', label: 'Revisi', bobot: 0.10 },
+    { key: 'deviasi', label: 'Deviasi', bobot: 0.15 },
+    { key: 'penyerapan', label: 'Penyerapan', bobot: 0.20 },
+    { key: 'belanjaKontraktual', label: 'Kontraktual', bobot: 0.10 },
+    { key: 'tagihan', label: 'Tagihan', bobot: 0.10 },
+    { key: 'upTup', label: 'UP TUP', bobot: 0.10 },
+    { key: 'dispensasi', label: 'Dispensasi', bobot: 0, deduction: true },
+    { key: 'capaianOutput', label: 'Caput', bobot: 0.25 },
+  ];
+
+  // Membangun referensi satker dari file referensi K/L (mis. REF_List_Satker_Polri).
+  // Kolom dicari lewat NAMA header (huruf besar/kecil diabaikan):
+  //   wajib : satker_kode (atau SATKER), POLDA
+  //   opsional: satker_uraian, kanwil_kode, kanwil_uraian, STATUS (BLU / NON BLU),
+  //             PAGU DIPA, BLOKIR, FULL BLOKIR, PAGU SERIBU
+  // FULL BLOKIR / PAGU SERIBU dibaca dari teks di file; bila kolomnya kosong,
+  // dihitung dari PAGU DIPA & BLOKIR (full blokir = pagu > 0 dan blokir = pagu;
+  // pagu seribu = pagu 1.000).
+  function buildPoldaReference(aoa) {
+    if (!aoa || aoa.length < 2 || !aoa[0]) {
+      throw new Error('File referensi Polri kosong atau tidak memiliki baris data.');
+    }
+    const header = aoa[0].map((h) => (h === null || h === undefined) ? '' : cleanHeaderText(String(h)).toUpperCase());
+    const col = (...names) => {
+      for (const n of names) { const i = header.indexOf(n); if (i >= 0) return i; }
+      return -1;
+    };
+    const cKode = col('SATKER_KODE', 'SATKER');
+    const cPolda = col('POLDA');
+    if (cKode < 0 || cPolda < 0) {
+      throw new Error('File referensi Polri harus memiliki kolom "satker_kode" (atau "SATKER") dan "POLDA". Kolom yang terbaca: ' +
+        header.filter(Boolean).join(', ') + '.');
+    }
+    const cNama = col('SATKER_URAIAN');
+    const cKdKanwil = col('KANWIL_KODE');
+    const cNmKanwil = col('KANWIL_URAIAN');
+    const cStatus = col('STATUS');
+    const cPagu = col('PAGU DIPA');
+    const cBlokir = col('BLOKIR');
+    const cFb = col('FULL BLOKIR');
+    const cPs = col('PAGU SERIBU');
+
+    const satkerMap = new Map();
+    const blokirMap = new Map();
+    const buSet = new Set();
+    const groups = new Set();
+    const stats = { nSatker: 0, nBlu: 0, nFullBlokir: 0, nPaguSeribu: 0, tanpaPolda: 0, duplikat: 0 };
+    for (let i = 1; i < aoa.length; i++) {
+      const row = aoa[i];
+      if (!row || isBlank(row[cKode])) continue;
+      const code = normCode(row[cKode]);
+      const polda = isBlank(row[cPolda]) ? '' : String(row[cPolda]).trim();
+      if (!polda) { stats.tanpaPolda++; continue; }
+      if (satkerMap.has(code)) stats.duplikat++;
+      groups.add(polda);
+      satkerMap.set(code, {
+        nama: cNama >= 0 ? row[cNama] : code,
+        kdKanwil: cKdKanwil >= 0 ? padCode(row[cKdKanwil], 2) : null,
+        namaKanwil: cNmKanwil >= 0 ? row[cNmKanwil] : null,
+        seksiKanwil: null,
+        k3pa: polda,
+        k4pa: polda,
+      });
+      if (cStatus >= 0 && !isBlank(row[cStatus]) && String(row[cStatus]).trim().toUpperCase() === 'BLU') {
+        buSet.add(code);
+        stats.nBlu++;
+      }
+      const pagu = cPagu >= 0 ? num(row[cPagu]) : 0;
+      const blokir = cBlokir >= 0 ? num(row[cBlokir]) : 0;
+      let fullBlokir;
+      if (cFb >= 0 && typeof row[cFb] === 'string' && row[cFb].trim() !== '') {
+        fullBlokir = row[cFb].trim().toUpperCase() === 'FULL BLOKIR';
+      } else {
+        fullBlokir = pagu > 0 && pagu === blokir;
+      }
+      let paguSeribu;
+      if (cPs >= 0 && typeof row[cPs] === 'string' && row[cPs].trim() !== '') {
+        paguSeribu = row[cPs].trim().toUpperCase() === 'PAGU SERIBU';
+      } else {
+        paguSeribu = pagu === 1000;
+      }
+      if (fullBlokir) stats.nFullBlokir++;
+      if (paguSeribu) stats.nPaguSeribu++;
+      blokirMap.set(code, {
+        fullBlokir: fullBlokir ? 'FULL BLOKIR' : 'TIDAK FULL BLOKIR',
+        paguSeribu: paguSeribu ? 'PAGU SERIBU' : 'BUKAN PAGU SERIBU',
+      });
+    }
+    stats.nSatker = satkerMap.size;
+    const order = Array.from(groups).sort((a, b) => (a < b ? -1 : (a > b ? 1 : 0)));
+    if (!order.length) throw new Error('Tidak ada satker dengan isian POLDA pada file referensi Polri.');
+    return { ref: { satkerMap, blokirMap, buSet }, order, stats };
+  }
+
+  // Menjalankan fn() dengan daftar kelompok level 'k4pa' diganti `order`,
+  // lalu selalu mengembalikannya (compute* bersifat sinkron).
+  function withGroupOrder(order, fn) {
+    const lvl = LEVELS.find((l) => l.key === 'k4pa');
+    const saved = lvl.order;
+    lvl.order = order;
+    try { return fn(); } finally { lvl.order = saved; }
+  }
+
+  // rekapByIndikator: {revisiDipa: rekap, deviasi: rekap, ...} -- tiap rekap
+  // adalah hasil compute* (level k4pa dipakai). Dispensasi opsional:
+  // dispensasiByGroup = {namaPolda: nilai}. Mengembalikan {rows, kosong}.
+  // `kosong` mendaftar (kelompok, indikator) yang tidak punya data sehingga
+  // nilainya diisi 0 -- agar bisa ditandai ke pengguna.
+  function buildPoldaTable(rekapByIndikator, order, dispensasiByGroup) {
+    const rows = [];
+    const kosong = [];
+    for (const group of order.concat(['TOTAL'])) {
+      const nilai = {};
+      for (const c of POLDA_COLUMNS) {
+        if (c.key === 'dispensasi') {
+          const d = dispensasiByGroup ? dispensasiByGroup[group] : 0;
+          nilai.dispensasi = (typeof d === 'number' && Number.isFinite(d)) ? d : 0;
+          continue;
+        }
+        const rec = rekapByIndikator[c.key] ? rekapByIndikator[c.key].k4pa[group] : null;
+        const v = rec ? rec.nilai : null;
+        if (typeof v === 'number' && Number.isFinite(v)) nilai[c.key] = v;
+        else { nilai[c.key] = 0; if (group !== 'TOTAL') kosong.push({ group, indikator: c.key }); }
+      }
+      let total = 0;
+      let konversi = 0;
+      for (const c of POLDA_COLUMNS) {
+        const akhir = nilai[c.key] * c.bobot;
+        if (c.deduction) total -= akhir; else total += akhir;
+        konversi += c.bobot;
+      }
+      rows.push({ group, nilai, nilaiTotal: total, konversiBobot: konversi, nilaiAkhir: total * konversi });
+    }
+    return { rows, kosong };
+  }
+
+  // =====================================================================
   // 9. Nilai IKPA per KPPN / per Kanwil (langsung dari file yang sudah jadi)
   // =====================================================================
   // Some users already have a final, pre-computed "Nilai Akhir" IKPA value
@@ -1547,6 +1697,7 @@
   // ---- exports --------------------------------------------------------
 
   const IkpaCore = {
+    POLDA_COLUMNS, buildPoldaReference, withGroupOrder, buildPoldaTable,
     K4PA_ORDER, K3PA_ORDER, K4KANWIL_ORDER, KANWIL_CODE_ORDER, KANWIL_CODE_TO_NAME, KANWIL_OFFICIAL_NAMES, splitK4Kanwil, LEVELS, IKU_LEVELS, IKPA_WEIGHTS,
     TRIWULAN, resolvePeriod, monthsUpTo, checkpointsUpTo, monthLabel,
     normCode, num, padCode, headerIndex, cleanHeaderText, requireColumns, toDate, normSeksi,
@@ -1878,6 +2029,7 @@
 
   const sessionResults = {}; // defKey -> { k4pa: {...}, k3pa: {...}, k4kanwil: {...} }
   const sessionDetails = {}; // defKey -> { satkerRows, unmapped, periodKey, formulaText, deadlineLabel } (for the detailed download)
+  let capaianDeadlineGetter = null; // diisi tab Capaian Output; dipakai tab Nilai IKPA Polda
   const fileState = {}; // defKey -> { [sourceId]: File, ref: File }
   INDICATOR_DEFS.forEach((d) => { fileState[d.key] = {}; });
 
@@ -2042,6 +2194,10 @@
       onDone({ ok: false, message: 'Gagal menyusun file Excel: ' + (err && err.message ? err.message : String(err)) });
       return;
     }
+    return saveBlob(blob, filenameBase, onDone);
+  }
+
+  async function saveBlob(blob, filenameBase, onDone) {
     const downloads = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
     if (!downloads) {
       // File .html dibuka langsung di peramban (di luar Artifact): unduh lewat tautan biasa.
@@ -2520,7 +2676,7 @@
 
   const tabsEl = document.getElementById('tabs');
   const panelsEl = document.getElementById('panels');
-  const allKeys = INDICATOR_DEFS.map((d) => d.key).concat(['ikpa', 'ikpanasional', 'ikpakppn', 'ikpakanwil', 'iku']);
+  const allKeys = INDICATOR_DEFS.map((d) => d.key).concat(['ikpa', 'ikpanasional', 'ikpakppn', 'ikpakanwil', 'ikpapolda', 'iku']);
 
   function makeTabButton(key, ix, label) {
     const btn = document.createElement('button');
@@ -2539,6 +2695,7 @@
   tabsEl.appendChild(makeTabButton('ikpanasional', 'N', 'Nilai IKPA Nasional'));
   tabsEl.appendChild(makeTabButton('ikpakppn', 'K', 'Nilai IKPA KPPN'));
   tabsEl.appendChild(makeTabButton('ikpakanwil', 'W', 'Nilai IKPA Kanwil'));
+  tabsEl.appendChild(makeTabButton('ikpapolda', 'P', 'Nilai IKPA Polda'));
   tabsEl.appendChild(makeTabButton('iku', '★', 'Nilai IKU'));
 
   function selectTab(key) {
@@ -2601,6 +2758,7 @@
       // exclusive upper bound, i.e. 00:00 UTC of the following day.
       return Date.UTC(y, m - 1, d + 1);
     }
+    if (def.key === 'capaianoutput') capaianDeadlineGetter = currentDeadlineMs;
     function deadlineLabelText() {
       if (!deadlineInput || !deadlineInput.value) return null;
       const [y, m, d] = deadlineInput.value.split('-').map((n) => parseInt(n, 10));
@@ -3517,6 +3675,307 @@
       setStatus(ikuStatusEl, 'success', msg);
     } catch (err) {
       setStatus(ikuStatusEl, 'error', err && err.message ? err.message : String(err));
+    }
+  });
+
+  // ---- Nilai IKPA Polda (K/L dengan referensi satker sendiri) ---------------
+  //
+  // Menghitung ketujuh indikator dengan mesin yang sama, tetapi memakai file
+  // referensi K/L (mis. Polri BA 060) dan mengelompokkan per Polda. File sumber
+  // indikator dipakai ulang dari tab indikator bila sudah diunggah di sana.
+
+  fileState.polda = {};
+  const ROMAN_TW = { TW1: 'I', TW2: 'II', TW3: 'III', TW4: 'IV' };
+  const DEF_KEY_TO_IKPA_KEY = {};
+  Object.keys(IKPA_KEY_TO_DEF_KEY).forEach((k) => { DEF_KEY_TO_IKPA_KEY[IKPA_KEY_TO_DEF_KEY[k]] = k; });
+
+  function fmt2(v) {
+    return (typeof v === 'number' && Number.isFinite(v)) ? v.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '–';
+  }
+
+  // ---- minimal .xlsx writer (format lampiran: gaya, rumus, nilai cache) ----
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function zipStore(files) { // files: [{name, data: Uint8Array}] -> Uint8Array (tanpa kompresi)
+    const enc = new TextEncoder();
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    const u16 = (v) => [v & 255, (v >>> 8) & 255];
+    const u32 = (v) => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+    for (const f of files) {
+      const name = enc.encode(f.name);
+      const crc = crc32(f.data);
+      const local = Uint8Array.from([].concat(
+        u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21),
+        u32(crc), u32(f.data.length), u32(f.data.length), u16(name.length), u16(0)));
+      chunks.push(local, name, f.data);
+      central.push(Uint8Array.from([].concat(
+        u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21),
+        u32(crc), u32(f.data.length), u32(f.data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+      offset += local.length + name.length + f.data.length;
+    }
+    let cdSize = 0;
+    central.forEach((c) => { cdSize += c.length; });
+    const eocd = Uint8Array.from([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cdSize), u32(offset), u16(0)));
+    const all = chunks.concat(central, [eocd]);
+    const out = new Uint8Array(all.reduce((n, c) => n + c.length, 0));
+    let p = 0;
+    all.forEach((c) => { out.set(c, p); p += c.length; });
+    return out;
+  }
+  function xmlEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function colLetter(i) { // 0 -> A
+    let s = '';
+    for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
+    return s;
+  }
+
+  // Susunan kolom dan gaya mengikuti "LAMPIRAN Capaian IKPA Triwulan ... Per Polda".
+  function buildPoldaXlsx(tableRows, sheetName) {
+    const COLS = IkpaCore.POLDA_COLUMNS;
+    const header = ['POLDA'];
+    COLS.forEach((c) => { header.push('Nilai ' + c.label, 'Bobot', 'Nilai Akhir ' + c.label); });
+    header.push('Nilai Total', 'Konversi Bobot', 'Nilai Akhir');
+    const nCol = header.length; // 28 -> A..AB
+    const lastCol = colLetter(nCol - 1);
+    // gaya: 1 header, 2 angka 0.00, 3 persen, 4 angka 0.00 berlatar hijau muda, 5 teks kiri
+    const S_HEAD = 1, S_NUM = 2, S_PCT = 3, S_NUMFILL = 4, S_TEXT = 5;
+    const cell = (ref, style, inner, t) => '<c r="' + ref + '" s="' + style + '"' + (t ? ' t="' + t + '"' : '') + '>' + inner + '</c>';
+    let rowsXml = '<row r="1" spans="1:' + nCol + '" ht="60" customHeight="1">' +
+      header.map((h, i) => cell(colLetter(i) + '1', S_HEAD, '<is><t>' + xmlEsc(h) + '</t></is>', 'inlineStr')).join('') + '</row>';
+    tableRows.forEach((row, ri) => {
+      const r = ri + 2;
+      let x = cell('A' + r, S_TEXT, '<is><t>' + xmlEsc(row.group) + '</t></is>', 'inlineStr');
+      const akhirRefs = [];
+      const bobotRefs = [];
+      let dispAkhir = null;
+      COLS.forEach((c, k) => {
+        const vL = colLetter(1 + 3 * k), bL = colLetter(2 + 3 * k), aL = colLetter(3 + 3 * k);
+        const v = row.nilai[c.key];
+        x += cell(vL + r, S_NUM, '<v>' + v + '</v>');
+        x += cell(bL + r, S_PCT, '<v>' + c.bobot + '</v>');
+        x += cell(aL + r, S_NUMFILL, '<f>' + vL + r + '*' + bL + r + '</f><v>' + (v * c.bobot) + '</v>');
+        bobotRefs.push(bL + r);
+        if (c.deduction) dispAkhir = aL + r; else akhirRefs.push(aL + r);
+      });
+      const zL = colLetter(1 + 3 * COLS.length), kL = colLetter(2 + 3 * COLS.length), nL = colLetter(3 + 3 * COLS.length);
+      x += cell(zL + r, S_NUM, '<f>' + akhirRefs.join('+') + '-' + dispAkhir + '</f><v>' + row.nilaiTotal + '</v>');
+      x += cell(kL + r, S_PCT, '<f>' + bobotRefs.join('+') + '</f><v>' + row.konversiBobot + '</v>');
+      x += cell(nL + r, S_NUM, '<f>' + zL + r + '*' + kL + r + '</f><v>' + row.nilaiAkhir + '</v>');
+      rowsXml += '<row r="' + r + '" spans="1:' + nCol + '">' + x + '</row>';
+    });
+    const sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<dimension ref="A1:' + lastCol + (tableRows.length + 1) + '"/>' +
+      '<sheetViews><sheetView tabSelected="1" workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>' +
+      '<cols><col min="1" max="1" width="37.28515625" customWidth="1"/></cols>' +
+      '<sheetData>' + rowsXml + '</sheetData>' +
+      '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>';
+    const border = '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>';
+    const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<fonts count="2"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font>' +
+      '<font><b/><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>' +
+      '<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFA9D08E"/><bgColor indexed="64"/></patternFill></fill>' +
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFC6E0B4"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+      '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' + border + '</borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+      '<xf numFmtId="2" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +
+      '<xf numFmtId="9" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +
+      '<xf numFmtId="2" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/>' +
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left"/></xf></cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    const enc = new TextEncoder();
+    const safeName = xmlEsc(String(sheetName).replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 31));
+    const files = [
+      { name: '[Content_Types].xml', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
+      { name: '_rels/.rels', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
+      { name: 'xl/workbook.xml', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets><sheet name="' + safeName + '" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>') },
+      { name: 'xl/_rels/workbook.xml.rels', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
+      { name: 'xl/styles.xml', data: enc.encode(styles) },
+      { name: 'xl/worksheets/sheet1.xml', data: enc.encode(sheet) },
+    ];
+    return zipStore(files);
+  }
+
+  // ---- panel -----------------------------------------------------------------
+
+  const poldaPanel = document.createElement('section');
+  poldaPanel.id = 'panel-ikpapolda';
+  poldaPanel.className = 'panel';
+  poldaPanel.style.display = 'none';
+  poldaPanel.setAttribute('role', 'tabpanel');
+
+  const poldaInfo = document.createElement('div');
+  poldaInfo.className = 'card';
+  poldaInfo.innerHTML = '<h2>Nilai IKPA Polda <span style="color:var(--ink-faint);font-weight:600;font-size:.8rem;">(K/L dengan referensi satker sendiri, mis. BA 060 Polri)</span></h2>' +
+    '<div class="formula-box">Ketujuh indikator dihitung dengan metode yang sama seperti tab indikator, tetapi satker dikelompokkan per Polda menurut file referensi K/L yang Anda unggah di sini. ' +
+    'Nilai Total = Σ (Nilai × Bobot) − Nilai Akhir Dispensasi; Nilai Akhir = Nilai Total × Konversi Bobot (Σ bobot). Satker BLU dan Full Blokir mengikuti aturan tiap indikator.</div>' +
+    '<p class="level-note">Hasil diunduh dalam format Excel yang sama dengan lampiran "Capaian IKPA Per Polda" (rumus aktif, Dispensasi dapat diisi langsung di Excel — default 0, hanya relevan di Triwulan IV).</p>';
+  poldaPanel.appendChild(poldaInfo);
+
+  const poldaUpload = document.createElement('div');
+  poldaUpload.className = 'card';
+  poldaUpload.innerHTML = '<h3>Unggah File</h3>';
+  poldaUpload.appendChild(buildFileField('polda', {
+    id: 'ref', label: 'File Referensi Satker K/L (mis. REF List Satker Polri)',
+    hint: 'Satu sheet dengan header: satker_kode (atau SATKER), POLDA; opsional satker_uraian, kanwil_kode, kanwil_uraian, STATUS (BLU / NON BLU), PAGU DIPA, BLOKIR, FULL BLOKIR, PAGU SERIBU. Urutan Polda mengikuti abjad.',
+  }));
+  const poldaSrcDetails = document.createElement('details');
+  poldaSrcDetails.className = 'field';
+  poldaSrcDetails.innerHTML = '<summary class="field-label" style="cursor:pointer;">File sumber indikator (opsional — bila sudah diunggah di tab indikator, otomatis dipakai)</summary>';
+  INDICATOR_DEFS.forEach((def) => def.sources.forEach((s) => {
+    poldaSrcDetails.appendChild(buildFileField('polda', {
+      id: def.key + '__' + s.id, label: s.label + ' — ' + def.title,
+      hint: 'Kosongkan untuk memakai file yang sudah diunggah pada tab "' + def.title + '". ' + (s.hint || ''),
+    }));
+  }));
+  poldaUpload.appendChild(poldaSrcDetails);
+  const poldaCaputNote = document.createElement('p');
+  poldaCaputNote.className = 'field-hint';
+  poldaCaputNote.textContent = 'Batas Akhir Penyampaian Capaian Output mengikuti isian pada tab Capaian Output.';
+  poldaUpload.appendChild(poldaCaputNote);
+  const poldaActions = document.createElement('div');
+  poldaActions.className = 'action-row';
+  const poldaBtn = document.createElement('button');
+  poldaBtn.type = 'button';
+  poldaBtn.className = 'btn btn-primary';
+  poldaBtn.innerHTML = '<span class="spinner"></span><span>Hitung Nilai IKPA Polda</span>';
+  poldaActions.appendChild(poldaBtn);
+  poldaUpload.appendChild(poldaActions);
+  const poldaStatusEl = document.createElement('div');
+  poldaStatusEl.className = 'status';
+  poldaUpload.appendChild(poldaStatusEl);
+  poldaPanel.appendChild(poldaUpload);
+
+  const poldaResultsCard = document.createElement('div');
+  poldaResultsCard.className = 'card results-card';
+  poldaPanel.appendChild(poldaResultsCard);
+  panelsEl.appendChild(poldaPanel);
+
+  function renderPoldaResults() {
+    const res = sessionResults.ikpaPolda;
+    if (!res) { poldaResultsCard.classList.remove('show'); return; }
+    const COLS = IkpaCore.POLDA_COLUMNS;
+    let html = '<div class="results-head"><h3 style="margin:0;">Rekap Nilai IKPA per Polda — ' + esc(periodLabel(res.periodKey)) + '</h3></div>';
+    html += '<div class="table-scroll"><table class="rekap"><thead><tr><th>Polda</th>' +
+      COLS.map((c) => '<th>Nilai ' + esc(c.label) + '</th>').join('') + '<th>Nilai Total</th><th>Nilai Akhir</th></tr></thead><tbody>';
+    res.table.rows.forEach((r) => {
+      html += '<tr' + (r.group === 'TOTAL' ? ' class="total-row"' : '') + '><td>' + esc(r.group === 'TOTAL' ? 'TOTAL (seluruh kelompok)' : r.group) + '</td>' +
+        COLS.map((c) => '<td class="num">' + fmt2(r.nilai[c.key]) + '</td>').join('') +
+        '<td class="num">' + fmt2(r.nilaiTotal) + '</td><td class="num highlight">' + fmt2(r.nilaiAkhir) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    if (res.table.kosong.length) {
+      const sample = res.table.kosong.slice(0, 6).map((k) => k.group + ' / ' + (IKPA_LABELS[k.indikator] || k.indikator).replace(/ \(\d+%\)/, '')).join('; ');
+      html += '<p class="results-note" style="color:var(--warn);margin-top:10px;">Perhatian: ' + res.table.kosong.length +
+        ' kombinasi Polda–indikator tidak punya data pada file sumber (diisi 0 pada rekap/Excel): ' + esc(sample) +
+        (res.table.kosong.length > 6 ? ', …' : '') + '.</p>';
+    }
+    html += '<div class="results-foot"><span class="results-note">Excel berisi ' + (res.table.rows.length - 1) + ' baris Polda sesuai format lampiran (tanpa baris TOTAL).</span></div>';
+    poldaResultsCard.innerHTML = html;
+    const foot = poldaResultsCard.querySelector('.results-foot');
+    const dl = document.createElement('button');
+    dl.type = 'button';
+    dl.className = 'btn btn-secondary';
+    dl.innerHTML = '<span class="spinner"></span><span>Unduh Excel (Format Lampiran Per Polda)</span>';
+    foot.insertBefore(dl, foot.firstChild);
+    const dlStatus = document.createElement('div');
+    dlStatus.className = 'status';
+    poldaResultsCard.appendChild(dlStatus);
+    dl.addEventListener('click', () => {
+      clearStatus(dlStatus);
+      setBusy(dl, true);
+      const year = new Date().getFullYear();
+      const tw = ROMAN_TW[res.periodKey] || res.periodKey;
+      const bytes = buildPoldaXlsx(res.table.rows.filter((r) => r.group !== 'TOTAL'), 'IKPA Q' + res.periodKey.slice(2) + ' ' + year);
+      saveBlob(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        'LAMPIRAN_Capaian_IKPA_Triwulan_' + tw + '_TA_' + year + '_Per_Polda', (r) => {
+          setBusy(dl, false);
+          if (!r.ok && !r.silent) setStatus(dlStatus, 'error', r.message);
+        });
+    });
+    poldaResultsCard.classList.add('show');
+  }
+
+  function pickPoldaSheet(wb) {
+    for (const n of wb.SheetNames) {
+      const aoa = sheetToAOA(wb, n);
+      if (aoa.length && aoa[0] && aoa[0].some((h) => h !== null && h !== undefined && String(h).trim().toUpperCase() === 'POLDA')) return aoa;
+    }
+    throw new Error('Tidak ada sheet dengan kolom "POLDA" pada file referensi. Sheet tersedia: ' + wb.SheetNames.join(', '));
+  }
+
+  onPeriodChange(() => {
+    delete sessionResults.ikpaPolda;
+    poldaResultsCard.classList.remove('show');
+    clearStatus(poldaStatusEl);
+  });
+
+  poldaBtn.addEventListener('click', async () => {
+    clearStatus(poldaStatusEl);
+    const refFile = fileState.polda.ref;
+    const missing = [];
+    if (!refFile) missing.push('File Referensi Satker K/L');
+    const plan = INDICATOR_DEFS.map((def) => ({
+      def,
+      files: def.sources.map((s) => {
+        const f = fileState.polda[def.key + '__' + s.id] || (fileState[def.key] || {})[s.id];
+        if (!f) missing.push(s.label);
+        return f;
+      }),
+    }));
+    const deadlineMs = capaianDeadlineGetter ? capaianDeadlineGetter() : undefined;
+    if (deadlineMs === undefined) missing.push('Batas Akhir Penyampaian (tab Capaian Output)');
+    if (missing.length) {
+      setStatus(poldaStatusEl, 'error', 'Lengkapi berikut terlebih dahulu: ' + missing.join(', ') + '. File sumber dapat diunggah di tab ini (bagian "File sumber indikator") atau di tab indikatornya.');
+      return;
+    }
+    setBusy(poldaBtn, true);
+    try {
+      const refWb = await readWorkbook(refFile);
+      const { ref, order, stats } = IkpaCore.buildPoldaReference(pickPoldaSheet(refWb));
+      const rekapBy = {};
+      for (let i = 0; i < plan.length; i++) {
+        const { def, files } = plan[i];
+        setStatus(poldaStatusEl, 'info', 'Memproses ' + def.title + ' (' + (i + 1) + '/' + plan.length + ')…');
+        await new Promise((r) => setTimeout(r, 20));
+        const aoas = [];
+        for (let j = 0; j < def.sources.length; j++) {
+          const wb = await readWorkbook(files[j]);
+          const sheetName = pickSheet(wb, def.sources[j].sheetCandidates);
+          const aoa = sheetToAOA(wb, sheetName);
+          if (!aoa.length || !aoa[0] || !aoa[0].length) throw new Error(emptyAoaMessage(files[j], sheetName));
+          aoas.push(aoa);
+        }
+        const out = IkpaCore.withGroupOrder(order, () => def.compute(aoas, ref, currentPeriodKey, deadlineMs));
+        rekapBy[DEF_KEY_TO_IKPA_KEY[def.key]] = out.rekap;
+      }
+      const table = IkpaCore.buildPoldaTable(rekapBy, order, null);
+      sessionResults.ikpaPolda = { table, order, stats, periodKey: currentPeriodKey };
+      renderPoldaResults();
+      setStatus(poldaStatusEl, 'success', 'Perhitungan selesai untuk ' + periodLabel(currentPeriodKey) + ' — ' + order.length + ' kelompok Polda dari ' +
+        stats.nSatker.toLocaleString('id-ID') + ' satker referensi (BLU ' + stats.nBlu + ', Full Blokir ' + stats.nFullBlokir + ', Pagu Seribu ' + stats.nPaguSeribu + '). Satker pada file sumber yang tidak ada di referensi ini diabaikan.');
+    } catch (err) {
+      setStatus(poldaStatusEl, 'error', err && err.message ? err.message : String(err));
+    } finally {
+      setBusy(poldaBtn, false);
     }
   });
 
