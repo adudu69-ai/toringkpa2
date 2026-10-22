@@ -39,7 +39,8 @@
   .wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;}
 
   /* ---------- header ---------- */
-  .app-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:22px;flex-wrap:wrap;}
+  .app-header{display:flex;align-items:center;justify-content:space-between;gap:14px 24px;margin-bottom:6px;flex-wrap:wrap;}
+  .header-title{display:flex;align-items:center;gap:14px;}
   .badge{
     flex:none;width:46px;height:46px;border-radius:12px;
     background:linear-gradient(155deg,var(--primary),var(--accent));
@@ -59,13 +60,15 @@
 
   /* ---------- tabs ---------- */
   .tabs{
-    display:flex;gap:6px;overflow-x:auto;padding-block:4px 2px;margin-top:22px;
+    display:grid;grid-auto-flow:column;grid-template-rows:repeat(5,auto);
+    grid-auto-columns:max-content;justify-content:start;gap:6px 8px;
+    overflow-x:auto;padding-block:4px 2px;margin-top:16px;
     scrollbar-width:thin;
   }
   .tab{
-    flex:none;appearance:none;border:1px solid var(--border);background:var(--surface);
+    appearance:none;text-align:left;border:1px solid var(--border);background:var(--surface);
     color:var(--ink-soft);font:inherit;font-size:.83rem;font-weight:600;
-    padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;
+    padding:8px 14px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;
     transition:background .12s,color .12s,border-color .12s;
   }
   .tab:hover{border-color:var(--primary);color:var(--ink);}
@@ -155,10 +158,10 @@
   .table-scroll{overflow-x:auto;overflow-y:auto;max-height:520px;border:1px solid var(--border);border-radius:var(--radius-sm);}
 
   /* ---------- period (Triwulan) bar ---------- */
-  .period-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-color:var(--primary);}
-  .period-bar-label{display:flex;flex-direction:column;gap:2px;}
-  .period-bar-title{font-size:.95rem;font-weight:700;color:var(--ink);}
-  .period-bar-hint{font-size:.78rem;color:var(--ink-faint);max-width:60ch;}
+  .period-ctl{display:flex;align-items:center;justify-content:flex-end;gap:8px 12px;flex-wrap:wrap;margin-left:auto;}
+  .period-bar-title{font-size:.85rem;font-weight:700;color:var(--ink);}
+  .period-bar-hint{flex-basis:100%;text-align:right;font-size:.78rem;color:var(--accent);font-weight:600;max-width:46ch;margin-left:auto;}
+  .period-bar-hint:empty{display:none;}
   #period-switch .level-btn{font-size:.82rem;padding:8px 14px;}
 
   /* ---------- date input (Capaian Output deadline) ---------- */
@@ -199,6 +202,10 @@
     .wrap{padding-inline:16px;}
     .card{padding:16px;}
     .app-header h1{font-size:1.3rem;}
+    .period-ctl{margin-left:0;justify-content:flex-start;}
+    .period-bar-hint{text-align:left;margin-left:0;}
+    .tabs{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-columns:auto;}
+    .tab{white-space:normal;}
   }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -206,26 +213,22 @@
 
 <div class="wrap">
   <header class="app-header">
-    <div class="badge">
-      <svg viewBox="0 0 24 24"><path d="M4 19V10"/><path d="M11 19V5"/><path d="M18 19v-7"/><path d="M3 19h18"/></svg>
-    </div>
-    <div>
+    <div class="header-title">
+      <div class="badge">
+        <svg viewBox="0 0 24 24"><path d="M4 19V10"/><path d="M11 19V5"/><path d="M18 19v-7"/><path d="M3 19h18"/></svg>
+      </div>
       <h1>Kalkulator IKPA</h1>
-      <p>Menghitung 7 indikator Kinerja Pelaksanaan Anggaran dan Nilai IKPA komposit untuk triwulan pilihan Anda, sekaligus di tiga level agregasi &mdash; K3 PA, K4 PA, dan K4 Kanwil &mdash; langsung dari file sumber yang Anda unggah.</p>
+    </div>
+    <div class="period-ctl" id="period-bar">
+      <span class="period-bar-title">Periode Perhitungan</span>
+      <div class="level-switch" id="period-switch"></div>
+      <span class="period-bar-hint" role="status"></span>
     </div>
   </header>
 
   <div class="privacy-note">
     <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
     <span>Seluruh perhitungan berjalan di peramban Anda sendiri &mdash; file yang diunggah tidak dikirim atau disimpan di server mana pun. Unggah kembali file sumber dan file referensi setiap kali menjalankan perhitungan.</span>
-  </div>
-
-  <div class="period-bar card" id="period-bar">
-    <div class="period-bar-label">
-      <span class="period-bar-title">Periode Perhitungan</span>
-      <span class="period-bar-hint">Berlaku untuk seluruh indikator dan Nilai IKPA. Mengganti triwulan akan mengosongkan hasil yang sudah dihitung di sesi ini.</span>
-    </div>
-    <div class="level-switch" id="period-switch"></div>
   </div>
 
   <nav class="tabs" id="tabs" role="tablist" aria-label="Pilih indikator"></nav>
@@ -2498,7 +2501,7 @@
   }
 
   const periodHintEl = document.querySelector('.period-bar-hint');
-  const periodHintDefaultText = periodHintEl ? periodHintEl.textContent : '';
+  const periodHintDefaultText = '';
   let periodNoticeTimer = null;
   function showPeriodClearedNotice(label) {
     if (!periodHintEl) return;
