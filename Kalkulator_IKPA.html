@@ -1159,6 +1159,21 @@
   // AKUN=53 rows filtered by the MONTH of MAX_CHECK_DATE (2026, up to the
   // same end month), not the PERIODE column. Final blended Nilai capped at
   // 100 (components themselves are not capped).
+  // Nilai gabungan: komponen yang TIDAK punya data (cnt = 0) dikeluarkan dan
+  // bobot komponen yang ada dinormalisasi (sesuai kolom IK_DATA_KONTRAK pada
+  // file capaian satker). Bila ketiganya kosong -> null (indikator tidak dinilai).
+  function blendKontraktual(a) {
+    const comp1 = a.c1Cnt > 0 ? a.c1Sum / a.c1Cnt : 0;
+    const comp2 = a.c2Cnt > 0 ? a.c2Sum / a.c2Cnt : 0;
+    const comp3 = a.c3Cnt > 0 ? a.c3Sum / a.c3Cnt : 0;
+    const w1 = a.c1Cnt > 0 ? 0.2 : 0;
+    const w2 = a.c2Cnt > 0 ? 0.4 : 0;
+    const w3 = a.c3Cnt > 0 ? 0.4 : 0;
+    const wSum = w1 + w2 + w3;
+    const nilai = wSum > 0 ? Math.min((w1 * comp1 + w2 * comp2 + w3 * comp3) / wSum, 100) : null;
+    return { comp1, comp2, comp3, nilai };
+  }
+
   function computeBelanjaKontraktual(rows, ref, periodKey) {
     const targetMonth = resolvePeriod(periodKey).endMonth;
     const BK_PERIODS = new Set(monthsUpTo(targetMonth));
@@ -1201,10 +1216,7 @@
     for (const [code, a] of agg) {
       const cls = classify(code, ref);
       const included = cls.terpetakan && !cls.isBlu && !cls.isFb;
-      const comp1 = a.c1Cnt > 0 ? a.c1Sum / a.c1Cnt : 0;
-      const comp2 = a.c2Cnt > 0 ? a.c2Sum / a.c2Cnt : 0;
-      const comp3 = a.c3Cnt > 0 ? a.c3Sum / a.c3Cnt : 0;
-      const nilai = Math.min(0.2 * comp1 + 0.4 * comp2 + 0.4 * comp3, 100);
+      const { comp1, comp2, comp3, nilai } = blendKontraktual(a);
       satkerRows.push({ code, kdkppn: a.kppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
         isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan, included,
         c1Sum: a.c1Sum, c1Cnt: a.c1Cnt, c2Sum: a.c2Sum, c2Cnt: a.c2Cnt, c3Sum: a.c3Sum, c3Cnt: a.c3Cnt,
@@ -1214,10 +1226,7 @@
     }
 
     function calc(a) {
-      const comp1 = a.c1Cnt > 0 ? a.c1Sum / a.c1Cnt : 0;
-      const comp2 = a.c2Cnt > 0 ? a.c2Sum / a.c2Cnt : 0;
-      const comp3 = a.c3Cnt > 0 ? a.c3Sum / a.c3Cnt : 0;
-      const nilai = Math.min(0.2 * comp1 + 0.4 * comp2 + 0.4 * comp3, 100);
+      const { comp1, comp2, comp3, nilai } = blendKontraktual(a);
       return { nSatker: a.nSatker, comp1, comp2, comp3, nilai };
     }
     const { rekap, extraGroups } = finalizeAllLevels(byLevel, fields, calc);
@@ -1277,7 +1286,8 @@
   //   per indikator: Nilai, Bobot, Nilai Akhir (= Nilai x Bobot); Dispensasi
   //   tidak berbobot sehingga hanya satu kolom "Nilai Akhir Dispensasi"
   //   (pengurang langsung); lalu Nilai Total = SUM(Nilai Akhir) - Nilai Akhir Dispensasi,
-  //   Konversi Bobot = SUM(Bobot), Nilai Akhir = Nilai Total x Konversi Bobot.
+  //   Konversi Bobot = SUM(Bobot), Nilai Akhir = Nilai Total / Konversi Bobot
+  //   (bobot indikator yang tidak punya data = 0; bila semua dinilai, Konversi = 1).
   const POLDA_COLUMNS = [
     { key: 'revisiDipa', label: 'Revisi', bobot: 0.10 },
     { key: 'deviasi', label: 'Deviasi', bobot: 0.15 },
@@ -1398,6 +1408,7 @@
     const kosong = [];
     for (const group of order.concat(['TOTAL'])) {
       const nilai = {};
+      const nilaiAda = {};
       for (const c of POLDA_COLUMNS) {
         if (c.key === 'dispensasi') {
           const d = dispensasiByGroup ? dispensasiByGroup[group] : 0;
@@ -1406,17 +1417,26 @@
         }
         const rec = rekapByIndikator[c.key] ? rekapByIndikator[c.key].k4pa[group] : null;
         const v = rec ? rec.nilai : null;
-        if (typeof v === 'number' && Number.isFinite(v)) nilai[c.key] = v;
-        else { nilai[c.key] = 0; if (group !== 'TOTAL') kosong.push({ group, indikator: c.key }); }
+        if (typeof v === 'number' && Number.isFinite(v)) { nilai[c.key] = v; nilaiAda[c.key] = true; }
+        else { nilai[c.key] = 0; nilaiAda[c.key] = false; if (group !== 'TOTAL') kosong.push({ group, indikator: c.key }); }
       }
+      // Bobot dinamis: indikator tanpa data sama sekali pada kelompok itu (nilai
+      // null) TIDAK dinilai -> bobot 0, dan Konversi Bobot = Σ bobot yang
+      // dinilai (mis. 0,9). Nilai Akhir = Nilai Total / Konversi Bobot, sama
+      // seperti NILAI_AKHIR = NILAI_TOTAL / (KONVERSI_BOBOT/100) pada file
+      // capaian satker.
       let total = 0;
       let konversi = 0;
+      const bobot = {};
       for (const c of POLDA_COLUMNS) {
         if (c.deduction) { total -= nilai[c.key]; continue; } // Dispensasi: tanpa bobot
-        total += nilai[c.key] * c.bobot;
-        konversi += c.bobot;
+        const b = nilaiAda[c.key] ? c.bobot : 0;
+        bobot[c.key] = b;
+        total += nilai[c.key] * b;
+        konversi += b;
       }
-      rows.push({ group, nilai, nilaiTotal: total, konversiBobot: konversi, nilaiAkhir: total * konversi });
+      const nilaiAkhir = konversi > 0 ? total / konversi : 0;
+      rows.push({ group, nilai, bobot, nilaiTotal: total, konversiBobot: konversi, nilaiAkhir });
     }
     return { rows, kosong };
   }
@@ -3778,10 +3798,11 @@
       COLS.forEach((c) => {
         if (c.deduction) return; // ditulis setelah Nilai Total
         const v = row.nilai[c.key];
+        const bb = row.bobot[c.key];
         const vL = colLetter(ci++), bL = colLetter(ci++), aL = colLetter(ci++);
         x += cell(vL + r, S_NUM, '<v>' + v + '</v>');
-        x += cell(bL + r, S_PCT, '<v>' + c.bobot + '</v>');
-        x += cell(aL + r, S_NUMFILL, '<f>' + vL + r + '*' + bL + r + '</f><v>' + (v * c.bobot) + '</v>');
+        x += cell(bL + r, S_PCT, '<v>' + bb + '</v>');
+        x += cell(aL + r, S_NUMFILL, '<f>' + vL + r + '*' + bL + r + '</f><v>' + (v * bb) + '</v>');
         bobotRefs.push(bL + r);
         akhirRefs.push(aL + r);
       });
@@ -3789,7 +3810,7 @@
       x += cell(zL + r, S_NUM, '<f>' + akhirRefs.join('+') + '-' + dL + r + '</f><v>' + row.nilaiTotal + '</v>');
       x += cell(dL + r, S_NUMFILL, '<v>' + row.nilai.dispensasi + '</v>');
       x += cell(kL + r, S_PCT, '<f>' + bobotRefs.join('+') + '</f><v>' + row.konversiBobot + '</v>');
-      x += cell(nL + r, S_NUM, '<f>' + zL + r + '*' + kL + r + '</f><v>' + row.nilaiAkhir + '</v>');
+      x += cell(nL + r, S_NUM, '<f>IF(' + kL + r + '=0,0,' + zL + r + '/' + kL + r + ')</f><v>' + row.nilaiAkhir + '</v>');
       rowsXml += '<row r="' + r + '" spans="1:' + nCol + '">' + x + '</row>';
     });
     const sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -3841,7 +3862,7 @@
   poldaInfo.className = 'card';
   poldaInfo.innerHTML = '<h2>Nilai IKPA Polda <span style="color:var(--ink-faint);font-weight:600;font-size:.8rem;">(K/L dengan referensi satker sendiri, mis. BA 060 Polri)</span></h2>' +
     '<div class="formula-box">Ketujuh indikator dihitung dengan metode yang sama seperti tab indikator, tetapi satker dikelompokkan per Polda menurut file referensi K/L yang Anda unggah di sini. ' +
-    'Nilai Total = Σ (Nilai × Bobot) − Nilai Akhir Dispensasi (Dispensasi tidak berbobot, langsung sebagai pengurang); Nilai Akhir = Nilai Total × Konversi Bobot (Σ bobot). Satker BLU dan Full Blokir mengikuti aturan tiap indikator.</div>' +
+    'Nilai Total = Σ (Nilai × Bobot) − Nilai Akhir Dispensasi (Dispensasi tidak berbobot, langsung sebagai pengurang); Nilai Akhir = Nilai Total ÷ Konversi Bobot (Σ bobot indikator yang dinilai; indikator tanpa data sama sekali pada suatu Polda berbobot 0). Satker BLU dan Full Blokir mengikuti aturan tiap indikator.</div>' +
     '<p class="level-note">Hasil diunduh dalam format Excel yang sama dengan lampiran "Capaian IKPA Per Polda" (rumus aktif; kolom Nilai Akhir Dispensasi — tanpa bobot — dapat diisi langsung di Excel, default 0, hanya relevan di Triwulan IV).</p>';
   poldaPanel.appendChild(poldaInfo);
 
@@ -3922,7 +3943,8 @@
         ['Satker Full Blokir (referensi)', stats.nFullBlokir],
         ['Satker Pagu Seribu (referensi, info)', stats.nPaguSeribu],
         ['Rumus Nilai Total', 'Σ (Nilai × Bobot) − Nilai Akhir Dispensasi (Dispensasi tidak berbobot; default 0, relevan di Triwulan IV)'],
-        ['Rumus Nilai Akhir', 'Nilai Total × Konversi Bobot (Σ bobot = 100%)'],
+        ['Rumus Nilai Akhir', 'Nilai Total ÷ Konversi Bobot (Σ bobot indikator yang dinilai; = 100% bila ketujuh indikator punya data)'],
+        ['Bobot indikator tanpa data', 'Bila suatu Polda tidak punya data sama sekali pada suatu indikator, bobotnya 0 dan Konversi Bobot berkurang (sama seperti BBT_IND_* pada file capaian satker). Belanja Kontraktual: komponen yang kosong dikeluarkan dan bobot komponen yang ada dinormalisasi.'],
       ];
       indCols.forEach((c) => {
         const d = defByIkey[c.key];
@@ -4016,7 +4038,7 @@
     if (res.table.kosong.length) {
       const sample = res.table.kosong.slice(0, 6).map((k) => k.group + ' / ' + (IKPA_LABELS[k.indikator] || k.indikator).replace(/ \(\d+%\)/, '')).join('; ');
       html += '<p class="results-note" style="color:var(--warn);margin-top:10px;">Perhatian: ' + res.table.kosong.length +
-        ' kombinasi Polda–indikator tidak punya data pada file sumber (diisi 0 pada rekap/Excel): ' + esc(sample) +
+        ' kombinasi Polda–indikator tidak punya data pada file sumber (tidak dinilai: bobot 0, Konversi Bobot berkurang): ' + esc(sample) +
         (res.table.kosong.length > 6 ? ', …' : '') + '.</p>';
     }
     html += '<div class="results-foot"><span class="results-note">Excel format lampiran berisi ' + (res.table.rows.length - 1) + ' baris Polda (tanpa baris TOTAL). Rincian per Satker berisi sheet Catatan, Rekap Polda, Rincian Satker, dan rincian tiap indikator.</span></div>';
