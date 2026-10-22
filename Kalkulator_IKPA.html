@@ -1315,6 +1315,9 @@
     const cNama = col('SATKER_URAIAN');
     const cKdKanwil = col('KANWIL_KODE');
     const cNmKanwil = col('KANWIL_URAIAN');
+    const cKdKppn = col('KPPN_KODE');
+    const cNmKppn = col('KPPN_URAIAN');
+    const cKdBa = col('KEMENTERIAN_KODE');
     const cStatus = col('STATUS');
     const cPagu = col('PAGU DIPA');
     const cBlokir = col('BLOKIR');
@@ -1339,6 +1342,9 @@
         kdKanwil: cKdKanwil >= 0 ? padCode(row[cKdKanwil], 2) : null,
         namaKanwil: cNmKanwil >= 0 ? row[cNmKanwil] : null,
         seksiKanwil: null,
+        kdKppn: cKdKppn >= 0 ? padCode(row[cKdKppn], 3) : null,
+        namaKppn: cNmKppn >= 0 ? row[cNmKppn] : null,
+        kdBa: cKdBa >= 0 ? padCode(row[cKdBa], 3) : null,
         k3pa: polda,
         k4pa: polda,
       });
@@ -3878,6 +3884,152 @@
   poldaPanel.appendChild(poldaResultsCard);
   panelsEl.appendChild(poldaPanel);
 
+  // ---- Unduh Rincian per Satker (Nilai IKPA Polda) ----------------------------
+
+  const poldaDetails = {}; // defKey -> { satkerRows (terpetakan saja), formulaText, deadlineLabel, nBaca }
+  let poldaRefInfo = null; // { satkerMap, order, stats, refName }
+
+  function deadlineLabelFromMs(ms) { // ms = batas eksklusif (00:00 UTC hari berikutnya)
+    const dt = new Date(ms - 86400000);
+    return dt.getUTCDate() + ' ' + IkpaCore.monthLabel(String(dt.getUTCMonth() + 1).padStart(2, '0')) + ' ' + dt.getUTCFullYear();
+  }
+
+  async function downloadPoldaDetail(onDone) {
+    const res = sessionResults.ikpaPolda;
+    if (!res || !poldaRefInfo || !Object.keys(poldaDetails).length) {
+      onDone({ ok: false, message: 'Hitung Nilai IKPA Polda terlebih dahulu, lalu unduh rinciannya.' });
+      return;
+    }
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 30)); // beri waktu spinner tampil
+      const pk = res.periodKey;
+      const COLS = IkpaCore.POLDA_COLUMNS;
+      const indCols = COLS.filter((c) => !c.deduction);
+      const defByIkey = {};
+      INDICATOR_DEFS.forEach((d) => { defByIkey[DEF_KEY_TO_IKPA_KEY[d.key]] = d; });
+      const shortName = (ikey) => (IKPA_LABELS[ikey] || ikey).replace(/ \(\d+%\)/, '');
+      const wb = XLSX.utils.book_new();
+
+      // 1. Catatan
+      const stats = poldaRefInfo.stats;
+      const notes = [
+        ['Laporan', 'Rincian Nilai IKPA per Polda / Kelompok Satker'],
+        ['Periode', periodLabel(pk)],
+        ['File referensi', poldaRefInfo.refName || '-'],
+        ['Satker pada referensi', stats.nSatker],
+        ['Jumlah kelompok (Polda)', poldaRefInfo.order.length],
+        ['Satker BLU (referensi)', stats.nBlu],
+        ['Satker Full Blokir (referensi)', stats.nFullBlokir],
+        ['Satker Pagu Seribu (referensi, info)', stats.nPaguSeribu],
+        ['Rumus Nilai Total', 'Σ (Nilai × Bobot) − Nilai Akhir Dispensasi (Dispensasi tidak berbobot; default 0, relevan di Triwulan IV)'],
+        ['Rumus Nilai Akhir', 'Nilai Total × Konversi Bobot (Σ bobot = 100%)'],
+      ];
+      indCols.forEach((c) => {
+        const d = defByIkey[c.key];
+        const det = poldaDetails[d.key];
+        if (!det) return;
+        const rows = det.satkerRows;
+        notes.push(
+          ['— ' + d.title + ' (bobot ' + d.weightLabel + ')', det.formulaText],
+          ['   Satker Polri terbaca pada file sumber', rows.length],
+          ['   Satker diikutsertakan dalam perhitungan', rows.filter((r) => r.included).length],
+          ['   Satker BLU / Full Blokir pada file sumber', rows.filter((r) => r.isBlu).length + ' / ' + rows.filter((r) => r.isFb).length],
+        );
+        if (det.deadlineLabel) notes.push(['   Batas akhir penyampaian (paling lambat, inklusif)', det.deadlineLabel]);
+      });
+      notes.push(
+        ['Sheet "Rekap Polda"', 'Nilai per indikator, Nilai Total, Nilai Akhir Dispensasi, dan Nilai Akhir per Polda (angka yang sama dengan tabel di layar).'],
+        ['Sheet "Rincian Satker"', 'Satu baris per satker pada referensi: identitas, status BLU/Full Blokir/Pagu Seribu, dan nilai tiap indikator per satker. Sel kosong = satker tidak ada pada file sumber indikator tersebut. Nilai per satker bersifat informasi; nilai Polda dihitung dari jumlah data mentah seluruh satker yang diikutsertakan.'],
+        ['Sheet "Rincian <indikator>"', 'Rincian per satker tiap indikator: status pengecualian, komponen perhitungan, dan nilai per satker.'],
+        ['Sheet "Komponen per Polda"', 'Per indikator: nilai Polda beserta jumlah data mentah (Σ) yang dijumlahkan sebelum rumus diterapkan.'],
+        ['Dibuat pada', new Date().toLocaleString('id-ID')],
+      );
+      XLSX.utils.book_append_sheet(wb, makeNotesSheet(notes), 'Catatan');
+
+      // 2. Rekap Polda
+      {
+        const header = ['Polda'].concat(indCols.map((c) => 'Nilai ' + c.label), ['Nilai Total', 'Nilai Akhir Dispensasi', 'Konversi Bobot', 'Nilai Akhir']);
+        const kinds = [null].concat(indCols.map(() => 'num2'), ['num2', 'num2', 'num2', 'num2']);
+        const body = res.table.rows.map((r) => [r.group === 'TOTAL' ? 'TOTAL (seluruh kelompok)' : r.group]
+          .concat(indCols.map((c) => r.nilai[c.key]), [r.nilaiTotal, r.nilai.dispensasi, r.konversiBobot, r.nilaiAkhir]));
+        XLSX.utils.book_append_sheet(wb, makeSheet(header, body, kinds, [34]), 'Rekap Polda');
+      }
+
+      // 3. Rincian Satker (semua satker referensi, nilai tiap indikator)
+      {
+        const valueByDef = {};
+        indCols.forEach((c) => {
+          const d = defByIkey[c.key];
+          const m = new Map();
+          ((poldaDetails[d.key] || {}).satkerRows || []).forEach((r) => m.set(r.code, r));
+          valueByDef[c.key] = m;
+        });
+        const orderIdx = new Map(poldaRefInfo.order.map((g, i) => [g, i]));
+        const entries = Array.from(poldaRefInfo.satkerMap.entries()).map(([code, s]) => ({ code, s }));
+        entries.sort((a, b) => (orderIdx.get(a.s.k4pa) - orderIdx.get(b.s.k4pa)) || byCode(a, b));
+        const header = ['Kode Satker', 'Nama Satker', 'Kode BA', 'Polda', 'KPPN', 'Nama KPPN', 'Kanwil DJPb', 'Satker BLU', 'Full Blokir', 'Pagu Seribu (info)']
+          .concat(indCols.map((c) => 'Nilai ' + c.label), ['Disertakan dalam Perhitungan']);
+        const kinds = header.map((h, i) => (i >= 10 && i < 10 + indCols.length) ? 'num2' : null);
+        const body = entries.map(({ code, s }) => {
+          const cls = IkpaCore.classify(code, poldaRefInfo.refMaps);
+          return [IkpaCore.padCode(code, 6), s.nama, s.kdBa, s.k4pa, s.kdKppn, s.namaKppn, s.namaKanwil, yn(cls.isBlu), yn(cls.isFb), yn(cls.isPs)]
+            .concat(indCols.map((c) => { const r = valueByDef[c.key].get(code); return r ? cellValue(r.nilai) : null; }),
+              [yn(!cls.isBlu && !cls.isFb)]);
+        });
+        XLSX.utils.book_append_sheet(wb, makeSheet(header, body, kinds, [13, 42, 8, 34, 8, 20, 22, 11, 11, 16]), 'Rincian Satker');
+      }
+
+      // 4. Rincian per indikator
+      const SHEET_NAMES = { revisiDipa: 'Rincian Revisi DIPA', deviasi: 'Rincian Deviasi Hal III', penyerapan: 'Rincian Penyerapan',
+        belanjaKontraktual: 'Rincian Kontraktual', tagihan: 'Rincian Tagihan', upTup: 'Rincian UP TUP', capaianOutput: 'Rincian Capaian Output' };
+      indCols.forEach((c) => {
+        const d = defByIkey[c.key];
+        const det = poldaDetails[d.key];
+        if (!det) return;
+        const detCols = d.detailColumns(pk);
+        const rows = det.satkerRows.slice().sort(byCode);
+        const header = ['Kode Satker', 'KPPN', 'Nama Satker', 'Polda'].concat(STATUS_LABELS, detCols.map((x) => x.label));
+        const kinds = ['Kode Satker', 'KPPN', 'Nama Satker', 'Polda'].concat(STATUS_LABELS).map(() => null).concat(detCols.map((x) => x.kind));
+        const body = rows.map((r) => [IkpaCore.padCode(r.code, 6), r.kdkppn === undefined ? null : r.kdkppn, r.nama, r.k4pa]
+          .concat(statusCells(r, false), detCols.map((x) => cellValue(r[x.key], x.kind))));
+        XLSX.utils.book_append_sheet(wb, makeSheet(header, body, kinds, [13, 8, 42, 30, 10, 12, 14, 16, 14, 30]), SHEET_NAMES[c.key]);
+      });
+
+      // 5. Komponen per Polda (tabel bertumpuk per indikator)
+      {
+        const aoa = [];
+        const fmt = []; // {r, c, z}
+        indCols.forEach((c) => {
+          const d = defByIkey[c.key];
+          const rekap = res.rekapBy[c.key];
+          if (!rekap) return;
+          const level = rekap.k4pa;
+          const resultCols = getResultColumns(d, pk);
+          const totalRaw = level.TOTAL && level.TOTAL._raw ? level.TOTAL._raw : {};
+          const rawKeys = Object.keys(totalRaw).filter((k) => k !== 'nSatker');
+          aoa.push([d.title + ' (bobot ' + d.weightLabel + ')']);
+          aoa.push(['Polda'].concat(resultCols.map((x) => x.label), rawKeys.map(rawLabel)));
+          poldaRefInfo.order.concat(['TOTAL']).forEach((g) => {
+            const r = level[g] || {};
+            const raw = r._raw || {};
+            const rowIdx = aoa.length;
+            aoa.push([g === 'TOTAL' ? 'TOTAL (seluruh kelompok)' : g].concat(resultCols.map((x) => cellValue(r[x.key], x.kind)), rawKeys.map((k) => cellValue(raw[k]))));
+            resultCols.forEach((x, i) => { if (KIND_FORMAT[x.kind]) fmt.push({ r: rowIdx, c: 1 + i, z: KIND_FORMAT[x.kind] }); });
+          });
+          aoa.push([]);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        fmt.forEach((f) => { const cell = ws[XLSX.utils.encode_cell({ r: f.r, c: f.c })]; if (cell && cell.t === 'n') cell.z = f.z; });
+        ws['!cols'] = [{ wch: 34 }].concat(Array.from({ length: 24 }, () => ({ wch: 18 })));
+        XLSX.utils.book_append_sheet(wb, ws, 'Komponen per Polda');
+      }
+
+      await saveWorkbook(wb, 'Rincian_IKPA_Polda_' + pk, onDone);
+    } catch (err) {
+      onDone({ ok: false, message: 'Gagal menyusun rincian: ' + (err && err.message ? err.message : String(err)) });
+    }
+  }
+
   function renderPoldaResults() {
     const res = sessionResults.ikpaPolda;
     if (!res) { poldaResultsCard.classList.remove('show'); return; }
@@ -3897,7 +4049,7 @@
         ' kombinasi Polda–indikator tidak punya data pada file sumber (diisi 0 pada rekap/Excel): ' + esc(sample) +
         (res.table.kosong.length > 6 ? ', …' : '') + '.</p>';
     }
-    html += '<div class="results-foot"><span class="results-note">Excel berisi ' + (res.table.rows.length - 1) + ' baris Polda sesuai format lampiran (tanpa baris TOTAL).</span></div>';
+    html += '<div class="results-foot"><span class="results-note">Excel format lampiran berisi ' + (res.table.rows.length - 1) + ' baris Polda (tanpa baris TOTAL). Rincian per Satker berisi sheet Catatan, Rekap Polda, Rincian Satker, rincian tiap indikator, dan Komponen per Polda.</span></div>';
     poldaResultsCard.innerHTML = html;
     const foot = poldaResultsCard.querySelector('.results-foot');
     const dl = document.createElement('button');
@@ -3905,9 +4057,22 @@
     dl.className = 'btn btn-secondary';
     dl.innerHTML = '<span class="spinner"></span><span>Unduh Excel (Format Lampiran Per Polda)</span>';
     foot.insertBefore(dl, foot.firstChild);
+    const dlDetail = document.createElement('button');
+    dlDetail.type = 'button';
+    dlDetail.className = 'btn btn-secondary';
+    dlDetail.innerHTML = '<span class="spinner"></span><span>Unduh Rincian per Satker</span>';
+    foot.insertBefore(dlDetail, dl.nextSibling);
     const dlStatus = document.createElement('div');
     dlStatus.className = 'status';
     poldaResultsCard.appendChild(dlStatus);
+    dlDetail.addEventListener('click', async () => {
+      clearStatus(dlStatus);
+      setBusy(dlDetail, true);
+      await downloadPoldaDetail((r) => {
+        setBusy(dlDetail, false);
+        if (!r.ok && !r.silent) setStatus(dlStatus, 'error', r.message);
+      });
+    });
     dl.addEventListener('click', () => {
       clearStatus(dlStatus);
       setBusy(dl, true);
@@ -3933,6 +4098,8 @@
 
   onPeriodChange(() => {
     delete sessionResults.ikpaPolda;
+    Object.keys(poldaDetails).forEach((k) => { delete poldaDetails[k]; });
+    poldaRefInfo = null;
     poldaResultsCard.classList.remove('show');
     clearStatus(poldaStatusEl);
   });
@@ -3961,6 +4128,8 @@
       const refWb = await readWorkbook(refFile);
       const { ref, order, stats } = IkpaCore.buildPoldaReference(pickPoldaSheet(refWb));
       const rekapBy = {};
+      Object.keys(poldaDetails).forEach((k) => { delete poldaDetails[k]; });
+      const dlText = deadlineLabelFromMs(deadlineMs);
       for (let i = 0; i < plan.length; i++) {
         const { def, files } = plan[i];
         setStatus(poldaStatusEl, 'info', 'Memproses ' + def.title + ' (' + (i + 1) + '/' + plan.length + ')…');
@@ -3975,9 +4144,15 @@
         }
         const out = IkpaCore.withGroupOrder(order, () => def.compute(aoas, ref, currentPeriodKey, deadlineMs));
         rekapBy[DEF_KEY_TO_IKPA_KEY[def.key]] = out.rekap;
+        const dl = def.key === 'capaianoutput' ? dlText : null;
+        poldaDetails[def.key] = {
+          satkerRows: out.satkerRows.filter((r) => r.terpetakan), // hanya satker yang ada di referensi Polri
+          formulaText: def.formula(currentPeriodKey, dl), deadlineLabel: dl,
+        };
       }
       const table = IkpaCore.buildPoldaTable(rekapBy, order, null);
-      sessionResults.ikpaPolda = { table, order, stats, periodKey: currentPeriodKey };
+      sessionResults.ikpaPolda = { table, order, stats, periodKey: currentPeriodKey, rekapBy };
+      poldaRefInfo = { satkerMap: ref.satkerMap, refMaps: ref, order, stats, refName: refFile.name };
       renderPoldaResults();
       setStatus(poldaStatusEl, 'success', 'Perhitungan selesai untuk ' + periodLabel(currentPeriodKey) + ' — ' + order.length + ' kelompok Polda dari ' +
         stats.nSatker.toLocaleString('id-ID') + ' satker referensi (BLU ' + stats.nBlu + ', Full Blokir ' + stats.nFullBlokir + ', Pagu Seribu ' + stats.nPaguSeribu + '). Satker pada file sumber yang tidak ada di referensi ini diabaikan.');
