@@ -3941,7 +3941,6 @@
         ['Sheet "Rekap Polda"', 'Nilai per indikator, Nilai Total, Nilai Akhir Dispensasi, dan Nilai Akhir per Polda (angka yang sama dengan tabel di layar).'],
         ['Sheet "Rincian Satker"', 'Satu baris per satker pada referensi: identitas, status BLU/Full Blokir/Pagu Seribu, dan nilai tiap indikator per satker. Sel kosong = satker tidak ada pada file sumber indikator tersebut. Nilai per satker bersifat informasi; nilai Polda dihitung dari jumlah data mentah seluruh satker yang diikutsertakan.'],
         ['Sheet "Rincian <indikator>"', 'Rincian per satker tiap indikator: status pengecualian, komponen perhitungan, dan nilai per satker.'],
-        ['Sheet "Komponen per Polda"', 'Per indikator: nilai Polda beserta jumlah data mentah (Σ) yang dijumlahkan sebelum rumus diterapkan.'],
         ['Dibuat pada', new Date().toLocaleString('id-ID')],
       );
       XLSX.utils.book_append_sheet(wb, makeNotesSheet(notes), 'Catatan');
@@ -3995,35 +3994,6 @@
         XLSX.utils.book_append_sheet(wb, makeSheet(header, body, kinds, [13, 8, 42, 30, 10, 12, 14, 16, 14, 30]), SHEET_NAMES[c.key]);
       });
 
-      // 5. Komponen per Polda (tabel bertumpuk per indikator)
-      {
-        const aoa = [];
-        const fmt = []; // {r, c, z}
-        indCols.forEach((c) => {
-          const d = defByIkey[c.key];
-          const rekap = res.rekapBy[c.key];
-          if (!rekap) return;
-          const level = rekap.k4pa;
-          const resultCols = getResultColumns(d, pk);
-          const totalRaw = level.TOTAL && level.TOTAL._raw ? level.TOTAL._raw : {};
-          const rawKeys = Object.keys(totalRaw).filter((k) => k !== 'nSatker');
-          aoa.push([d.title + ' (bobot ' + d.weightLabel + ')']);
-          aoa.push(['Polda'].concat(resultCols.map((x) => x.label), rawKeys.map(rawLabel)));
-          poldaRefInfo.order.concat(['TOTAL']).forEach((g) => {
-            const r = level[g] || {};
-            const raw = r._raw || {};
-            const rowIdx = aoa.length;
-            aoa.push([g === 'TOTAL' ? 'TOTAL (seluruh kelompok)' : g].concat(resultCols.map((x) => cellValue(r[x.key], x.kind)), rawKeys.map((k) => cellValue(raw[k]))));
-            resultCols.forEach((x, i) => { if (KIND_FORMAT[x.kind]) fmt.push({ r: rowIdx, c: 1 + i, z: KIND_FORMAT[x.kind] }); });
-          });
-          aoa.push([]);
-        });
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        fmt.forEach((f) => { const cell = ws[XLSX.utils.encode_cell({ r: f.r, c: f.c })]; if (cell && cell.t === 'n') cell.z = f.z; });
-        ws['!cols'] = [{ wch: 34 }].concat(Array.from({ length: 24 }, () => ({ wch: 18 })));
-        XLSX.utils.book_append_sheet(wb, ws, 'Komponen per Polda');
-      }
-
       await saveWorkbook(wb, 'Rincian_IKPA_Polda_' + pk, onDone);
     } catch (err) {
       onDone({ ok: false, message: 'Gagal menyusun rincian: ' + (err && err.message ? err.message : String(err)) });
@@ -4049,7 +4019,7 @@
         ' kombinasi Polda–indikator tidak punya data pada file sumber (diisi 0 pada rekap/Excel): ' + esc(sample) +
         (res.table.kosong.length > 6 ? ', …' : '') + '.</p>';
     }
-    html += '<div class="results-foot"><span class="results-note">Excel format lampiran berisi ' + (res.table.rows.length - 1) + ' baris Polda (tanpa baris TOTAL). Rincian per Satker berisi sheet Catatan, Rekap Polda, Rincian Satker, rincian tiap indikator, dan Komponen per Polda.</span></div>';
+    html += '<div class="results-foot"><span class="results-note">Excel format lampiran berisi ' + (res.table.rows.length - 1) + ' baris Polda (tanpa baris TOTAL). Rincian per Satker berisi sheet Catatan, Rekap Polda, Rincian Satker, dan rincian tiap indikator.</span></div>';
     poldaResultsCard.innerHTML = html;
     const foot = poldaResultsCard.querySelector('.results-foot');
     const dl = document.createElement('button');
