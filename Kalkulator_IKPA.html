@@ -1391,6 +1391,14 @@
     const idx = headerIndex(rows);
     const need = ['KDSATKER', 'KDKPPN', 'PERIODE', 'NILAI_AKHIR'];
     requireColumns(idx, need, 'Nilai Akhir IKPA Satker');
+    // Optional extras used only by the "Rincian per Satker" download: the BA
+    // (Bagian Anggaran / K/L) code -- column "BA" in IKPA_T_CAPAIAN_SATKER_*,
+    // "KDBA" in some other exports -- and the eight IK_* indicator columns
+    // (same reader as the Nasional/Kanwil/KPPN uploads, so the scale x100 ->
+    // 0-100 and the "0 Dispensasi SPM = blank" rule are identical). A column
+    // that is absent from the file simply yields null; nothing here can make
+    // the file fail to load, and none of it feeds the Nilai IKU calculation.
+    const baCol = ('BA' in idx) ? 'BA' : (('KDBA' in idx) ? 'KDBA' : null);
     const satkerRows = [];
     const unmapped = [];
     for (let i = 1; i < rows.length; i++) {
@@ -1401,13 +1409,15 @@
       const code = normCode(row[idx.KDSATKER]);
       const kdkppn = padCode(row[idx.KDKPPN], 3);
       const nilaiAkhir = num(row[idx.NILAI_AKHIR]);
+      const kdBa = baCol ? padCode(row[idx[baCol]], 3) : null;
       const cls = classify(code, ref);
       const included = cls.terpetakan && !cls.isBlu && !cls.isFb && !cls.isPs && !cls.isDekonTp;
       satkerRows.push({
-        code, kdkppn, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
+        code, kdkppn, kdBa, nama: cls.nama, k3pa: cls.k3pa, k4pa: cls.k4pa, k4kanwil: cls.k4kanwil,
         kdKanwil: cls.kdKanwil, namaKanwil: cls.namaKanwil,
         isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, nmDekon: cls.nmDekon, isDekonTp: cls.isDekonTp,
         terpetakan: cls.terpetakan, included, nilaiAkhir,
+        indicators: readUploadIndicators(idx, row),
       });
       if (!cls.terpetakan) unmapped.push({ code, kdkppn });
     }
@@ -3045,7 +3055,7 @@
 
   const ikuSrcField = {
     id: 'src', label: 'File Nilai Akhir IKPA per Satker', sheetCandidates: ['Export Worksheet', 'Sheet1'],
-    hint: 'Kolom header: KDSATKER, KDKPPN, PERIODE, NILAI_AKHIR (Nilai Akhir IKPA per Satker).',
+    hint: 'Kolom header: KDSATKER, KDKPPN, PERIODE, NILAI_AKHIR (Nilai Akhir IKPA per Satker). Opsional, hanya untuk unduhan Rincian per Satker: BA (atau KDBA) dan IK_REVISI_DIPA, IK_HAL3_DIPA, IK_REALISASI, IK_DATA_KONTRAK, IK_KEMAJUAN_TAGIHAN, IK_UP, IK_CAPAIAN_OUTPUT, IK_DISPENSASI_SPM.',
   };
   ikuUploadCard.appendChild(buildFileField('iku', ikuSrcField));
   const ikuRefField = { id: 'ref', label: 'File Referensi Satker', hint: REF_HINT };
@@ -3276,18 +3286,33 @@
         ['Satker Pagu Seribu', rows.filter((r) => r.isPs).length],
         ['Satker Dekonsentrasi / Tugas Pembantuan', rows.filter((r) => r.isDekonTp).length],
         ['Satker tidak terpetakan pada ref satker', sat.unmapped.length],
-        ['Sheet "Rincian Satker"', 'Satu baris per Satker: identitas, status pengecualian, Nilai Akhir IKPA, dan apakah mencapai ambang. Satker yang tidak diikutsertakan tidak masuk hitungan persentase di level mana pun.'],
+        ['Sheet "Rincian Satker"', 'Satu baris per Satker: identitas (termasuk Kode BA), status pengecualian, nilai kedelapan indikator IKPA (Revisi DIPA, Deviasi Hal III DIPA, Penyerapan Anggaran, Belanja Kontraktual, Penyelesaian Tagihan, Pengelolaan UP dan TUP, Capaian Output, Dispensasi SPM), Nilai Akhir IKPA, dan apakah mencapai ambang. Satker yang tidak diikutsertakan tidak masuk hitungan persentase di level mana pun.'],
+        ['Kolom indikator & Kode BA pada "Rincian Satker"', 'Dibaca apa adanya dari kolom BA (atau KDBA) dan IK_* pada file Nilai Akhir IKPA per Satker (nilai IK_* disimpan ×100 di file, ditampilkan kembali pada skala 0–100). Tampil "–" bila kolomnya tidak ada di file, atau bila Dispensasi SPM bernilai 0. Kolom ini hanya informasi: tidak dipakai dalam perhitungan Nilai IKU.'],
         ['Sheet "Rekap ..."', 'Nilai kedelapan indikator IKPA (K3 PA/K4 PA/K4 Kanwil dari tab Nilai IKPA, kecuali Dispensasi SPM; Nasional/Kanwil/KPPN dari kolom IK_* file unggahan), Nilai IKU, Persentase, Nilai IKPA, dan Indeks per kelompok untuk keenam level.'],
         ['Dibuat pada', new Date().toLocaleString('id-ID')],
       ];
-      const header = ID_LABELS.concat(['Kode Kanwil', 'Nama Kanwil', 'NMDEKON'], STATUS_LABELS, ['Nilai Akhir IKPA', 'Nilai Akhir IKPA ≥ ' + IKU_THRESHOLD]);
-      const kinds = header.map((h) => (h === 'Nilai Akhir IKPA' ? 'num2' : null));
-      const body = rows.map((r) => idCells(r).concat(
-        [r.kdKanwil || null, r.kdKanwil ? (IkpaCore.KANWIL_CODE_TO_NAME[r.kdKanwil] || r.namaKanwil) : null, r.nmDekon || null],
-        statusCells(r, true),
-        [cellValue(r.nilaiAkhir, 'num2'), r.included ? yn(r.nilaiAkhir >= IKU_THRESHOLD) : '-']
-      ));
-      const widths = ID_WIDTHS.concat([11, 28, 24, 10, 12, 14, 16, 14, 40, 14, 14]);
+      // "Kode BA" goes right after the satker identity (Kode Satker, KPPN,
+      // Nama Satker); the eight indicator columns (Dispensasi SPM directly
+      // next to Capaian Output) sit between the exclusion status and Nilai
+      // Akhir IKPA, in the same order as the Rekap sheets / source table.
+      const indLabels = IKU_INDICATOR_ORDER.map((k) => IKU_INDICATOR_LABELS[k]);
+      const idHead = ID_LABELS.slice(0, 3).concat(['Kode BA'], ID_LABELS.slice(3));
+      const header = idHead.concat(['Kode Kanwil', 'Nama Kanwil', 'NMDEKON'], STATUS_LABELS, indLabels, ['Nilai Akhir IKPA', 'Nilai Akhir IKPA ≥ ' + IKU_THRESHOLD]);
+      const kinds = header.map((h) => ((h === 'Nilai Akhir IKPA' || indLabels.indexOf(h) !== -1) ? 'num2' : null));
+      const body = rows.map((r) => {
+        const id = idCells(r);
+        const ind = r.indicators || {};
+        // Same convention as the Rekap sheets: "–" for an indicator the
+        // uploaded file does not carry (or Dispensasi SPM = 0).
+        const indCells = IKU_INDICATOR_ORDER.map((k) => (ind[k] === null || ind[k] === undefined ? '–' : ind[k]));
+        return id.slice(0, 3).concat([r.kdBa === undefined ? null : r.kdBa], id.slice(3),
+          [r.kdKanwil || null, r.kdKanwil ? (IkpaCore.KANWIL_CODE_TO_NAME[r.kdKanwil] || r.namaKanwil) : null, r.nmDekon || null],
+          statusCells(r, true),
+          indCells,
+          [cellValue(r.nilaiAkhir, 'num2'), r.included ? yn(r.nilaiAkhir >= IKU_THRESHOLD) : '-']
+        );
+      });
+      const widths = ID_WIDTHS.slice(0, 3).concat([9], ID_WIDTHS.slice(3), [11, 28, 24, 10, 12, 14, 16, 14, 40], indLabels.map(() => 13), [14, 14]);
       wb.Sheets['Catatan'] = makeNotesSheet(notes);
       wb.Sheets['Rincian Satker'] = makeSheet(header, body, kinds, widths);
       wb.SheetNames = ['Catatan', 'Rincian Satker'].concat(wb.SheetNames);
@@ -3345,7 +3370,7 @@
     detailBtn.className = 'btn btn-secondary';
     detailBtn.innerHTML = '<span class="spinner"></span><span>Unduh Rincian per Satker</span>';
     foot.appendChild(detailBtn);
-    note.textContent += ' Rincian per Satker menambah sheet Catatan dan Rincian Satker (status pengecualian dan ketercapaian ambang tiap Satker).';
+    note.textContent += ' Rincian per Satker menambah sheet Catatan dan Rincian Satker (Kode BA, status pengecualian, nilai kedelapan indikator termasuk Dispensasi SPM, dan ketercapaian ambang tiap Satker).';
     foot.appendChild(note);
     resultsCard.appendChild(foot);
 
