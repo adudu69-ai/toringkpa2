@@ -726,7 +726,8 @@
   // end month. UP KKP component averages the TARGET_TW/AMOUNT_TW checkpoint
   // at every triwulan from TW1 up to and including the target triwulan
   // (TW2: avg of TW1,TW2 — TW3: avg of TW1,TW2,TW3 — etc.), per user
-  // confirmation. Excludes BLU and Full Blokir only.
+  // confirmation; only checkpoints with AMOUNT_TW > 0 count, and with none the
+  // UP Tunai weight is converted 90% -> 100%. Excludes BLU and Full Blokir only.
   function computeUpTup(rows, ref, periodKey) {
     const targetMonth = resolvePeriod(periodKey).endMonth;
     const checkpoints = checkpointsUpTo(periodKey);
@@ -793,17 +794,29 @@
       const setoranTup = a.jmlTup === 0 ? 100 : 100 - (a.setoran / a.jmlTup) * 100;
       const nilaiUpTunai = 0.5 * ketepatanWaktu + 0.25 * persenGup + 0.25 * setoranTup;
       const komponenUpTunai = 0.9 * nilaiUpTunai;
+      // UP KKP: hanya checkpoint yang AMOUNT_TW-nya > 0 yang dihitung (110 bila
+      // amount >= target, selain itu 100). Bila tidak ada satu pun checkpoint
+      // berisi, komponen KKP tidak ada: bobot UP Tunai dikonversi 90% -> 100%
+      // (nilai = Nilai UP Tunai, mis. komponen 90 -> 100; 89,271 -> 99,19).
       const kkpByCheckpoint = {};
       let kkpSum = 0;
+      let kkpN = 0;
       for (let i = 0; i < checkpoints.length; i++) {
         const m = checkpointMonths[i];
-        const v = a['a_' + m] >= a['t_' + m] ? 110 : 100;
-        kkpByCheckpoint['nilaiKkp' + checkpoints[i].key] = v;
-        kkpSum += v;
+        if (a['a_' + m] > 0) {
+          const v = a['a_' + m] >= a['t_' + m] ? 110 : 100;
+          kkpByCheckpoint['nilaiKkp' + checkpoints[i].key] = v;
+          kkpSum += v;
+          kkpN += 1;
+        } else {
+          kkpByCheckpoint['nilaiKkp' + checkpoints[i].key] = null;
+        }
       }
-      const rataKkp = kkpSum / checkpoints.length;
-      const komponenUpKkp = 0.1 * rataKkp;
-      const nilai = Math.min(komponenUpTunai + komponenUpKkp, 100);
+      const rataKkp = kkpN > 0 ? kkpSum / kkpN : null;
+      const komponenUpKkp = kkpN > 0 ? 0.1 * rataKkp : 0;
+      const nilai = kkpN > 0
+        ? Math.min(komponenUpTunai + komponenUpKkp, 100)
+        : Math.min(nilaiUpTunai, 100);
       return Object.assign({ nSatker: a.nSatker, ketepatanWaktu, persenGup, setoranTup,
         nilaiUpTunai, komponenUpTunai }, kkpByCheckpoint, { rataKkp, komponenUpKkp, nilai });
     }
