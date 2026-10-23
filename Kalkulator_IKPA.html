@@ -727,7 +727,8 @@
   // at every triwulan from TW1 up to and including the target triwulan
   // (TW2: avg of TW1,TW2 — TW3: avg of TW1,TW2,TW3 — etc.), per user
   // confirmation; only checkpoints with AMOUNT_TW > 0 count, and with none the
-  // UP Tunai weight is converted 90% -> 100%. Excludes BLU and Full Blokir only.
+  // UP Tunai weight is converted 90% -> 100%; UP Tunai components without data are
+  // dropped and re-weighted. Excludes BLU and Full Blokir only.
   function computeUpTup(rows, ref, periodKey) {
     const targetMonth = resolvePeriod(periodKey).endMonth;
     const checkpoints = checkpointsUpTo(periodKey);
@@ -758,13 +759,14 @@
           jumlahUpDisebulankan: num(row[idx.JUMLAH_UP_DISEBULANKAN]),
           totalSetoranTup: num(row[idx.TOTAL_SETORAN_TUP]),
           jumlahTup: num(row[idx.JUMLAH_TUP]),
+          jumlahUp: idx.JUMLAH_UP !== undefined ? num(row[idx.JUMLAH_UP]) : 0,
         });
       }
     }
 
     const kkpFields = [];
     for (const m of checkpointMonths) kkpFields.push('t_' + m, 'a_' + m);
-    const fields = ['tepat', 'ketDenom', 'sumprod', 'jmlDiseb', 'setoran', 'jmlTup'].concat(kkpFields);
+    const fields = ['tepat', 'ketDenom', 'sumprod', 'jmlDiseb', 'setoran', 'jmlTup', 'jmlUp'].concat(kkpFields);
     const byLevel = { k4pa: newGroupAcc(), k3pa: newGroupAcc(), k4kanwil: newGroupAcc() };
     const satkerRows = [];
     const unmapped = [];
@@ -774,7 +776,7 @@
       const values = {
         tepat: cur.tepatWaktu, ketDenom: cur.jumlahUpTupKetepatan,
         sumprod: cur.persenSebulan * cur.jumlahUpDisebulankan, jmlDiseb: cur.jumlahUpDisebulankan,
-        setoran: cur.totalSetoranTup, jmlTup: cur.jumlahTup,
+        setoran: cur.totalSetoranTup, jmlTup: cur.jumlahTup, jmlUp: cur.jumlahUp,
       };
       for (const m of checkpointMonths) {
         const cp = dataByCheckpoint.get(m).get(code) || { targetTw: 0, amountTw: 0 };
@@ -792,8 +794,19 @@
       const ketepatanWaktu = a.ketDenom > 0 ? (a.tepat / a.ketDenom) * 100 : 0;
       const persenGup = a.jmlDiseb > 0 ? a.sumprod / a.jmlDiseb : 0;
       const setoranTup = a.jmlTup === 0 ? 100 : 100 - (a.setoran / a.jmlTup) * 100;
-      const nilaiUpTunai = 0.5 * ketepatanWaktu + 0.25 * persenGup + 0.25 * setoranTup;
-      const komponenUpTunai = 0.9 * nilaiUpTunai;
+      // Komponen UP Tunai yang TIDAK punya data dikeluarkan dan bobotnya dinormalisasi
+      // (sesuai kolom NILAI_UP_TUNAI pada file sumber, cocok di 18.073 satker):
+      //   Ketepatan (50%)  : ada bila JUMLAH_UP_TUP_KETEPATAN > 0
+      //   Persentase GUP (25%): ada bila JUMLAH_UP_DISEBULANKAN > 0 dan persentasenya >= 1
+      //   Setoran TUP (25%): ada bila satker punya data UP/TUP apa pun
+      // Bila tidak ada komponen sama sekali -> tidak dinilai (null).
+      const ada = { ket: a.ketDenom > 0, gup: a.jmlDiseb > 0 && persenGup >= 1,
+        set: (a.ketDenom > 0 || a.jmlDiseb > 0 || a.jmlTup > 0 || (a.jmlUp || 0) > 0) };
+      const wTunai = (ada.ket ? 0.5 : 0) + (ada.gup ? 0.25 : 0) + (ada.set ? 0.25 : 0);
+      const nilaiUpTunai = wTunai > 0
+        ? ((ada.ket ? 0.5 * ketepatanWaktu : 0) + (ada.gup ? 0.25 * persenGup : 0) + (ada.set ? 0.25 * setoranTup : 0)) / wTunai
+        : null;
+      const komponenUpTunai = nilaiUpTunai === null ? null : 0.9 * nilaiUpTunai;
       // UP KKP: hanya checkpoint yang AMOUNT_TW-nya > 0 yang dihitung (110 bila
       // amount >= target, selain itu 100). Bila tidak ada satu pun checkpoint
       // berisi, komponen KKP tidak ada: bobot UP Tunai dikonversi 90% -> 100%
@@ -814,9 +827,8 @@
       }
       const rataKkp = kkpN > 0 ? kkpSum / kkpN : null;
       const komponenUpKkp = kkpN > 0 ? 0.1 * rataKkp : 0;
-      const nilai = kkpN > 0
-        ? Math.min(komponenUpTunai + komponenUpKkp, 100)
-        : Math.min(nilaiUpTunai, 100);
+      const nilai = nilaiUpTunai === null ? null
+        : (kkpN > 0 ? Math.min(komponenUpTunai + komponenUpKkp, 100) : Math.min(nilaiUpTunai, 100));
       return Object.assign({ nSatker: a.nSatker, ketepatanWaktu, persenGup, setoranTup,
         nilaiUpTunai, komponenUpTunai }, kkpByCheckpoint, { rataKkp, komponenUpKkp, nilai });
     }
