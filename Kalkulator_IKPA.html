@@ -1845,7 +1845,7 @@
     return d.innerHTML;
   }
 
-  const REF_HINT = 'File referensi berisi 3 sheet: "ref satker", "ref blokir seribu", dan "ref BLU" (format sama seperti file Referensi Satker yang dipakai pada seluruh indikator sebelumnya). Kolom Kanwil, Seksi, K3 PA dan K4 PA pada file ini dipakai untuk menghasilkan ketiga level rekap sekaligus.';
+  const REF_HINT = 'File referensi berisi 3 sheet: "ref satker", "ref blokir seribu", dan "ref BLU" (format sama seperti file Referensi Satker yang dipakai pada seluruh indikator sebelumnya). Kolom Kanwil, Seksi, K3 PA dan K4 PA pada file ini dipakai untuk menghasilkan ketiga level rekap sekaligus. Cukup diunggah sekali: file ini otomatis dipakai di semua tab indikator dan Nilai IKU.';
 
   function periodLabel(pk) {
     const p = PERIOD_UI.find((p) => p.key === pk);
@@ -2175,6 +2175,11 @@
 
   // ---- generic file-input widget ---------------------------------------
 
+  // File Referensi Satker (standar K3/K4 PA & Kanwil) cukup diunggah SEKALI: begitu dipilih
+  // (atau dihapus) di salah satu tab, otomatis dipakai di semua tab lain yang punya kolom
+  // referensi yang sama. Referensi khusus Polda ('polda') tetap terpisah.
+  const sharedRefFields = [];
+
   function buildFileField(defKey, source) {
     const wrap = document.createElement('div');
     wrap.className = 'field';
@@ -2211,11 +2216,11 @@
     clearBtn.setAttribute('aria-label', 'Hapus file');
     clearBtn.textContent = '×';
 
-    input.addEventListener('change', () => {
-      const f = input.files && input.files[0];
+    const isSharedRef = source.id === 'ref' && defKey !== 'polda';
+    function showFile(f, viaShared) {
       fileState[defKey][source.id] = f || null;
       if (f) {
-        nameSpan.textContent = f.name;
+        nameSpan.textContent = f.name + (viaShared ? ' (dipakai bersama dari tab lain)' : '');
         nameSpan.dataset.empty = 'false';
         clearBtn.classList.add('show');
       } else {
@@ -2223,13 +2228,27 @@
         nameSpan.dataset.empty = 'true';
         clearBtn.classList.remove('show');
       }
+    }
+    function syncOthers(f) {
+      sharedRefFields.forEach((o) => { if (o.defKey !== defKey) o.receive(f); });
+    }
+    if (isSharedRef) {
+      sharedRefFields.push({ defKey, receive(f) {
+        try {
+          if (f) { const dt = new DataTransfer(); dt.items.add(f); input.files = dt.files; } else { input.value = ''; }
+        } catch (e) { /* tampilan saja; fileState tetap diisi */ }
+        showFile(f, !!f);
+      } });
+    }
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      showFile(f, false);
+      if (isSharedRef) syncOthers(f || null);
     });
     clearBtn.addEventListener('click', () => {
       input.value = '';
-      fileState[defKey][source.id] = null;
-      nameSpan.textContent = 'Belum ada file dipilih';
-      nameSpan.dataset.empty = 'true';
-      clearBtn.classList.remove('show');
+      showFile(null, false);
+      if (isSharedRef) syncOthers(null);
     });
 
     row.appendChild(input);
