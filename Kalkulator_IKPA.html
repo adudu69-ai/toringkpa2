@@ -906,6 +906,9 @@
       const p = row[dIdx.PERIODE] === null || row[dIdx.PERIODE] === undefined ? null : String(row[dIdx.PERIODE]).padStart(2, '0');
       if (!DEV_PERIODS.includes(p)) continue;
       const rec = { kdkppn: row[dIdx.KDKPPN] };
+      // Kolom NILAI (opsional) memuat exception per satker dari MyIntress; hanya
+      // dipakai untuk tampilan nilai satker -- agregasi kelompok tetap dari data mentah.
+      if (p === targetMonth && dIdx.NILAI !== undefined && !isBlank(row[dIdx.NILAI])) rec.nilaiSumber = num(row[dIdx.NILAI]);
       for (const jb of DEV_JB) {
         rec['RENCANA' + jb] = num(row[dIdx['RENCANA' + jb]]);
         rec['REALISASI' + jb] = num(row[dIdx['REALISASI' + jb]]);
@@ -964,10 +967,12 @@
         rata2Sum += tdb;
       }
       const rata2 = rata2Sum / DEV_PERIODS.length;
-      const nilaiSatker = rata2 <= 5 ? 100 : 100 - rata2;
+      const nilaiHitung = rata2 <= 5 ? 100 : 100 - rata2;
+      const nilaiSatker = (d06 && d06.nilaiSumber !== undefined) ? d06.nilaiSumber : nilaiHitung;
       satkerRows.push({ code: codeN, kdkppn: d06 ? d06.kdkppn : null, nama: cls.nama, k3pa: cls.k3pa,
         k4pa: cls.k4pa, k4kanwil: cls.k4kanwil, isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan,
-        included, ...tdbByPeriod, rata2, nilaiSatker, nilai: nilaiSatker });
+        included, ...tdbByPeriod, rata2, nilaiHitung, nilaiSatker, nilai: nilaiSatker,
+        selisihException: nilaiSatker - nilaiHitung });
       if (!cls.terpetakan) unmapped.push({ code: codeN, kdkppn: d06 ? d06.kdkppn : null });
       if (included) addToAllLevels(byLevel, cls, rawFields, values);
     }
@@ -1021,6 +1026,7 @@
       if (!byPeriod.has(p)) continue;
       const code = row[idx.SATKER];
       const rec = { kdkppn: row[idx.KDKPPN] };
+      if (p === targetMonth && idx.NILAI !== undefined && !isBlank(row[idx.NILAI])) rec.nilaiSumber = num(row[idx.NILAI]);
       for (const jb of SERAP_JB) {
         rec['PAGU_NETTO' + jb] = num(row[idx['PAGU_NETTO' + jb]]);
         rec['TARGET_PAGU' + jb] = num(row[idx['TARGET_PAGU' + jb]]);
@@ -1070,7 +1076,9 @@
       const nilaiSatkerAvg = Object.values(nilaiByTw).reduce((s, v) => s + v, 0) / SERAP_TW.length;
       satkerRows.push({ code: codeN, kdkppn: recCur ? recCur.kdkppn : null, nama: cls.nama, k3pa: cls.k3pa,
         k4pa: cls.k4pa, k4kanwil: cls.k4kanwil, isBlu: cls.isBlu, isFb: cls.isFb, isPs: cls.isPs, terpetakan: cls.terpetakan,
-        included, ...nilaiByTw, nilai: nilaiSatkerAvg });
+        included, ...nilaiByTw, nilaiHitung: nilaiSatkerAvg,
+        nilai: (recCur && recCur.nilaiSumber !== undefined) ? recCur.nilaiSumber : nilaiSatkerAvg,
+        selisihException: ((recCur && recCur.nilaiSumber !== undefined) ? recCur.nilaiSumber : nilaiSatkerAvg) - nilaiSatkerAvg });
       if (!cls.terpetakan) unmapped.push({ code: codeN, kdkppn: recCur ? recCur.kdkppn : null });
       if (included) addToAllLevels(byLevel, cls, rawFields, values);
     }
@@ -1936,7 +1944,7 @@
       title: 'Deviasi Halaman III DIPA',
       weightLabel: '15%',
       formula(pk) {
-        return 'Nilai = 100 jika rata-rata deviasi tertimbang Januari–' + periodEndMonthName(pk) + ' ≤ 5%, selebihnya 100 − rata-rata deviasi. Belanja 51/52 pada Februari–Maret mendapat dispensasi (deviasi 0%). Hanya Satker BLU dan Full Blokir yang dikeluarkan (Pagu Seribu tetap dihitung).';
+        return 'Nilai = 100 jika rata-rata deviasi tertimbang Januari–' + periodEndMonthName(pk) + ' ≤ 5%, selebihnya 100 − rata-rata deviasi. Belanja 51/52 pada Februari–Maret mendapat dispensasi (deviasi 0%). Hanya Satker BLU dan Full Blokir yang dikeluarkan (Pagu Seribu tetap dihitung). Nilai per satker pada rincian memakai kolom NILAI file sumber bila ada (sudah memuat exception MyIntress); nilai kelompok tetap dihitung dari data mentah tanpa exception.';
       },
       sources: [
         { id: 'src', label: 'File Sumber Deviasi', sheetCandidates: ['Export Worksheet', 'Sheet1'],
@@ -1953,7 +1961,9 @@
         const cols = IkpaCore.monthsUpTo(IkpaCore.resolvePeriod(pk).endMonth).map((mm) => (
           { key: 'tdb_' + mm, label: 'Deviasi tertimbang ' + IkpaCore.monthLabel(mm) + ' (%)', kind: 'num2' }));
         cols.push({ key: 'rata2', label: 'Rata-rata Deviasi Tertimbang (%)', kind: 'num2' });
+        cols.push({ key: 'nilaiHitung', label: 'Nilai hitung ulang (tanpa exception)', kind: 'num2' });
         cols.push({ key: 'nilai', label: 'Nilai Deviasi Halaman III DIPA', kind: 'num2' });
+        cols.push({ key: 'selisihException', label: 'Selisih exception (Nilai − hitung ulang)', kind: 'num2' });
         return cols;
       },
       compute(src, ref, pk) { return IkpaCore.computeDeviasi(src[0], src[1], ref, pk); },
@@ -1963,7 +1973,7 @@
       title: 'Penyerapan Anggaran',
       weightLabel: '20%',
       formula(pk) {
-        return 'Nilai = rata-rata Nilai per-triwulan-checkpoint dari Triwulan I s.d. triwulan terpilih (checkpoint Maret' + (pk === 'TW1' ? '' : pk === 'TW2' ? ', Juni' : pk === 'TW3' ? ', Juni, September' : ', Juni, September, Desember') + '), masing-masing dibobot pagu netto per jenis belanja (51/52/53/57) dan dibatasi maksimal 100 per jenis belanja. Satker BLU dan Full Blokir dikeluarkan.';
+        return 'Nilai = rata-rata Nilai per-triwulan-checkpoint dari Triwulan I s.d. triwulan terpilih (checkpoint Maret' + (pk === 'TW1' ? '' : pk === 'TW2' ? ', Juni' : pk === 'TW3' ? ', Juni, September' : ', Juni, September, Desember') + '), masing-masing dibobot pagu netto per jenis belanja (51/52/53/57) dan dibatasi maksimal 100 per jenis belanja. Satker BLU dan Full Blokir dikeluarkan. Nilai per satker pada rincian memakai kolom NILAI file sumber bila ada (sudah memuat exception NKPA); nilai kelompok tetap dihitung dari data mentah tanpa exception.';
       },
       sources: [
         { id: 'src', label: 'File Sumber Penyerapan (Serap)', sheetCandidates: ['Export Worksheet', 'Sheet1'],
@@ -1979,7 +1989,9 @@
       detailColumns(pk) {
         const cols = IkpaCore.checkpointsUpTo(pk).map((c) => (
           { key: 'nilai' + c.key, label: 'Nilai ' + c.label, kind: 'num2' }));
+        cols.push({ key: 'nilaiHitung', label: 'Nilai hitung ulang (tanpa exception)', kind: 'num2' });
         cols.push({ key: 'nilai', label: 'Nilai Penyerapan Anggaran (rata-rata checkpoint)', kind: 'num2' });
+        cols.push({ key: 'selisihException', label: 'Selisih exception (Nilai − hitung ulang)', kind: 'num2' });
         return cols;
       },
       compute(src, ref, pk) { return IkpaCore.computePenyerapan(src[0], ref, pk); },
